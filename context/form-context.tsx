@@ -1,0 +1,392 @@
+"use client"
+
+import { createContext, useState, useContext, type ReactNode } from "react"
+import { compressToEncodedURIComponent } from "lz-string"
+import { savePage } from "@/lib/supabase"
+
+// Função para capitalizar a primeira letra de cada palavra e substituir "e" por "&"
+const capitalizeWords = (text: string): string => {
+  if (!text) return text
+
+  // Primeiro, substituir " e " por " & " (com espaços ao redor)
+  const processedText = text.replace(/\s+e\s+/gi, " & ")
+
+  return processedText
+    .split(" ")
+    .map((word) => {
+      // Trata palavras com caracteres especiais como "&" ou "-"
+      return word
+        .split(/([&-])/)
+        .map((part) => {
+          // Se for um separador, retorna ele mesmo
+          if (part === "&" || part === "-") return part
+          // Se for uma palavra, capitaliza a primeira letra
+          return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+        })
+        .join("")
+    })
+    .join(" ")
+}
+
+type FormData = {
+  email: string
+  coupleNames: string
+  date: string
+  time: string
+  message: string
+  youtubeLink: string
+  photos: string[] // Array de fotos em base64
+  photoUrls: string[] // Array de URLs das fotos no servidor
+  plan: "basic" | "premium" | null
+}
+
+// Add isSubmitting to the FormContextType
+type FormContextType = {
+  formData: FormData
+  updateFormData: (data: Partial<FormData>) => void
+  resetForm: () => void
+  submitForm: () => Promise<void>
+  isFormValid: () => boolean
+  addPhoto: (photo: string, index: number) => void
+  removePhoto: (index: number) => void
+  resetPhotos: () => void
+  updatePhotos: (photos: string[]) => void
+  isSubmitting: boolean
+}
+
+// Modificar o initialFormData para definir o plano premium como padrão
+const initialFormData: FormData = {
+  email: "",
+  coupleNames: "",
+  date: "",
+  time: "",
+  message: "",
+  youtubeLink: "",
+  photos: ["", "", "", "", ""], // 5 espaços para fotos
+  photoUrls: ["", "", "", "", ""], // 5 espaços para URLs
+  plan: "premium", // Alterado de null para "premium" para selecionar por padrão
+}
+
+const FormContext = createContext<FormContextType | undefined>(undefined)
+
+// Função para fazer upload da imagem para o ImgBB
+const uploadImageToServer = async (base64Image: string): Promise<string> => {
+  try {
+    // Remover o prefixo do data URL se existir
+    const base64Data = base64Image.includes("base64,") ? base64Image.split("base64,")[1] : base64Image
+
+    // Chave da API do ImgBB
+    const apiKey = "b0aebf5fbd0f7f940e0184c796125175" // Sua chave de API real do ImgBB
+
+    console.log("Iniciando upload para ImgBB...")
+
+    // Preparar os dados para o upload
+    const formData = new FormData()
+    formData.append("key", apiKey)
+    formData.append("image", base64Data)
+
+    // Fazer a requisição para a API do ImgBB
+    const response = await fetch("https://api.imgbb.com/1/upload", {
+      method: "POST",
+      body: formData,
+    })
+
+    if (!response.ok) {
+      throw new Error(`Erro na resposta da API: ${response.status} ${response.statusText}`)
+    }
+
+    const data = await response.json()
+
+    // Verificar se o upload foi bem-sucedido
+    if (data.success) {
+      console.log("Imagem enviada com sucesso para o servidor:", data.data.url)
+      return data.data.url
+    } else {
+      throw new Error("Falha ao fazer upload da imagem: " + (data.error?.message || "Erro desconhecido"))
+    }
+  } catch (error) {
+    console.error("Erro ao fazer upload da imagem:", error)
+    throw error // Propagar o erro para tratamento adequado
+  }
+}
+
+// Função para comprimir os dados para a URL
+const compressDataForUrl = (data: any): string => {
+  try {
+    // Converter para JSON e comprimir
+    const jsonString = JSON.stringify(data)
+    return compressToEncodedURIComponent(jsonString)
+  } catch (error) {
+    console.error("Erro ao comprimir dados:", error)
+    return ""
+  }
+}
+
+// Links diretos para checkout da Kirvano - ATUALIZADOS com os links corretos
+const KIRVANO_CHECKOUT_LINKS = {
+  basic: "https://pay.kirvano.com/dded3798-0e1f-4902-8721-5edf23da385d",
+  premium: "https://pay.kirvano.com/675347e6-77ad-4981-ac3f-0d849669848c",
+}
+
+// Add isSubmitting state to the FormProvider component
+export function FormProvider({ children }: { children: ReactNode }) {
+  const [formData, setFormData] = useState<FormData>(initialFormData)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const updateFormData = (data: Partial<FormData>) => {
+    setFormData((prev) => ({ ...prev, ...data }))
+  }
+
+  const resetForm = () => {
+    setFormData(initialFormData)
+  }
+
+  const isFormValid = () => {
+    // Verificações básicas de validação
+    return (
+      formData.email.includes("@") &&
+      formData.coupleNames.trim() !== "" &&
+      formData.date !== "" &&
+      formData.message.trim() !== "" &&
+      formData.plan !== null &&
+      formData.photos.some((photo) => photo !== "") // Pelo menos uma foto
+    )
+  }
+
+  // Adicionar uma foto em um índice específico
+  const addPhoto = (photo: string, index: number) => {
+    console.log(`FormContext: Adicionando foto no índice ${index}`)
+
+    // Criar uma cópia do array de fotos
+    const newPhotos = [...formData.photos]
+
+    // Adicionar a nova foto no índice especificado
+    newPhotos[index] = photo
+
+    // Atualizar o estado com o novo array de fotos
+    setFormData((prevState) => ({
+      ...prevState,
+      photos: newPhotos,
+    }))
+
+    console.log(`FormContext: Foto adicionada no índice ${index}`)
+  }
+
+  // Atualizar todas as fotos de uma vez
+  const updatePhotos = (photos: string[]) => {
+    console.log("FormContext: Atualizando todas as fotos")
+    setFormData((prevState) => ({
+      ...prevState,
+      photos,
+    }))
+    console.log("FormContext: Fotos atualizadas:", photos.filter((p) => p).length)
+  }
+
+  // Remover uma foto de um índice específico
+  const removePhoto = (index: number) => {
+    const newPhotos = [...formData.photos]
+    newPhotos[index] = ""
+
+    const newPhotoUrls = [...formData.photoUrls]
+    newPhotoUrls[index] = ""
+
+    updateFormData({
+      photos: newPhotos,
+      photoUrls: newPhotoUrls,
+    })
+  }
+
+  // Resetar todas as fotos
+  const resetPhotos = () => {
+    updateFormData({
+      photos: ["", "", "", "", ""],
+      photoUrls: ["", "", "", "", ""],
+    })
+  }
+
+  const submitForm = async () => {
+    if (isFormValid()) {
+      try {
+        setIsSubmitting(true)
+
+        // Normalizar o e-mail (trim e lowercase)
+        const normalizedEmail = formData.email.trim().toLowerCase()
+
+        // Capitalizar o nome do casal e substituir "e" por "&"
+        const capitalizedCoupleNames = capitalizeWords(formData.coupleNames)
+
+        // Atualizar o formData com o nome capitalizado e e-mail normalizado
+        updateFormData({
+          coupleNames: capitalizedCoupleNames,
+          email: normalizedEmail,
+        })
+
+        // Generate a unique ID for the page
+        const pageId = Math.random().toString(36).substring(2, 8)
+
+        // Fazer upload das fotos para o servidor
+        // Processar apenas fotos que existem (não vazias)
+        const photoUrls = [...formData.photoUrls]
+        for (let i = 0; i < formData.photos.length; i++) {
+          if (formData.photos[i] && formData.photos[i].startsWith("data:image")) {
+            try {
+              // Usar a função real de upload para o ImgBB
+              photoUrls[i] = await uploadImageToServer(formData.photos[i])
+              console.log(`Foto ${i + 1} enviada para o servidor, URL:`, photoUrls[i])
+            } catch (error) {
+              console.error(`Erro ao enviar foto ${i + 1} para o servidor:`, error)
+              alert(`Erro ao enviar a foto ${i + 1}. Por favor, tente novamente.`)
+              setIsSubmitting(false)
+              return // Interromper o processo se o upload falhar
+            }
+          }
+        }
+
+        // Atualizar o formData com as URLs das fotos
+        updateFormData({ photoUrls })
+
+        // Criar um objeto com dados essenciais para a URL (versão compacta)
+        const essentialData = {
+          n: capitalizedCoupleNames, // Nome do casal
+          d: formData.date, // Data
+          t: formData.time, // Hora
+          m: formData.message, // Mensagem
+          y: formData.youtubeLink, // Link do YouTube
+          p: photoUrls, // URLs das fotos
+          pl: formData.plan, // Plano
+        }
+
+        // Comprimir os dados para a URL
+        const compressedData = compressDataForUrl(essentialData)
+
+        // Construir a URL completa da página
+        const pageUrl = `${window.location.origin}/pagina/${pageId}?d=${compressedData}`
+
+        // Gerar QR Code para o email
+        let qrCodeUrl = null
+        try {
+          // Importar a biblioteca QRCode.js dinamicamente
+          const QRCode = await import("qrcode")
+
+          // Gerar o QR code como uma URL de dados
+          qrCodeUrl = await QRCode.toDataURL(pageUrl, {
+            width: 300,
+            margin: 1,
+            errorCorrectionLevel: "H",
+            color: {
+              dark: "#000000",
+              light: "#FFFFFF",
+            },
+          })
+        } catch (qrError) {
+          console.error("Erro ao gerar QR Code para email:", qrError)
+          // Continuar mesmo se falhar a geração do QR Code
+        }
+
+        // Salvar os dados no Supabase
+        try {
+          console.log("Salvando dados no Supabase...")
+
+          await savePage({
+            page_id: pageId,
+            email: normalizedEmail,
+            couple_names: capitalizedCoupleNames,
+            date: formData.date,
+            time: formData.time || "",
+            message: formData.message,
+            youtube_link: formData.youtubeLink || "",
+            photo_urls: photoUrls.filter((url) => url), // Filtrar URLs vazias
+            plan: formData.plan || "basic",
+            page_url: pageUrl,
+            qr_code_url: qrCodeUrl || "",
+          })
+
+          console.log("Dados salvos com sucesso no Supabase!")
+
+          // Enviar email com o link da página (opcional, pode ser enviado após o pagamento)
+          try {
+            console.log("Enviando email com informações da página...")
+
+            const emailResponse = await fetch("/api/send-email", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                email: normalizedEmail,
+                pageUrl,
+                coupleNames: capitalizedCoupleNames,
+                qrCodeUrl,
+                isPending: true, // Indica que o pagamento está pendente
+              }),
+            })
+
+            const emailResult = await emailResponse.json()
+
+            if (emailResult.success) {
+              console.log("Email enviado com sucesso!")
+            } else {
+              console.error("Erro ao enviar email:", emailResult.error)
+            }
+          } catch (emailError) {
+            console.error("Erro ao enviar email:", emailError)
+          }
+
+          // Usar links diretos da Kirvano
+          const checkoutUrl =
+            formData.plan === "premium" ? KIRVANO_CHECKOUT_LINKS.premium : KIRVANO_CHECKOUT_LINKS.basic
+
+          // Adicionar parâmetros de query para identificar o pedido
+          const checkoutUrlWithParams = `${checkoutUrl}?ref=${pageId}&email=${encodeURIComponent(normalizedEmail)}&name=${encodeURIComponent(capitalizedCoupleNames)}`
+
+          console.log("Redirecionando para checkout:", checkoutUrlWithParams)
+
+          // Redirecionar para o checkout da Kirvano
+          window.location.href = checkoutUrlWithParams
+        } catch (dbError) {
+          console.error("Erro ao salvar dados no Supabase:", dbError)
+          alert("Ocorreu um erro ao salvar seus dados. Por favor, tente novamente.")
+          setIsSubmitting(false)
+          return
+        }
+      } catch (error) {
+        console.error("Erro durante o envio do formulário:", error)
+        alert("Ocorreu um erro ao criar sua página. Por favor, tente novamente.")
+        setIsSubmitting(false)
+        throw error // Propagar o erro para que o botão de submissão possa ser resetado
+      } finally {
+        setIsSubmitting(false)
+      }
+    } else {
+      alert("Por favor, preencha todos os campos obrigatórios e escolha um plano.")
+      throw new Error("Formulário inválido")
+    }
+  }
+
+  return (
+    <FormContext.Provider
+      value={{
+        formData,
+        updateFormData,
+        resetForm,
+        submitForm,
+        isFormValid,
+        addPhoto,
+        removePhoto,
+        resetPhotos,
+        updatePhotos,
+        isSubmitting,
+      }}
+    >
+      {children}
+    </FormContext.Provider>
+  )
+}
+
+export function useFormContext() {
+  const context = useContext(FormContext)
+  if (context === undefined) {
+    throw new Error("useFormContext must be used within a FormProvider")
+  }
+  return context
+}

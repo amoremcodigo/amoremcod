@@ -1,0 +1,420 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 270 100% 60%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 270 100% 60%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 270 100% 60%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 270 100% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    min-height: 100vh;
+    /* Add a background that matches the promo bar but is slightly darker to ensure content is readable */
+    background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.85) 15%);
+  }
+
+  /* Prevenir zoom em dispositivos móveis */
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
+/* Add styles for main content areas to ensure they're readable against the gradient background */
+main {
+  position: relative;
+  z-index: 1;
+}
+
+.gradient-text {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600;
+}
+
+.emoji {
+  font-style: normal;
+  color: initial;
+  background: none;
+  -webkit-text-fill-color: initial;
+}
+
+/* Ensure emojis render properly in all contexts */
+[data-emoji],
+.contains-emoji,
+p:has(span.emoji) {
+  font-family: "Segoe UI Emoji", "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Symbol", sans-serif;
+}
+
+/* Modificar a classe cursor-blink para torná-la mais fina e delicada */
+.cursor-blink {
+  display: inline-block;
+  color: white;
+  animation: blink 1s step-end infinite;
+  margin-left: 1px;
+  margin-right: 1px;
+  font-weight: 100; /* Mais fino */
+  font-size: 1.1em; /* Ligeiramente maior para compensar a finura */
+  opacity: 0.8; /* Mais suave */
+  position: relative;
+  top: -1px; /* Ajuste fino de posicionamento */
+}
+
+@keyframes blink {
+  from,
+  to {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Estilo específico para o título do hero em dispositivos móveis */
+.hero-title {
+  line-height: 1.1;
+}
+
+.gradient-bg {
+  @apply bg-gradient-to-r from-purple-700 to-pink-500;
+}
+
+/* Animação do banner flutuante */
+.floating-banner {
+  position: relative;
+  animation: float 6s ease-in-out infinite;
+  transform-origin: center center;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-15px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+/* Corações flutuantes */
+.heart-small {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ff6b9d' width='24' height='24'%3E%3Cpath d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  opacity: 0.8;
+  z-index: 10;
+}
+
+.heart-1 {
+  top: 10%;
+  right: 15%;
+  animation: floatHeart 7s ease-in-out infinite;
+}
+
+.heart-2 {
+  bottom: 20%;
+  left: 10%;
+  animation: floatHeart 8s ease-in-out infinite 1s;
+}
+
+.heart-3 {
+  top: 40%;
+  right: 5%;
+  animation: floatHeart 6s ease-in-out infinite 0.5s;
+}
+
+@keyframes floatHeart {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateY(-15px) rotate(10deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0.7;
+  }
+}
+
+/* Adicionar após as animações existentes */
+@keyframes ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+  80%,
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+.animate-ping {
+  animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* Estilo para o input de arquivo personalizado */
+.file-input-wrapper {
+  position: relative;
+  overflow: hidden;
+  display: inline-block;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+
+.file-input-wrapper input[type="file"] {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.photo-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0.5rem;
+}
+
+/* Animação para o QR Code */
+.floating-qrcode {
+  position: relative;
+  animation: pulse 3s ease-in-out infinite;
+  box-shadow: 0 0 15px rgba(147, 51, 234, 0.3);
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 15px rgba(147, 51, 234, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(236, 72, 153, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 15px rgba(147, 51, 234, 0.3);
+  }
+}
+
+/* Estilos para os emojis caindo */
+.falling-hearts-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+  overflow: hidden;
+}
+
+/* Container for falling hearts that is contained within its parent */
+.falling-hearts-container-contained {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 30; /* Increased z-index to ensure it's above all content */
+  overflow: hidden;
+}
+
+.falling-emoji {
+  position: absolute;
+  animation: falling linear forwards;
+  z-index: 30; /* Increased z-index to ensure it's above all content */
+  pointer-events: none;
+  user-select: none;
+  will-change: transform; /* Optimize for animation performance */
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.2)); /* Subtle shadow for better visibility */
+}
+
+/* Classe específica para emojis caindo mais rápido */
+.falling-emoji-fast {
+  animation-duration: 3s !important; /* Sobrescreve a duração para ser mais rápida */
+}
+
+@keyframes falling {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(0.7);
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  95% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(150%) rotate(360deg) scale(1);
+    opacity: 0;
+  }
+}
+
+/* Animação mais rápida para os emojis */
+@keyframes falling-fast {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(0.7);
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  95% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(150%) rotate(360deg) scale(1);
+    opacity: 0;
+  }
+}
+
+/* Estilos para inputs de data e hora */
+input[type="date"],
+input[type="time"] {
+  /* Remover estilos específicos do navegador */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+
+  /* Aplicar os mesmos estilos dos outros inputs */
+  background-color: transparent !important;
+  color: white !important;
+  border: 1px solid hsl(var(--input));
+  border-radius: var(--radius);
+}
+
+/* Estilo para o placeholder dos inputs de data e hora */
+input[type="date"]::placeholder,
+input[type="time"]::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+/* Corrigir a cor do texto nos inputs de data e hora */
+input[type="date"]::-webkit-datetime-edit,
+input[type="time"]::-webkit-datetime-edit {
+  color: white;
+}
+
+/* Estilizar o ícone de calendário/relógio */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1); /* Inverter a cor para branco */
+  opacity: 0.5; /* Tornar um pouco mais sutil */
+}
+
+/* Remover o fundo azul em dispositivos iOS */
+@supports (-webkit-touch-callout: none) {
+  input[type="date"],
+  input[type="time"] {
+    background-color: transparent !important;
+    color: white !important;
+    border-color: hsl(var(--input)) !important;
+  }
+}
+
+/* Efeito de onda infinita para a barra promocional */
+.wave-animation {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 200%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(236, 72, 153, 0.7) 0%,
+    rgba(168, 85, 247, 0.7) 25%,
+    rgba(236, 72, 153, 0.7) 50%,
+    rgba(168, 85, 247, 0.7) 75%,
+    rgba(236, 72, 153, 0.7) 100%
+  );
+  animation: wave 8s linear infinite;
+}
+
+@keyframes wave {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* Adicionar após as regras existentes */
+html,
+body {
+  background-color: black;
+  min-height: 100%;
+}
+
+/* Ajustar para dispositivos móveis */
+@media (max-width: 768px) {
+  body {
+    background-color: black;
+  }
+
+  /* Garantir que a safe area tenha a mesma cor */
+  @supports (padding-top: env(safe-area-inset-top)) {
+    body {
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+  }
+}

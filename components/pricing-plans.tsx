@@ -9,9 +9,13 @@ export function PricingPlans() {
   const { formData, updateFormData } = useFormContext()
 
   const selectPlan = (plan: "basic" | "premium") => {
+    console.log(`Selecionando plano: ${plan}`)
     updateFormData({ plan })
+
     // Rolar para a seção de preview
-    document.getElementById("preview")?.scrollIntoView({ behavior: "smooth" })
+    setTimeout(() => {
+      document.getElementById("preview")?.scrollIntoView({ behavior: "smooth" })
+    }, 100)
   }
 
   return (

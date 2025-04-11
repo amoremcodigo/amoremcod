@@ -188,9 +188,37 @@ export default function PaginaDetalhes() {
   }, [editingMessage])
 
   // Compartilhar via WhatsApp
-  const shareViaWhatsApp = () => {
-    const text = `Veja nossa página personalizada: ${window.location.href}`
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank")
+  const shareViaWhatsApp = async () => {
+    try {
+      // Gerar URL do QR Code com alta qualidade
+      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(window.location.href)}&margin=10&qzone=2&format=png`
+
+      // Verificar se a API Web Share está disponível
+      if (navigator.share) {
+        // Buscar a imagem e convertê-la para blob
+        const response = await fetch(qrCodeUrl)
+        const blob = await response.blob()
+
+        // Criar um arquivo a partir do blob
+        const file = new File([blob], "qrcode.png", { type: "image/png" })
+
+        // Compartilhar o arquivo
+        await navigator.share({
+          title: `${pageData.coupleNames} - Amor em Código`,
+          text: "Escaneie este QR Code para acessar nossa página personalizada",
+          files: [file],
+        })
+      } else {
+        // Fallback para dispositivos que não suportam Web Share API
+        const text = `${pageData.coupleNames} - Escaneie este QR Code para acessar nossa página personalizada: ${window.location.href}`
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank")
+      }
+    } catch (error) {
+      console.error("Erro ao compartilhar via WhatsApp:", error)
+      // Fallback em caso de erro
+      const text = `${pageData.coupleNames} - Acesse nossa página personalizada: ${window.location.href}`
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank")
+    }
   }
 
   // Imprimir QR Code
@@ -210,7 +238,7 @@ export default function PaginaDetalhes() {
           <body>
             <h2>${pageData?.coupleNames || "Amor em Código"}</h2>
             <div>
-              <img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(window.location.href)}" alt="QR Code" />
+              <img src="https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(window.location.href)}&margin=10&qzone=2&format=png" alt="QR Code" />
             </div>
             <p>Escaneie este QR Code para acessar nossa página personalizada</p>
           </body>
@@ -227,7 +255,8 @@ export default function PaginaDetalhes() {
   // Baixar QR Code
   const downloadQrCode = () => {
     const link = document.createElement("a")
-    link.href = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(window.location.href)}`
+    // Usar parâmetros para melhorar a qualidade
+    link.href = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(window.location.href)}&margin=10&qzone=2&format=png`
     link.download = `qrcode-${pageData?.coupleNames || "amor-em-codigo"}.png`
     document.body.appendChild(link)
     link.click()
@@ -586,11 +615,11 @@ export default function PaginaDetalhes() {
                   WhatsApp
                 </Button>
               </div>
-              <div className="mt-2 text-center bg-white p-3 rounded-lg shadow-inner">
+              <div className="mt-2 text-center bg-white p-1 rounded-lg shadow-inner">
                 <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(window.location.href)}`}
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(window.location.href)}&margin=10&qzone=2&format=png`}
                   alt="QR Code"
-                  className="inline-block max-w-[150px] rounded-lg"
+                  className="inline-block max-w-[180px] rounded-lg"
                 />
               </div>
             </div>

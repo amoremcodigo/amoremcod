@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useParams, useSearchParams } from "next/navigation"
 import { decompressFromEncodedURIComponent } from "lz-string"
-import { Heart, Music, QrCode, Download, Printer, Phone, Edit, Save, X } from "lucide-react"
+import { Heart, Music, QrCode, Download, Printer, Phone, Edit, Save, X, ChevronLeft, ChevronRight } from "lucide-react"
 import { FallingHearts } from "@/components/falling-hearts"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -38,6 +38,7 @@ export default function PaginaDetalhes() {
   const [editingMessage, setEditingMessage] = useState(false)
   const [newMessage, setNewMessage] = useState("")
   const [savingMessage, setSavingMessage] = useState(false)
+  const [youtubePlayerActive, setYoutubePlayerActive] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Buscar dados da página
@@ -233,6 +234,27 @@ export default function PaginaDetalhes() {
     document.body.removeChild(link)
   }
 
+  // Navegar para a foto anterior
+  const prevPhoto = () => {
+    const validPhotos = pageData.photoUrls?.filter((url: string) => url) || []
+    if (validPhotos.length <= 1) return
+
+    setCurrentPhotoIndex((prevIndex) => (prevIndex === 0 ? validPhotos.length - 1 : prevIndex - 1))
+  }
+
+  // Navegar para a próxima foto
+  const nextPhoto = () => {
+    const validPhotos = pageData.photoUrls?.filter((url: string) => url) || []
+    if (validPhotos.length <= 1) return
+
+    setCurrentPhotoIndex((prevIndex) => (prevIndex + 1) % validPhotos.length)
+  }
+
+  // Ativar o player do YouTube
+  const activateYoutubePlayer = () => {
+    setYoutubePlayerActive(true)
+  }
+
   // Salvar mensagem atualizada
   const saveMessage = async () => {
     if (!pageData || !newMessage.trim()) return
@@ -318,62 +340,12 @@ export default function PaginaDetalhes() {
           {/* Header */}
           <div className="p-6 text-center">
             <h1 className="text-2xl font-bold mb-2 gradient-text">{pageData.coupleNames}</h1>
-            {/* QR Code options */}
             <div className="flex justify-center mb-4">
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2 bg-gradient-to-r from-purple-600/30 to-pink-600/30 hover:from-purple-600/50 hover:to-pink-600/50 border-purple-500"
-                onClick={() => setShowQrOptions(!showQrOptions)}
-              >
-                <div className="relative">
-                  <QrCode className="h-5 w-5 text-white" />
-                  <Heart className="absolute -bottom-1 -right-1 h-3 w-3 text-pink-500" />
-                </div>
-                {showQrOptions ? "Ocultar QR Code" : "Mostrar QR Code"}
-              </Button>
-            </div>
-            {showQrOptions && (
-              <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 mb-4 flex flex-col gap-3 border border-gray-700 shadow-lg">
-                <h3 className="text-sm font-medium text-white mb-2">Compartilhar esta página</h3>
-                <div className="grid grid-cols-3 gap-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex flex-col items-center justify-center h-20 text-xs bg-gradient-to-br from-blue-900/50 to-blue-800/50 hover:from-blue-800 hover:to-blue-700 border-blue-700 text-white"
-                    onClick={downloadQrCode}
-                  >
-                    <Download className="h-6 w-6 mb-1 text-blue-400" />
-                    Baixar
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex flex-col items-center justify-center h-20 text-xs bg-gradient-to-br from-purple-900/50 to-purple-800/50 hover:from-purple-800 hover:to-purple-700 border-purple-700 text-white"
-                    onClick={printQrCode}
-                  >
-                    <Printer className="h-6 w-6 mb-1 text-purple-400" />
-                    Imprimir
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex flex-col items-center justify-center h-20 text-xs bg-gradient-to-br from-green-900/50 to-green-800/50 hover:from-green-800 hover:to-green-700 border-green-700 text-white"
-                    onClick={shareViaWhatsApp}
-                  >
-                    <Phone className="h-6 w-6 mb-1 text-green-400" />
-                    WhatsApp
-                  </Button>
-                </div>
-                <div className="mt-2 text-center bg-white p-3 rounded-lg shadow-inner">
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(window.location.href)}`}
-                    alt="QR Code"
-                    className="inline-block max-w-[150px] rounded-lg"
-                  />
-                </div>
+              <div className="relative">
+                <QrCode className="h-8 w-8 text-primary" />
+                <Heart className="absolute -bottom-1 -right-1 h-4 w-4 text-pink-500" />
               </div>
-            )}
+            </div>
           </div>
 
           {/* Contador */}
@@ -425,6 +397,26 @@ export default function PaginaDetalhes() {
                     </div>
                   ))}
 
+                  {/* Botões de navegação */}
+                  {hasMultiplePhotos && (
+                    <>
+                      <button
+                        onClick={prevPhoto}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 rounded-full p-2 text-white z-20 transition-colors"
+                        aria-label="Foto anterior"
+                      >
+                        <ChevronLeft className="h-6 w-6" />
+                      </button>
+                      <button
+                        onClick={nextPhoto}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 rounded-full p-2 text-white z-20 transition-colors"
+                        aria-label="Próxima foto"
+                      >
+                        <ChevronRight className="h-6 w-6" />
+                      </button>
+                    </>
+                  )}
+
                   {/* Indicadores de foto (apenas se houver múltiplas fotos) */}
                   {hasMultiplePhotos && (
                     <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1 z-20">
@@ -446,8 +438,34 @@ export default function PaginaDetalhes() {
           </div>
 
           {/* Mensagem */}
-          <div className="px-6 mb-6">
-            {editingMessage ? (
+          <div className="px-6 mb-3">
+            <div className="bg-gray-800/50 rounded-lg p-4 text-center">
+              <p
+                className="text-gray-300"
+                dangerouslySetInnerHTML={{
+                  __html: pageData.message.replace(/\n/g, "<br>"),
+                }}
+              ></p>
+            </div>
+          </div>
+
+          {/* Botão de edição da mensagem (fora do box da mensagem) */}
+          <div className="px-6 mb-6 flex justify-center">
+            <Button
+              onClick={() => setEditingMessage(true)}
+              size="sm"
+              variant="outline"
+              className="flex items-center gap-1"
+              disabled={editingMessage}
+            >
+              <Edit className="h-4 w-4" />
+              Editar Mensagem
+            </Button>
+          </div>
+
+          {/* Área de edição da mensagem (aparece quando editingMessage é true) */}
+          {editingMessage && (
+            <div className="px-6 mb-6">
               <div className="bg-gray-800/50 rounded-lg p-4">
                 <Textarea
                   ref={textareaRef}
@@ -489,28 +507,8 @@ export default function PaginaDetalhes() {
                   </Button>
                 </div>
               </div>
-            ) : (
-              <div className="bg-gray-800/50 rounded-lg p-4 text-center">
-                <p
-                  className="text-gray-300"
-                  dangerouslySetInnerHTML={{
-                    __html: pageData.message.replace(/\n/g, "<br>"),
-                  }}
-                ></p>
-                <div className="mt-3 flex justify-center">
-                  <Button
-                    onClick={() => setEditingMessage(true)}
-                    size="sm"
-                    variant="outline"
-                    className="flex items-center gap-1"
-                  >
-                    <Edit className="h-4 w-4" />
-                    Editar Mensagem
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* YouTube (apenas para plano premium) */}
           {pageData.plan === "premium" && youtubeVideoId && (
@@ -519,40 +517,84 @@ export default function PaginaDetalhes() {
                 <Music className="h-4 w-4 text-gray-400" />
                 <span className="text-sm text-gray-400">Nossa música</span>
               </div>
-              <div className="aspect-video rounded-lg overflow-hidden relative group">
-                {/* Thumbnail com botão de play personalizado */}
-                <div className="absolute inset-0 bg-black z-10 group-hover:opacity-80 transition-opacity">
-                  <img
-                    src={`https://img.youtube.com/vi/${youtubeVideoId}/hqdefault.jpg`}
-                    alt="Thumbnail do vídeo"
-                    className="w-full h-full object-cover opacity-60"
-                    onError={(e) => {
-                      // Fallback para thumbnail de menor qualidade
-                      const target = e.target as HTMLImageElement
-                      target.src = `https://img.youtube.com/vi/${youtubeVideoId}/mqdefault.jpg`
-                    }}
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-16 h-16 rounded-full bg-red-600/90 flex items-center justify-center cursor-pointer hover:bg-red-700 transition-colors">
-                      <div className="w-0 h-0 border-t-[10px] border-t-transparent border-l-[16px] border-l-white border-b-[10px] border-b-transparent ml-1"></div>
+              <div className="aspect-video rounded-lg overflow-hidden relative">
+                {!youtubePlayerActive ? (
+                  // Thumbnail com botão de play
+                  <div className="w-full h-full cursor-pointer relative" onClick={activateYoutubePlayer}>
+                    <img
+                      src={`https://img.youtube.com/vi/${youtubeVideoId}/maxresdefault.jpg`}
+                      alt="Thumbnail do vídeo"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // Fallback para thumbnail de menor qualidade
+                        const target = e.target as HTMLImageElement
+                        target.src = `https://img.youtube.com/vi/${youtubeVideoId}/hqdefault.jpg`
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center hover:bg-black/30 transition-colors">
+                      <div className="w-16 h-16 rounded-full bg-red-600 flex items-center justify-center shadow-lg hover:bg-red-700 transition-colors">
+                        <div className="w-0 h-0 border-t-[10px] border-t-transparent border-l-[16px] border-l-white border-b-[10px] border-b-transparent ml-1"></div>
+                      </div>
                     </div>
                   </div>
-                </div>
-
-                {/* iFrame real (escondido inicialmente) */}
-                <iframe
-                  width="100%"
-                  height="100%"
-                  src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=0&rel=0&showinfo=0`}
-                  title="YouTube video player"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  className="border-0 z-0"
-                  loading="lazy"
-                ></iframe>
+                ) : (
+                  // iFrame do YouTube
+                  <iframe
+                    width="100%"
+                    height="100%"
+                    src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1&rel=0&showinfo=0`}
+                    title="YouTube video player"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="border-0"
+                  ></iframe>
+                )}
               </div>
             </div>
           )}
+
+          {/* QR Code options */}
+          <div className="px-6 mb-6">
+            <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 flex flex-col gap-3 border border-gray-700 shadow-lg">
+              <h3 className="text-sm font-medium text-white mb-2 text-center">Compartilhar esta página</h3>
+              <div className="grid grid-cols-3 gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex flex-col items-center justify-center h-20 text-xs bg-gradient-to-br from-blue-900/50 to-blue-800/50 hover:from-blue-800 hover:to-blue-700 border-blue-700 text-white"
+                  onClick={downloadQrCode}
+                >
+                  <Download className="h-6 w-6 mb-1 text-blue-400" />
+                  Baixar
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex flex-col items-center justify-center h-20 text-xs bg-gradient-to-br from-purple-900/50 to-purple-800/50 hover:from-purple-800 hover:to-purple-700 border-purple-700 text-white"
+                  onClick={printQrCode}
+                >
+                  <Printer className="h-6 w-6 mb-1 text-purple-400" />
+                  Imprimir
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex flex-col items-center justify-center h-20 text-xs bg-gradient-to-br from-green-900/50 to-green-800/50 hover:from-green-800 hover:to-green-700 border-green-700 text-white"
+                  onClick={shareViaWhatsApp}
+                >
+                  <Phone className="h-6 w-6 mb-1 text-green-400" />
+                  WhatsApp
+                </Button>
+              </div>
+              <div className="mt-2 text-center bg-white p-3 rounded-lg shadow-inner">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(window.location.href)}`}
+                  alt="QR Code"
+                  className="inline-block max-w-[150px] rounded-lg"
+                />
+              </div>
+            </div>
+          </div>
 
           {/* Footer */}
           <div className="p-4 text-center border-t border-gray-800">

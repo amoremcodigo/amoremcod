@@ -92,10 +92,30 @@ export async function POST(request: Request) {
     // Atualizar o status no Supabase
     await updatePaymentStatus(pageId, paymentStatus)
 
-    // Se o pagamento foi aprovado, apenas registrar no log
+    // Se o pagamento foi aprovado, enviar o email com o QR Code
     if (paymentStatus === "approved" || paymentStatus === "paid") {
-      console.log(`Pagamento aprovado para página ${pageId}`)
-      console.log(`Envio de email pausado temporariamente`)
+      console.log(`Pagamento aprovado para página ${pageId}, enviando email...`)
+
+      // Enviar o email com o QR Code
+      const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || ""}/api/send-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: pageData.email,
+          pageUrl: pageData.page_url,
+          coupleNames: pageData.couple_names,
+          qrCodeUrl: pageData.qr_code_url,
+          isPending: false, // Pagamento confirmado
+        }),
+      })
+
+      if (!emailResponse.ok) {
+        console.error(`Erro ao enviar email: ${emailResponse.status} ${emailResponse.statusText}`)
+      } else {
+        console.log(`Email enviado com sucesso para ${pageData.email}`)
+      }
     }
 
     return NextResponse.json({

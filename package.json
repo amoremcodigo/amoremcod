@@ -60,7 +60,8 @@
     "zod": "^3.24.1",
     "@supabase/supabase-js": "latest",
     "lz-string": "latest",
-    "qrcode": "latest"
+    "qrcode": "latest",
+    "@supabase/auth-helpers-nextjs": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

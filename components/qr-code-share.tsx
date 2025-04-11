@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Download, Printer, Copy, Check, Phone } from "lucide-react"
+import { Download, Printer, Phone, Share2 } from "lucide-react"
 import QRCode from "qrcode"
 
 interface QRCodeShareProps {
@@ -128,66 +128,85 @@ export function QRCodeShare({ url, coupleNames }: QRCodeShareProps) {
     window.open(whatsappUrl, "_blank")
   }
 
-  return (
-    <div className="space-y-4">
-      <h3 className="text-sm font-medium text-gray-400 text-center">Compartilhe esta página</h3>
+  // Função para compartilhar usando a Web Share API (se disponível)
+  const shareViaWebShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Página de ${coupleNames}`,
+          text: `Veja nossa página personalizada!`,
+          url: url,
+        })
+      } catch (error) {
+        console.error("Erro ao compartilhar:", error)
+        // Fallback para copiar o link
+        copyLink()
+      }
+    } else {
+      // Fallback para copiar o link
+      copyLink()
+    }
+  }
 
-      {/* QR Code */}
+  return (
+    <div className="space-y-6">
+      <h3 className="text-base font-medium text-white text-center">Compartilhe esta página</h3>
+
+      {/* QR Code com design melhorado */}
       {qrCodeDataUrl ? (
         <div className="flex justify-center">
-          <div className="bg-white p-3 rounded-lg">
-            <img src={qrCodeDataUrl || "/placeholder.svg"} alt="QR Code" className="w-32 h-32" />
+          <div className="bg-white p-4 rounded-lg shadow-lg transform hover:scale-105 transition-transform duration-300">
+            <img src={qrCodeDataUrl || "/placeholder.svg"} alt="QR Code" className="w-40 h-40" />
           </div>
         </div>
       ) : (
-        <div className="h-32 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+        <div className="h-40 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
         </div>
       )}
 
-      {/* Link */}
-      <div className="flex items-center bg-gray-800 rounded-lg p-2">
-        <div className="flex-1 truncate text-sm text-gray-300 px-2">
-          {url.length > 30 ? url.substring(0, 30) + "..." : url}
-        </div>
-        <Button variant="ghost" size="sm" onClick={copyLink} className="text-xs">
-          {copied ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
-          {copied ? "Copiado!" : "Copiar"}
-        </Button>
-      </div>
-
-      {/* Botões de ação */}
-      <div className="grid grid-cols-2 gap-2">
+      {/* Botões de ação com visual melhorado */}
+      <div className="grid grid-cols-2 gap-3">
         <Button
-          variant="outline"
-          size="sm"
-          onClick={downloadQRCode}
-          className="flex items-center justify-center"
-          disabled={!qrCodeDataUrl}
+          variant="default"
+          size="lg"
+          onClick={shareViaWebShare}
+          className="flex items-center justify-center bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white shadow-md"
         >
-          <Download className="h-4 w-4 mr-2" />
-          Baixar QR Code
+          <Share2 className="h-5 w-5 mr-2" />
+          Compartilhar
         </Button>
 
         <Button
-          variant="outline"
-          size="sm"
-          onClick={printQRCode}
-          className="flex items-center justify-center"
-          disabled={!qrCodeDataUrl}
-        >
-          <Printer className="h-4 w-4 mr-2" />
-          Imprimir
-        </Button>
-
-        <Button
-          variant="outline"
-          size="sm"
+          variant="default"
+          size="lg"
           onClick={shareViaWhatsApp}
-          className="flex items-center justify-center col-span-2"
+          className="flex items-center justify-center bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-md"
         >
-          <Phone className="h-4 w-4 mr-2" />
-          Compartilhar via WhatsApp
+          <Phone className="h-5 w-5 mr-2" />
+          WhatsApp
+        </Button>
+
+        <Button
+          variant="outline"
+          size="lg"
+          onClick={downloadQRCode}
+          className="flex items-center justify-center border-2 border-pink-500 text-pink-500 hover:bg-pink-500/10 shadow-md col-span-1"
+          disabled={!qrCodeDataUrl}
+        >
+          <Download className="h-5 w-5 mr-2" />
+          Baixar QR
+        </Button>
+
+        <Button
+          variant="outline"
+          size="lg"
+          onClick={printQRCode}
+          className="flex items-center justify-center border-2 border-purple-500 text-purple-500 hover:bg-purple-500/10 shadow-md col-span-1"
+          disabled={!qrCodeDataUrl}
+        >
+          <Printer className="h-5 w-5 mr-2" />
+          Imprimir
         </Button>
       </div>
     </div>

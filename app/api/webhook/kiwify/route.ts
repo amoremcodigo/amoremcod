@@ -165,28 +165,31 @@ export async function POST(request: Request) {
 
       // Se o pagamento foi aprovado, enviar o email com o QR Code
       if (status === "approved" || status === "paid") {
-        console.log(`Pagamento aprovado para página ${normalizedReference}, enviando email...`)
+        console.log(`Pagamento aprovado para página ${normalizedReference}`)
 
-        // Enviar o email com o QR Code
-        const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || ""}/api/send-email`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: pageData.email,
-            pageUrl: pageData.page_url,
-            coupleNames: pageData.couple_names,
-            qrCodeUrl: pageData.qr_code_url,
-            isPending: false, // Pagamento confirmado
-          }),
-        })
+        // ENVIO DE EMAIL PAUSADO TEMPORARIAMENTE
+        // console.log(`Enviando email...`)
+        // const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || ""}/api/send-email`, {
+        //   method: "POST",
+        //   headers: {
+        //     "Content-Type": "application/json",
+        //   },
+        //   body: JSON.stringify({
+        //     email: pageData.email,
+        //     pageUrl: pageData.page_url,
+        //     coupleNames: pageData.couple_names,
+        //     qrCodeUrl: pageData.qr_code_url,
+        //     isPending: false, // Pagamento confirmado
+        //   }),
+        // })
+        //
+        // if (!response.ok) {
+        //   console.error(`Erro ao enviar email: ${response.status} ${response.statusText}`)
+        // } else {
+        //   console.log(`Email enviado com sucesso para ${pageData.email}`)
+        // }
 
-        if (!response.ok) {
-          console.error(`Erro ao enviar email: ${response.status} ${response.statusText}`)
-        } else {
-          console.log(`Email enviado com sucesso para ${pageData.email}`)
-        }
+        console.log(`Envio de email pausado temporariamente`)
       }
 
       return NextResponse.json({

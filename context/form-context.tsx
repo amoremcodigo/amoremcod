@@ -122,10 +122,10 @@ const compressDataForUrl = (data: any): string => {
   }
 }
 
-// Links diretos para checkout da Kirvano - ATUALIZADOS com os links corretos
-const KIRVANO_CHECKOUT_LINKS = {
-  basic: "https://pay.kirvano.com/dded3798-0e1f-4902-8721-5edf23da385d",
-  premium: "https://pay.kirvano.com/675347e6-77ad-4981-ac3f-0d849669848c",
+// Links para checkout da Kiwify - Atualizados com os links reais fornecidos
+const KIWIFY_CHECKOUT_LINKS = {
+  basic: "https://pay.kiwify.com.br/x7zu8ul",
+  premium: "https://pay.kiwify.com.br/MN5HRnF",
 }
 
 // Add isSubmitting state to the FormProvider component
@@ -332,16 +332,16 @@ export function FormProvider({ children }: { children: ReactNode }) {
             console.error("Erro ao enviar email:", emailError)
           }
 
-          // Usar links diretos da Kirvano
-          const checkoutUrl =
-            formData.plan === "premium" ? KIRVANO_CHECKOUT_LINKS.premium : KIRVANO_CHECKOUT_LINKS.basic
+          // Usar links da Kiwify
+          const checkoutUrl = formData.plan === "premium" ? KIWIFY_CHECKOUT_LINKS.premium : KIWIFY_CHECKOUT_LINKS.basic
 
           // Adicionar parâmetros de query para identificar o pedido
+          // Parâmetros para a Kiwify
           const checkoutUrlWithParams = `${checkoutUrl}?ref=${pageId}&email=${encodeURIComponent(normalizedEmail)}&name=${encodeURIComponent(capitalizedCoupleNames)}`
 
           console.log("Redirecionando para checkout:", checkoutUrlWithParams)
 
-          // Redirecionar para o checkout da Kirvano
+          // Redirecionar para o checkout da Kiwify
           window.location.href = checkoutUrlWithParams
         } catch (dbError) {
           console.error("Erro ao salvar dados no Supabase:", dbError)

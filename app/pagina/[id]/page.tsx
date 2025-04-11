@@ -584,34 +584,34 @@ export default function PaginaDetalhes() {
 
           {/* QR Code options */}
           <div className="px-6 mb-6">
-            <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 flex flex-col gap-3 border border-gray-700 shadow-lg">
+            <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 rounded-lg p-3 flex flex-col gap-2 border border-gray-700/70 shadow-md">
               <h3 className="text-sm font-medium text-white mb-2 text-center">Compartilhar esta página</h3>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex flex-col items-center justify-center h-20 text-xs bg-gradient-to-br from-blue-900/50 to-blue-800/50 hover:from-blue-800 hover:to-blue-700 border-blue-700 text-white"
+                  className="flex flex-col items-center justify-center h-16 text-xs bg-gradient-to-br from-blue-900/30 to-blue-800/30 hover:from-blue-800/50 hover:to-blue-700/50 border-blue-700/50 text-white"
                   onClick={downloadQrCode}
                 >
-                  <Download className="h-6 w-6 mb-1 text-blue-400" />
+                  <Download className="h-5 w-5 mb-1 text-blue-400" />
                   Baixar
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex flex-col items-center justify-center h-20 text-xs bg-gradient-to-br from-purple-900/50 to-purple-800/50 hover:from-purple-800 hover:to-purple-700 border-purple-700 text-white"
+                  className="flex flex-col items-center justify-center h-16 text-xs bg-gradient-to-br from-purple-900/30 to-purple-800/30 hover:from-purple-800/50 hover:to-purple-700/50 border-purple-700/50 text-white"
                   onClick={printQrCode}
                 >
-                  <Printer className="h-6 w-6 mb-1 text-purple-400" />
+                  <Printer className="h-5 w-5 mb-1 text-purple-400" />
                   Imprimir
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex flex-col items-center justify-center h-20 text-xs bg-gradient-to-br from-green-900/50 to-green-800/50 hover:from-green-800 hover:to-green-700 border-green-700 text-white"
+                  className="flex flex-col items-center justify-center h-16 text-xs bg-gradient-to-br from-green-900/30 to-green-800/30 hover:from-green-800/50 hover:to-green-700/50 border-green-700/50 text-white"
                   onClick={shareViaWhatsApp}
                 >
-                  <Phone className="h-6 w-6 mb-1 text-green-400" />
+                  <Phone className="h-5 w-5 mb-1 text-green-400" />
                   WhatsApp
                 </Button>
               </div>

@@ -5,40 +5,19 @@ export async function POST(request: Request) {
   console.log("Webhook da Kiwify recebido")
 
   try {
-    // Verificar o token de autenticação
-    const authHeader = request.headers.get("authorization") || request.headers.get("Authorization")
-    const webhookToken = process.env.KIWIFY_WEBHOOK_TOKEN
-
-    console.log("Token recebido:", authHeader)
-    console.log("Token esperado:", `Bearer ${webhookToken}`)
-
-    // Verificação mais flexível do token
-    // Aceita tanto "Bearer TOKEN" quanto apenas "TOKEN"
-    if (!authHeader) {
-      console.error("Token de autenticação ausente")
-      return NextResponse.json({ error: "Token de autenticação ausente" }, { status: 401 })
-    }
-
-    const token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader
-
-    if (token !== webhookToken) {
-      console.error("Token de autenticação inválido")
-      return NextResponse.json({ error: "Token de autenticação inválido" }, { status: 401 })
-    }
-
     // Extrair os dados do corpo da requisição
     const webhookData = await request.json()
     console.log("Dados do webhook:", JSON.stringify(webhookData, null, 2))
 
     // Verificar se temos os dados necessários
-    if (!webhookData || !webhookData.data || !webhookData.data.transaction) {
+    if (!webhookData || !webhookData.order) {
       console.error("Dados do webhook incompletos")
       return NextResponse.json({ error: "Dados do webhook incompletos" }, { status: 400 })
     }
 
-    const transaction = webhookData.data.transaction
-    const status = transaction.status
-    const reference = transaction.reference // Deve conter o ID da página
+    const order = webhookData.order
+    const status = order.order_status
+    const reference = order.order_ref // Referência do pedido
 
     // Verificar se temos a referência (ID da página)
     if (!reference) {

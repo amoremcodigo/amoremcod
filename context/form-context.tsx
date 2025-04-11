@@ -121,6 +121,9 @@ const compressDataForUrl = (data: any): string => {
   }
 }
 
+// Modificar apenas a parte das URLs de checkout da Kiwify
+// Adicionar o parâmetro ref= na URL para que a Kiwify possa identificar o pedido
+
 // Links para checkout da Kiwify
 const KIWIFY_CHECKOUT_LINKS = {
   basic: "https://pay.kiwify.com.br/x7zu8ul",

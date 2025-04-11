@@ -1,18 +1,20 @@
 "use client"
 
-import { createContext, useContext, useState, type ReactNode, useCallback } from "react"
+import type React from "react"
+import { createContext, useContext, useState, useCallback } from "react"
 
 // Define the types for the form data
 type FormData = {
   email: string
   coupleNames: string
   date: string
-  time: string
+  time?: string
   message: string
-  youtubeLink: string
+  youtubeLink?: string
   photos: string[]
   photoUrls: string[]
-  plan: "basic" | "premium" | null
+  plan: string | null
+  qrCodeUrl?: string
 }
 
 // Define the shape of the context value
@@ -27,11 +29,11 @@ type FormContextValue = {
   isSubmitting: boolean
 }
 
-// Create the context
+// Create the context with a default value
 const FormContext = createContext<FormContextValue | undefined>(undefined)
 
 // Create a provider component
-export function FormProvider({ children }: { children: ReactNode }) {
+export function FormProvider({ children }: { children: React.ReactNode }) {
   const [formData, setFormData] = useState<FormData>({
     email: "",
     coupleNames: "",
@@ -42,8 +44,8 @@ export function FormProvider({ children }: { children: ReactNode }) {
     photos: ["", "", "", "", ""],
     photoUrls: ["", "", "", "", ""],
     plan: null,
+    qrCodeUrl: "",
   })
-
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const updateFormData = (data: Partial<FormData>) => {
@@ -51,33 +53,29 @@ export function FormProvider({ children }: { children: ReactNode }) {
   }
 
   const addPhoto = (photo: string, index: number) => {
-    setFormData((prev) => {
-      const newPhotos = [...prev.photos]
-      newPhotos[index] = photo
-      return { ...prev, photos: newPhotos }
-    })
+    const newPhotos = [...formData.photos]
+    newPhotos[index] = photo
+    setFormData({ ...formData, photos: newPhotos })
   }
 
   const removePhoto = (index: number) => {
-    setFormData((prev) => {
-      const newPhotos = [...prev.photos]
-      newPhotos[index] = ""
-      return { ...prev, photos: newPhotos }
-    })
+    const newPhotos = [...formData.photos]
+    newPhotos[index] = ""
+    setFormData({ ...formData, photos: newPhotos })
   }
 
   const updatePhotos = (photos: string[]) => {
-    setFormData((prev) => ({ ...prev, photos: photos }))
+    setFormData({ ...formData, photos: photos })
   }
 
   const isFormValid = useCallback(() => {
     return (
-      formData.email !== "" &&
-      formData.coupleNames !== "" &&
-      formData.date !== "" &&
-      formData.message !== "" &&
-      formData.photos[0] !== "" &&
-      formData.plan !== null
+      !!formData.email &&
+      !!formData.coupleNames &&
+      !!formData.date &&
+      !!formData.message &&
+      formData.photos.filter((photo) => photo !== "").length > 0 &&
+      !!formData.plan
     )
   }, [formData])
 
@@ -86,21 +84,7 @@ export function FormProvider({ children }: { children: ReactNode }) {
     try {
       // Simulate form submission
       await new Promise((resolve) => setTimeout(resolve, 2000))
-
-      // Reset form data after submission
-      setFormData({
-        email: "",
-        coupleNames: "",
-        date: "",
-        time: "",
-        message: "",
-        youtubeLink: "",
-        photos: ["", "", "", "", ""],
-        photoUrls: ["", "", "", "", ""],
-        plan: null,
-      })
-
-      alert("Página criada com sucesso!")
+      console.log("Form submitted:", formData)
     } finally {
       setIsSubmitting(false)
     }

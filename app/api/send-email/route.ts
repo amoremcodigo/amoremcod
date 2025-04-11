@@ -47,7 +47,7 @@ export async function POST(request: Request) {
       </div>
     `
     } else {
-      // E-mail de confirmação - com link e QR Code (este será enviado manualmente)
+      // E-mail de confirmação - com link e QR Code
       emailContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
         <div style="text-align: center; margin-bottom: 20px;">
@@ -72,26 +72,28 @@ export async function POST(request: Request) {
           <p>Ou copie e cole este link no navegador:</p>
           <p style="background-color: #eee; padding: 10px; border-radius: 5px; word-break: break-all; font-size: 14px;">${pageUrl}</p>
         </div>
-        
-        ${
-          qrCodeUrl
-            ? `
+      `
+
+      // Adicionar QR Code se disponível
+      if (qrCodeUrl) {
+        emailContent += `
         <div style="text-align: center; margin: 30px 0;">
           <p style="margin-bottom: 15px; font-weight: bold;">QR Code da sua página:</p>
           <img src="${qrCodeUrl}" alt="QR Code" style="max-width: 200px; border: 1px solid #ddd; padding: 10px; border-radius: 5px;">
           <p style="font-size: 14px; color: #666; margin-top: 10px;">Escaneie este QR Code para acessar sua página</p>
         </div>
         `
-            : ""
-        }
-        
+      }
+
+      // Adicionar footer
+      emailContent += `
         <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 20px; font-size: 14px; color: #666;">
           <p>Compartilhe este link ou QR Code com seu amor para uma surpresa especial!</p>
           <p>Se tiver alguma dúvida, entre em contato conosco pelo WhatsApp.</p>
           <p style="margin-top: 20px;">Atenciosamente,<br>Equipe Amor em Código</p>
         </div>
       </div>
-    `
+      `
     }
 
     // Configurar o corpo da requisição para a API do MailerSend

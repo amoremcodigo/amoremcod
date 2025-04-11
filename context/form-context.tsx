@@ -121,7 +121,7 @@ const compressDataForUrl = (data: any): string => {
   }
 }
 
-// Links para checkout da Kiwify - Mantendo os links que você já tem
+// Links para checkout da Kiwify
 const KIWIFY_CHECKOUT_LINKS = {
   basic: "https://pay.kiwify.com.br/x7zu8ul",
   premium: "https://pay.kiwify.com.br/MN5HRnF",

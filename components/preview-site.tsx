@@ -398,6 +398,27 @@ export function PreviewSite() {
                 setIsProcessing(true)
                 console.log("Iniciando processo de submissão...")
 
+                // Verificar a conexão com o Supabase antes de prosseguir
+                try {
+                  console.log("Verificando conexão com o Supabase...")
+                  const connectionTest = await fetch("/api/test-supabase-connection")
+                  const connectionResult = await connectionTest.json()
+
+                  if (!connectionResult.success) {
+                    console.error("Teste de conexão com Supabase falhou:", connectionResult)
+                    alert(
+                      "Estamos enfrentando problemas de conexão com nosso banco de dados. Por favor, tente novamente em alguns instantes.",
+                    )
+                    setIsProcessing(false)
+                    return
+                  }
+
+                  console.log("Conexão com Supabase verificada com sucesso:", connectionResult)
+                } catch (connectionError) {
+                  console.error("Erro ao verificar conexão com Supabase:", connectionError)
+                  // Continuar mesmo com erro no teste de conexão
+                }
+
                 // Normalizar o e-mail (trim e lowercase)
                 const normalizedEmail = formData.email.trim().toLowerCase()
 

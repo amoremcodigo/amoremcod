@@ -1,13 +1,10 @@
 "use client"
 import { decompressFromEncodedURIComponent } from "lz-string"
-import { Heart, Music, QrCode, Pencil } from "lucide-react"
+import { Heart, Music, QrCode } from "lucide-react"
 import { FallingHearts } from "@/components/falling-hearts"
 import { PhotoCarousel } from "@/components/photo-carousel"
 import { QRCodeShare } from "@/components/qr-code-share"
 import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
 // Função para extrair o ID do vídeo do YouTube
 const extractYoutubeVideoId = (url: string): string | null => {
@@ -26,11 +23,6 @@ export default function PaginaDetalhesClient({
   searchParams,
 }: { pageId: string; pageData: any; searchParams: { d?: string } }) {
   const compressedData = searchParams.d
-  const [message, setMessage] = useState("")
-  const [isEditing, setIsEditing] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "success" | "error">("idle")
-  const supabase = createClientComponentClient()
 
   // Tentar decodificar os dados comprimidos da URL
   let decodedData: any = null
@@ -66,11 +58,6 @@ export default function PaginaDetalhesClient({
     }),
   }
 
-  // Inicializar o estado da mensagem com o valor combinado
-  useEffect(() => {
-    setMessage(combinedData.message)
-  }, [combinedData.message])
-
   // Verificar se temos pelo menos uma foto válida
   const validPhotoUrls = combinedData.photoUrls.filter((url) => url)
   const hasValidPhoto = validPhotoUrls.length > 0
@@ -83,35 +70,6 @@ export default function PaginaDetalhesClient({
 
   // URL atual para o QR Code
   const currentUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "https://amoremcodigo.com.br"}/pagina/${pageId}${compressedData ? `?d=${compressedData}` : ""}`
-
-  // Função para salvar a mensagem atualizada
-  const saveMessage = async () => {
-    if (message === combinedData.message) {
-      setIsEditing(false)
-      return
-    }
-
-    setIsSaving(true)
-    setSaveStatus("saving")
-
-    try {
-      const { error } = await supabase.from("pages").update({ message: message }).eq("page_id", pageId)
-
-      if (error) {
-        throw error
-      }
-
-      setSaveStatus("success")
-      setTimeout(() => setSaveStatus("idle"), 3000)
-      setIsEditing(false)
-    } catch (error) {
-      console.error("Erro ao salvar mensagem:", error)
-      setSaveStatus("error")
-      setTimeout(() => setSaveStatus("idle"), 3000)
-    } finally {
-      setIsSaving(false)
-    }
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black to-gray-900 flex items-center justify-center py-10">
@@ -149,64 +107,15 @@ export default function PaginaDetalhesClient({
             </div>
           </div>
 
-          {/* Mensagem com opção de edição */}
+          {/* Mensagem */}
           <div className="px-6 mb-6">
-            <div className="bg-gray-800/50 rounded-lg p-4">
-              {isEditing ? (
-                <div className="space-y-3">
-                  <Textarea
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    className="min-h-[100px] bg-gray-700 border-gray-600 text-white"
-                    placeholder="Digite sua mensagem..."
-                  />
-                  <div className="flex justify-end space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setMessage(combinedData.message)
-                        setIsEditing(false)
-                      }}
-                      disabled={isSaving}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={saveMessage}
-                      disabled={isSaving || message === combinedData.message}
-                      className="bg-gradient-to-r from-pink-500 to-purple-600"
-                    >
-                      {isSaving ? "Salvando..." : "Salvar"}
-                    </Button>
-                  </div>
-                  {saveStatus === "success" && (
-                    <p className="text-green-400 text-sm text-center">Mensagem salva com sucesso!</p>
-                  )}
-                  {saveStatus === "error" && (
-                    <p className="text-red-400 text-sm text-center">Erro ao salvar. Tente novamente.</p>
-                  )}
-                </div>
-              ) : (
-                <div className="relative">
-                  <p
-                    className="text-gray-300 text-center"
-                    dangerouslySetInnerHTML={{
-                      __html: message.replace(/\n/g, "<br>"),
-                    }}
-                  ></p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="absolute top-0 right-0 text-gray-400 hover:text-white p-1 h-auto"
-                    onClick={() => setIsEditing(true)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
+            <div className="bg-gray-800/50 rounded-lg p-4 text-center">
+              <p
+                className="text-gray-300"
+                dangerouslySetInnerHTML={{
+                  __html: combinedData.message.replace(/\n/g, "<br>"),
+                }}
+              ></p>
             </div>
           </div>
 

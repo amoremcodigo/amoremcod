@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Download, Printer, Phone, Share2 } from "lucide-react"
+import { Download, Printer, Copy, Check, Phone } from "lucide-react"
 import QRCode from "qrcode"
 
 interface QRCodeShareProps {
@@ -12,6 +12,7 @@ interface QRCodeShareProps {
 
 export function QRCodeShare({ url, coupleNames }: QRCodeShareProps) {
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("")
+  const [copied, setCopied] = useState(false)
 
   // Gerar QR Code ao carregar o componente
   useEffect(() => {
@@ -34,6 +35,13 @@ export function QRCodeShare({ url, coupleNames }: QRCodeShareProps) {
 
     generateQRCode()
   }, [url])
+
+  // Função para copiar o link
+  const copyLink = () => {
+    navigator.clipboard.writeText(url)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   // Função para baixar o QR Code
   const downloadQRCode = () => {
@@ -82,6 +90,12 @@ export function QRCodeShare({ url, coupleNames }: QRCodeShareProps) {
               margin-bottom: 20px;
               color: #666;
             }
+            @media print {
+              body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+            }
           </style>
         </head>
         <body>
@@ -89,6 +103,7 @@ export function QRCodeShare({ url, coupleNames }: QRCodeShareProps) {
             <h2>${coupleNames}</h2>
             <p>Escaneie o QR Code para acessar nossa página personalizada</p>
             <img src="${qrCodeDataUrl}" alt="QR Code" />
+            <p>${url}</p>
           </div>
           <script>
             window.onload = function() {
@@ -114,64 +129,65 @@ export function QRCodeShare({ url, coupleNames }: QRCodeShareProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <h3 className="text-base font-medium text-white text-center">Compartilhe esta página</h3>
+    <div className="space-y-4">
+      <h3 className="text-sm font-medium text-gray-400 text-center">Compartilhe esta página</h3>
 
-      {/* QR Code com design melhorado */}
+      {/* QR Code */}
       {qrCodeDataUrl ? (
         <div className="flex justify-center">
-          <div className="bg-white p-4 rounded-lg">
-            <img src={qrCodeDataUrl || "/placeholder.svg"} alt="QR Code" className="w-40 h-40" />
+          <div className="bg-white p-3 rounded-lg">
+            <img src={qrCodeDataUrl || "/placeholder.svg"} alt="QR Code" className="w-32 h-32" />
           </div>
         </div>
       ) : (
-        <div className="h-40 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
+        <div className="h-32 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
         </div>
       )}
 
-      {/* Botões de ação com visual melhorado */}
-      <div className="grid grid-cols-2 gap-3">
-        <Button
-          variant="default"
-          size="lg"
-          onClick={() => navigator.clipboard.writeText(url)}
-          className="flex items-center justify-center bg-pink-500 hover:bg-pink-600 text-white"
-        >
-          <Share2 className="h-5 w-5 mr-2" />
-          Compartilhar
+      {/* Link */}
+      <div className="flex items-center bg-gray-800 rounded-lg p-2">
+        <div className="flex-1 truncate text-sm text-gray-300 px-2">
+          {url.length > 30 ? url.substring(0, 30) + "..." : url}
+        </div>
+        <Button variant="ghost" size="sm" onClick={copyLink} className="text-xs">
+          {copied ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+          {copied ? "Copiado!" : "Copiar"}
         </Button>
+      </div>
 
-        <Button
-          variant="default"
-          size="lg"
-          onClick={shareViaWhatsApp}
-          className="flex items-center justify-center bg-green-500 hover:bg-green-600 text-white"
-        >
-          <Phone className="h-5 w-5 mr-2" />
-          WhatsApp
-        </Button>
-
+      {/* Botões de ação */}
+      <div className="grid grid-cols-2 gap-2">
         <Button
           variant="outline"
-          size="lg"
+          size="sm"
           onClick={downloadQRCode}
           className="flex items-center justify-center"
           disabled={!qrCodeDataUrl}
         >
-          <Download className="h-5 w-5 mr-2" />
-          Baixar QR
+          <Download className="h-4 w-4 mr-2" />
+          Baixar QR Code
         </Button>
 
         <Button
           variant="outline"
-          size="lg"
+          size="sm"
           onClick={printQRCode}
           className="flex items-center justify-center"
           disabled={!qrCodeDataUrl}
         >
-          <Printer className="h-5 w-5 mr-2" />
+          <Printer className="h-4 w-4 mr-2" />
           Imprimir
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={shareViaWhatsApp}
+          className="flex items-center justify-center col-span-2"
+        >
+          <Phone className="h-4 w-4 mr-2" />
+          Compartilhar via WhatsApp
         </Button>
       </div>
     </div>

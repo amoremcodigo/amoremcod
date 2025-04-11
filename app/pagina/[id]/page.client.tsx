@@ -126,7 +126,8 @@ export default function PaginaDetalhesClient({
                 <Music className="h-4 w-4 text-gray-400" />
                 <span className="text-sm text-gray-400">Nossa música</span>
               </div>
-              <div className="aspect-video rounded-lg overflow-hidden">
+              <div className="aspect-video rounded-lg overflow-hidden relative">
+                {/* Usando parâmetros para remover a interface do YouTube */}
                 <iframe
                   width="100%"
                   height="100%"

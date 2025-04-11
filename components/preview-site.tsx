@@ -5,22 +5,250 @@ import { Music, Heart, QrCode, ChevronLeft, ChevronRight, Loader2 } from "lucide
 import { Button } from "@/components/ui/button"
 import { useFormContext } from "@/context/form-context"
 import { FallingHearts } from "@/components/falling-hearts"
+import { savePage } from "@/lib/supabase"
+import { compressToEncodedURIComponent } from "lz-string"
+
+// Função para fazer upload da imagem para o ImgBB
+const uploadImageToServer = async (base64Image: string): Promise<string> => {
+  try {
+    // Remover o prefixo do data URL se existir
+    const base64Data = base64Image.includes("base64,") ? base64Image.split("base64,")[1] : base64Image
+
+    // Chave da API do ImgBB
+    const apiKey = "b0aebf5fbd0f7f940e0184c796125175"
+
+    console.log("Iniciando upload para ImgBB...")
+
+    // Preparar os dados para o upload
+    const formData = new FormData()
+    formData.append("key", apiKey)
+    formData.append("image", base64Data)
+
+    // Fazer a requisição para a API do ImgBB
+    const response = await fetch("https://api.imgbb.com/1/upload", {
+      method: "POST",
+      body: formData,
+    })
+
+    if (!response.ok) {
+      throw new Error(`Erro na resposta da API: ${response.status} ${response.statusText}`)
+    }
+
+    const data = await response.json()
+
+    // Verificar se o upload foi bem-sucedido
+    if (data.success) {
+      console.log("Imagem enviada com sucesso para o servidor:", data.data.url)
+      return data.data.url
+    } else {
+      throw new Error("Falha ao fazer upload da imagem: " + (data.error?.message || "Erro desconhecido"))
+    }
+  } catch (error) {
+    console.error("Erro ao fazer upload da imagem:", error)
+    throw error
+  }
+}
+
+// Função para capitalizar a primeira letra de cada palavra e substituir "e" por "&"
+const capitalizeWords = (text: string): string => {
+  if (!text) return text
+
+  // Primeiro, substituir " e " por " & " (com espaços ao redor)
+  const processedText = text.replace(/\s+e\s+/gi, " & ")
+
+  return processedText
+    .split(" ")
+    .map((word) => {
+      // Trata palavras com caracteres especiais como "&" ou "-"
+      return word
+        .split(/([&-])/)
+        .map((part) => {
+          // Se for um separador, retorna ele mesmo
+          if (part === "&" || part === "-") return part
+          // Se for uma palavra, capitaliza a primeira letra
+          return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+        })
+        .join("")
+    })
+    .join(" ")
+}
+
+// Função para comprimir os dados para a URL
+const compressDataForUrl = (data: any): string => {
+  try {
+    // Converter para JSON e comprimir
+    const jsonString = JSON.stringify(data)
+    return compressToEncodedURIComponent(jsonString)
+  } catch (error) {
+    console.error("Erro ao comprimir dados:", error)
+    return ""
+  }
+}
+
+// Modificar a função handleSubmit para salvar os dados e depois redirecionar para o checkout
+const handleSubmit = async () => {
+  if (!isFormValid() || isProcessing) return
+
+  try {
+    setIsProcessing(true)
+    console.log("Iniciando processo de submissão...")
+
+    // Normalizar o e-mail (trim e lowercase)
+    const normalizedEmail = formData.email.trim().toLowerCase()
+
+    // Capitalizar o nome do casal e substituir "e" por "&"
+    const capitalizedCoupleNames = capitalizeWords(formData.coupleNames)
+
+    // Atualizar o formData com o nome capitalizado e e-mail normalizado
+    updateFormData({
+      coupleNames: capitalizedCoupleNames,
+      email: normalizedEmail,
+    })
+
+    // Generate a unique ID for the page
+    const pageId = Math.random().toString(36).substring(2, 8)
+    console.log("ID da página gerado:", pageId)
+
+    // Fazer upload das fotos para o servidor
+    const photoUrls = [...formData.photoUrls]
+    for (let i = 0; i < formData.photos.length; i++) {
+      if (formData.photos[i] && formData.photos[i].startsWith("data:image")) {
+        try {
+          console.log(`Iniciando upload da foto ${i + 1}...`)
+          photoUrls[i] = await uploadImageToServer(formData.photos[i])
+          console.log(`Foto ${i + 1} enviada para o servidor, URL:`, photoUrls[i])
+        } catch (error) {
+          console.error(`Erro ao enviar foto ${i + 1} para o servidor:`, error)
+          alert(`Erro ao enviar a foto ${i + 1}. Por favor, tente novamente.`)
+          setIsProcessing(false)
+          return
+        }
+      }
+    }
+
+    // Criar um objeto com dados essenciais para a URL
+    const essentialData = {
+      n: capitalizedCoupleNames, // Nome do casal
+      d: formData.date, // Data
+      t: formData.time, // Hora
+      m: formData.message, // Mensagem
+      y: formData.youtubeLink, // Link do YouTube
+      p: photoUrls, // URLs das fotos
+      pl: formData.plan, // Plano
+    }
+
+    // Comprimir os dados para a URL
+    const compressedData = compressDataForUrl(essentialData)
+
+    // Construir a URL completa da página
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
+    const pageUrl = `${siteUrl}/pagina/${pageId}?d=${compressedData}`
+    console.log("URL da página gerada:", pageUrl)
+
+    // Gerar QR Code para o email
+    let qrCodeUrl = null
+    try {
+      console.log("Gerando QR Code...")
+      const QRCode = await import("qrcode")
+      qrCodeUrl = await QRCode.toDataURL(pageUrl, {
+        width: 300,
+        margin: 1,
+        errorCorrectionLevel: "H",
+        color: {
+          dark: "#000000",
+          light: "#FFFFFF",
+        },
+      })
+      console.log("QR Code gerado com sucesso")
+    } catch (qrError) {
+      console.error("Erro ao gerar QR Code:", qrError)
+    }
+
+    // Salvar os dados no Supabase
+    try {
+      console.log("Salvando dados no Supabase...")
+      await savePage({
+        page_id: pageId,
+        email: normalizedEmail,
+        couple_names: capitalizedCoupleNames,
+        date: formData.date,
+        time: formData.time || "",
+        message: formData.message,
+        youtube_link: formData.youtubeLink || "",
+        photo_urls: photoUrls.filter((url) => url), // Filtrar URLs vazias
+        plan: formData.plan || "basic",
+        page_url: pageUrl,
+        qr_code_url: qrCodeUrl || "",
+      })
+      console.log("Dados salvos com sucesso no Supabase!")
+
+      // Enviar email com status pendente
+      try {
+        console.log("Enviando email de confirmação pendente...")
+        const emailResponse = await fetch(`${siteUrl}/api/send-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: normalizedEmail,
+            pageUrl: pageUrl,
+            coupleNames: capitalizedCoupleNames,
+            qrCodeUrl: qrCodeUrl,
+            isPending: true, // Pagamento pendente
+          }),
+        })
+
+        if (!emailResponse.ok) {
+          console.error("Erro ao enviar email:", await emailResponse.text())
+        } else {
+          console.log("Email enviado com sucesso!")
+        }
+      } catch (emailError) {
+        console.error("Erro ao enviar email:", emailError)
+      }
+
+      // Determinar qual URL de checkout usar com base no plano selecionado
+      const checkoutUrl =
+        formData.plan === "premium" ? "https://pay.kiwify.com.br/MN5HRnF" : "https://pay.kiwify.com.br/x7zu8ul"
+
+      // Adicionar o ID da página como referência
+      const checkoutUrlWithRef = `${checkoutUrl}?ref=${pageId}`
+      console.log("URL de checkout:", checkoutUrlWithRef)
+
+      // Salvar o pageId no localStorage para verificação posterior
+      localStorage.setItem("lastPageId", pageId)
+
+      // Redirecionar para o checkout
+      window.location.href = checkoutUrlWithRef
+    } catch (dbError) {
+      console.error("Erro ao salvar dados no Supabase:", dbError)
+      alert("Ocorreu um erro ao salvar seus dados. Por favor, tente novamente.")
+      setIsProcessing(false)
+    }
+  } catch (error) {
+    console.error("Erro durante o processamento:", error)
+    alert("Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.")
+    setIsProcessing(false)
+  }
+}
 
 export function PreviewSite() {
-  const { formData, isFormValid, submitForm, isSubmitting } = useFormContext()
+  const { formData, isFormValid, isSubmitting, updateFormData } = useFormContext()
   const [years, setYears] = useState(0)
   const [days, setDays] = useState(0)
   const [hours, setHours] = useState(0)
   const [minutes, setMinutes] = useState(0)
   const [seconds, setSeconds] = useState(0)
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
+  const [isProcessing, setIsProcessing] = useState(false)
 
   // Usar a data do formulário ou uma data padrão
   const startDate = formData.date
     ? new Date(`${formData.date}T${formData.time || "00:00:00"}`)
     : new Date(new Date().setFullYear(new Date().getFullYear() - 2))
 
-  // Filtrar fotos válidas (não vazias) - CORRIGIDO para considerar ambos os tipos de fotos
+  // Filtrar fotos válidas (não vazias)
   const validPhotos = formData.photos
     .filter((photo) => photo && (photo.startsWith("data:image") || photo.startsWith("http")))
     .map((photo, index) => photo || formData.photoUrls[index] || "")
@@ -31,12 +259,6 @@ export function PreviewSite() {
 
   // Verificar se estamos no plano premium e temos mais de uma foto
   const hasCarousel = formData.plan === "premium" && validPhotos.length > 1
-
-  // Log para depuração
-  useEffect(() => {
-    console.log("Preview - Fotos válidas:", validPhotos.length)
-    console.log("Preview - Fotos no formData:", formData.photos.filter((p) => p).length)
-  }, [validPhotos.length, formData.photos])
 
   // Atualizar o contador em tempo real
   useEffect(() => {
@@ -128,25 +350,6 @@ export function PreviewSite() {
   // Função para navegar para a próxima foto
   const nextPhoto = () => {
     setCurrentPhotoIndex((prevIndex) => (prevIndex + 1) % validPhotos.length)
-  }
-
-  // Modificar a função handleSubmit para redirecionar diretamente para o Kiwify
-  // em vez de chamar submitForm
-
-  const handleSubmit = async () => {
-    if (!isFormValid() || isSubmitting) return
-
-    try {
-      // Determinar qual URL de checkout usar com base no plano selecionado
-      const checkoutUrl =
-        formData.plan === "premium" ? "https://pay.kiwify.com.br/MN5HRnF" : "https://pay.kiwify.com.br/x7zu8ul"
-
-      // Redirecionar diretamente para o checkout
-      window.location.href = checkoutUrl
-    } catch (error) {
-      console.error("Error redirecting to checkout:", error)
-      alert("Ocorreu um erro ao redirecionar para o checkout. Por favor, tente novamente.")
-    }
   }
 
   return (
@@ -332,17 +535,16 @@ export function PreviewSite() {
         </div>
 
         <div className="flex justify-center mt-12">
-          {/* Verificar e garantir que o botão "Finalizar Meu Site" mostre o efeito de carregamento */}
           <Button
             size="lg"
             className="gradient-bg text-lg px-8 py-6"
-            disabled={!isFormValid() || isSubmitting}
+            disabled={!isFormValid() || isProcessing}
             onClick={handleSubmit}
           >
-            {isSubmitting ? (
+            {isProcessing ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Criando Site...
+                Processando...
               </>
             ) : (
               "Finalizar Meu Site"

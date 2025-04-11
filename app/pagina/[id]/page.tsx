@@ -1,11 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useParams, useSearchParams } from "next/navigation"
 import { decompressFromEncodedURIComponent } from "lz-string"
-import { Heart, Music, QrCode, Download, Printer, Phone } from "lucide-react"
+import { Heart, Music, QrCode, Download, Printer, Phone, Edit, Save, X } from "lucide-react"
 import { FallingHearts } from "@/components/falling-hearts"
 import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
+import { toast } from "sonner"
 
 // Função para extrair o ID do vídeo do YouTube
 const extractYoutubeVideoId = (url: string): string | null => {
@@ -33,6 +35,10 @@ export default function PaginaDetalhes() {
   const [minutes, setMinutes] = useState(0)
   const [seconds, setSeconds] = useState(0)
   const [showQrOptions, setShowQrOptions] = useState(false)
+  const [editingMessage, setEditingMessage] = useState(false)
+  const [newMessage, setNewMessage] = useState("")
+  const [savingMessage, setSavingMessage] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Buscar dados da página
   useEffect(() => {
@@ -115,6 +121,7 @@ export default function PaginaDetalhes() {
         }
 
         setPageData(combinedData)
+        setNewMessage(combinedData.message || "")
       } catch (error) {
         console.error("Erro ao buscar dados da página:", error)
       } finally {
@@ -172,6 +179,13 @@ export default function PaginaDetalhes() {
     return () => clearInterval(interval)
   }, [pageData])
 
+  // Focar no textarea quando entrar no modo de edição
+  useEffect(() => {
+    if (editingMessage && textareaRef.current) {
+      textareaRef.current.focus()
+    }
+  }, [editingMessage])
+
   // Compartilhar via WhatsApp
   const shareViaWhatsApp = () => {
     const text = `Veja nossa página personalizada: ${window.location.href}`
@@ -217,6 +231,54 @@ export default function PaginaDetalhes() {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+  }
+
+  // Salvar mensagem atualizada
+  const saveMessage = async () => {
+    if (!pageData || !newMessage.trim()) return
+
+    setSavingMessage(true)
+
+    try {
+      // Atualizar no localStorage primeiro (como backup)
+      try {
+        const storedData = localStorage.getItem(`page_${pageId}`)
+        if (storedData) {
+          const localData = JSON.parse(storedData)
+          localData.message = newMessage
+          localStorage.setItem(`page_${pageId}`, JSON.stringify(localData))
+        }
+      } catch (error) {
+        console.error("Erro ao atualizar mensagem no localStorage:", error)
+      }
+
+      // Atualizar no Supabase via API
+      const response = await fetch(`/api/pages/${pageId}/update-message`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message: newMessage }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Erro ao atualizar mensagem")
+      }
+
+      // Atualizar o estado local
+      setPageData({
+        ...pageData,
+        message: newMessage,
+      })
+
+      setEditingMessage(false)
+      toast.success("Mensagem atualizada com sucesso!")
+    } catch (error) {
+      console.error("Erro ao salvar mensagem:", error)
+      toast.error("Erro ao atualizar mensagem. Tente novamente.")
+    } finally {
+      setSavingMessage(false)
+    }
   }
 
   if (loading) {
@@ -265,38 +327,38 @@ export default function PaginaDetalhes() {
 
             {/* QR Code options */}
             {showQrOptions && (
-              <div className="bg-gray-800 rounded-lg p-4 mb-4 flex flex-col gap-3">
-                <h3 className="text-sm font-medium text-gray-300 mb-2">Compartilhar esta página</h3>
-                <div className="grid grid-cols-3 gap-2">
+              <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 mb-4 flex flex-col gap-3 border border-gray-700 shadow-lg">
+                <h3 className="text-sm font-medium text-white mb-2">Compartilhar esta página</h3>
+                <div className="grid grid-cols-3 gap-3">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex flex-col items-center justify-center h-16 text-xs"
+                    className="flex flex-col items-center justify-center h-20 text-xs bg-gradient-to-br from-blue-900/50 to-blue-800/50 hover:from-blue-800 hover:to-blue-700 border-blue-700 text-white"
                     onClick={downloadQrCode}
                   >
-                    <Download className="h-5 w-5 mb-1" />
+                    <Download className="h-6 w-6 mb-1 text-blue-400" />
                     Baixar
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex flex-col items-center justify-center h-16 text-xs"
+                    className="flex flex-col items-center justify-center h-20 text-xs bg-gradient-to-br from-purple-900/50 to-purple-800/50 hover:from-purple-800 hover:to-purple-700 border-purple-700 text-white"
                     onClick={printQrCode}
                   >
-                    <Printer className="h-5 w-5 mb-1" />
+                    <Printer className="h-6 w-6 mb-1 text-purple-400" />
                     Imprimir
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex flex-col items-center justify-center h-16 text-xs"
+                    className="flex flex-col items-center justify-center h-20 text-xs bg-gradient-to-br from-green-900/50 to-green-800/50 hover:from-green-800 hover:to-green-700 border-green-700 text-white"
                     onClick={shareViaWhatsApp}
                   >
-                    <Phone className="h-5 w-5 mb-1" />
+                    <Phone className="h-6 w-6 mb-1 text-green-400" />
                     WhatsApp
                   </Button>
                 </div>
-                <div className="mt-2 text-center">
+                <div className="mt-2 text-center bg-white p-3 rounded-lg shadow-inner">
                   <img
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(window.location.href)}`}
                     alt="QR Code"
@@ -378,14 +440,65 @@ export default function PaginaDetalhes() {
 
           {/* Mensagem */}
           <div className="px-6 mb-6">
-            <div className="bg-gray-800/50 rounded-lg p-4 text-center">
-              <p
-                className="text-gray-300"
-                dangerouslySetInnerHTML={{
-                  __html: pageData.message.replace(/\n/g, "<br>"),
-                }}
-              ></p>
-            </div>
+            {editingMessage ? (
+              <div className="bg-gray-800/50 rounded-lg p-4">
+                <Textarea
+                  ref={textareaRef}
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  className="min-h-[120px] bg-gray-900 border-gray-700 text-white resize-none mb-3"
+                  placeholder="Escreva sua mensagem aqui..."
+                />
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEditingMessage(false)
+                      setNewMessage(pageData.message)
+                    }}
+                    className="flex items-center gap-1"
+                  >
+                    <X className="h-4 w-4" />
+                    Cancelar
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={saveMessage}
+                    disabled={savingMessage || !newMessage.trim()}
+                    className="flex items-center gap-1 bg-gradient-to-r from-purple-600 to-pink-600"
+                  >
+                    {savingMessage ? (
+                      <>
+                        <div className="h-4 w-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-1"></div>
+                        Salvando...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4" />
+                        Salvar
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-gray-800/50 rounded-lg p-4 text-center relative group">
+                <p
+                  className="text-gray-300"
+                  dangerouslySetInnerHTML={{
+                    __html: pageData.message.replace(/\n/g, "<br>"),
+                  }}
+                ></p>
+                <button
+                  onClick={() => setEditingMessage(true)}
+                  className="absolute top-2 right-2 bg-gray-700 hover:bg-gray-600 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Editar mensagem"
+                >
+                  <Edit className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
           </div>
 
           {/* YouTube (apenas para plano premium) */}
@@ -395,15 +508,36 @@ export default function PaginaDetalhes() {
                 <Music className="h-4 w-4 text-gray-400" />
                 <span className="text-sm text-gray-400">Nossa música</span>
               </div>
-              <div className="aspect-video rounded-lg overflow-hidden">
+              <div className="aspect-video rounded-lg overflow-hidden relative group">
+                {/* Thumbnail com botão de play personalizado */}
+                <div className="absolute inset-0 bg-black z-10 group-hover:opacity-80 transition-opacity">
+                  <img
+                    src={`https://img.youtube.com/vi/${youtubeVideoId}/hqdefault.jpg`}
+                    alt="Thumbnail do vídeo"
+                    className="w-full h-full object-cover opacity-60"
+                    onError={(e) => {
+                      // Fallback para thumbnail de menor qualidade
+                      const target = e.target as HTMLImageElement
+                      target.src = `https://img.youtube.com/vi/${youtubeVideoId}/mqdefault.jpg`
+                    }}
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-16 h-16 rounded-full bg-red-600/90 flex items-center justify-center cursor-pointer hover:bg-red-700 transition-colors">
+                      <div className="w-0 h-0 border-t-[10px] border-t-transparent border-l-[16px] border-l-white border-b-[10px] border-b-transparent ml-1"></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* iFrame real (escondido inicialmente) */}
                 <iframe
                   width="100%"
                   height="100%"
-                  src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=0`}
+                  src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=0&rel=0&showinfo=0`}
                   title="YouTube video player"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
-                  className="border-0"
+                  className="border-0 z-0"
+                  loading="lazy"
                 ></iframe>
               </div>
             </div>

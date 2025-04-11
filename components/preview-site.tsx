@@ -5,7 +5,6 @@ import { Music, Heart, QrCode, ChevronLeft, ChevronRight, Loader2 } from "lucide
 import { Button } from "@/components/ui/button"
 import { useFormContext } from "@/context/form-context"
 import { FallingHearts } from "@/components/falling-hearts"
-import { savePage } from "@/lib/supabase"
 import { compressToEncodedURIComponent } from "lz-string"
 
 // Função para fazer upload da imagem para o ImgBB
@@ -116,7 +115,7 @@ export function PreviewSite() {
   const [seconds, setSeconds] = useState(0)
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [saveAttempts, setSaveAttempts] = useState(0)
+  const [loadingText, setLoadingText] = useState("Processando...")
 
   // Usar a data do formulário ou uma data padrão
   const startDate = formData.date
@@ -233,6 +232,7 @@ export function PreviewSite() {
 
     try {
       setIsProcessing(true)
+      setLoadingText("Processando...")
       console.log("=== INICIANDO PROCESSO DE SUBMISSÃO ===")
 
       // Normalizar o e-mail (trim e lowercase)
@@ -251,6 +251,7 @@ export function PreviewSite() {
       const pageId = Math.random().toString(36).substring(2, 8)
       console.log("ID da página gerado:", pageId)
 
+      setLoadingText("Enviando fotos...")
       // Fazer upload das fotos para o servidor
       const photoUrls = [...formData.photoUrls]
       for (let i = 0; i < formData.photos.length; i++) {
@@ -286,6 +287,7 @@ export function PreviewSite() {
       const pageUrl = `${siteUrl}/pagina/${pageId}?d=${compressedData}`
       console.log("URL da página gerada:", pageUrl)
 
+      setLoadingText("Gerando QR Code...")
       // Gerar QR Code para o email
       let qrCodeUrl = null
       try {
@@ -325,72 +327,47 @@ export function PreviewSite() {
       // Salvar localmente primeiro como backup
       saveLocalFallback(pageId, pageData)
 
-      // Salvar os dados no Supabase
+      setLoadingText("Salvando página...")
+      // Salvar os dados usando a API
       try {
-        console.log("Salvando dados no Supabase...")
-        await savePage(pageData)
-        console.log("Dados salvos com sucesso no Supabase!")
-
-        // Incrementar contador de tentativas bem-sucedidas
-        setSaveAttempts((prev) => prev + 1)
-      } catch (dbError) {
-        console.error("Erro ao salvar dados no Supabase:", dbError)
-
-        // Tentar novamente se for a primeira tentativa
-        if (saveAttempts === 0) {
-          console.log("Tentando salvar novamente...")
-          setSaveAttempts((prev) => prev + 1)
-
-          try {
-            await savePage(pageData)
-            console.log("Dados salvos com sucesso no Supabase na segunda tentativa!")
-          } catch (retryError) {
-            console.error("Erro ao salvar dados no Supabase na segunda tentativa:", retryError)
-            // Continuar mesmo com erro no Supabase
-          }
-        }
-      }
-
-      // Enviar email com status pendente
-      try {
-        console.log("Enviando email de confirmação pendente...")
-        await fetch(`${siteUrl}/api/send-email`, {
+        console.log("Salvando dados via API...")
+        const response = await fetch("/api/save-page", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            email: normalizedEmail,
-            pageUrl: pageUrl,
-            coupleNames: capitalizedCoupleNames,
-            qrCodeUrl: qrCodeUrl,
-            isPending: true, // Pagamento pendente
-          }),
+          body: JSON.stringify(pageData),
         })
-        console.log("Email enviado com sucesso!")
-      } catch (emailError) {
-        console.error("Erro ao enviar email:", emailError)
-        // Continuar mesmo com erro no email
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(`Erro ao salvar página: ${errorData.error || response.statusText}`)
+        }
+
+        const result = await response.json()
+        console.log("Resposta da API:", result)
+
+        // Salvar o pageId no localStorage para verificação posterior
+        localStorage.setItem("lastPageId", pageId)
+
+        setLoadingText("Redirecionando para pagamento...")
+        // Redirecionar para o checkout
+        if (result.checkoutUrl) {
+          console.log("Redirecionando para:", result.checkoutUrl)
+          window.location.href = result.checkoutUrl
+        } else {
+          // Fallback para URL de checkout padrão
+          const checkoutUrl =
+            formData.plan === "premium" ? "https://pay.kiwify.com.br/MN5HRnF" : "https://pay.kiwify.com.br/x7zu8ul"
+          const checkoutUrlWithRef = `${checkoutUrl}?ref=${pageId}`
+          console.log("Redirecionando para URL fallback:", checkoutUrlWithRef)
+          window.location.href = checkoutUrlWithRef
+        }
+      } catch (apiError) {
+        console.error("Erro na API de salvamento:", apiError)
+        alert("Ocorreu um erro ao salvar sua página. Por favor, tente novamente.")
+        setIsProcessing(false)
       }
-
-      // Salvar o pageId no localStorage para verificação posterior
-      localStorage.setItem("lastPageId", pageId)
-
-      // Determinar qual URL de checkout usar com base no plano selecionado
-      const checkoutUrl =
-        formData.plan === "premium" ? "https://pay.kiwify.com.br/MN5HRnF" : "https://pay.kiwify.com.br/x7zu8ul"
-
-      // Adicionar o ID da página como referência
-      const checkoutUrlWithRef = `${checkoutUrl}?ref=${pageId}`
-      console.log("URL de checkout:", checkoutUrlWithRef)
-
-      // Forçar redirecionamento para o checkout
-      console.log("Redirecionando para:", checkoutUrlWithRef)
-
-      // Usar setTimeout para garantir que o redirecionamento aconteça
-      setTimeout(() => {
-        window.location.href = checkoutUrlWithRef
-      }, 500)
     } catch (error) {
       console.error("Erro durante o processamento:", error)
       alert("Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.")
@@ -583,14 +560,16 @@ export function PreviewSite() {
         <div className="flex justify-center mt-12">
           <Button
             size="lg"
-            className="gradient-bg text-lg px-8 py-6"
+            className="gradient-bg text-lg px-8 py-6 relative"
             disabled={!isFormValid() || isProcessing}
             onClick={processForm}
           >
             {isProcessing ? (
               <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Processando...
+                <div className="flex items-center">
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  <span>{loadingText}</span>
+                </div>
               </>
             ) : (
               "Finalizar Meu Site"

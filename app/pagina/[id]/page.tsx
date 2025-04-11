@@ -53,37 +53,13 @@ export default async function PaginaDetalhes({
   // Verificar se o pagamento foi confirmado
   const isPaid = pageData.payment_status === "paid" || pageData.payment_status === "approved"
 
-  // Se não estiver pago, mostrar página de pagamento pendente
-  if (!isPaid) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-black to-gray-900 flex items-center justify-center">
-        <div className="max-w-md mx-auto p-6 bg-black/50 rounded-lg shadow-lg border border-gray-800">
-          <div className="text-center mb-6">
-            <div className="flex justify-center mb-4">
-              <div className="relative">
-                <QrCode className="h-12 w-12 text-primary" />
-                <Heart className="absolute -bottom-1 -right-1 h-6 w-6 text-pink-500" />
-              </div>
-            </div>
-            <h1 className="text-2xl font-bold gradient-text">{pageData.couple_names}</h1>
-            <p className="text-gray-400 mt-2">Página em processamento</p>
-          </div>
-
-          <div className="bg-amber-900/20 border border-amber-800 rounded-lg p-4 mb-6">
-            <h2 className="text-amber-400 font-medium mb-2">Pagamento pendente</h2>
-            <p className="text-gray-300 text-sm">
-              Esta página está aguardando a confirmação do pagamento. Assim que o pagamento for confirmado, a página
-              será ativada automaticamente.
-            </p>
-          </div>
-
-          <p className="text-center text-gray-400 text-sm">
-            Se você já realizou o pagamento, aguarde alguns instantes para a confirmação.
-          </p>
-        </div>
-      </div>
-    )
-  }
+  // Mostrar banner de pagamento pendente, mas permitir visualização do conteúdo
+  const PaymentPendingBanner = () => (
+    <div className="fixed top-0 left-0 right-0 bg-amber-900/90 text-white p-2 z-50 text-center text-sm">
+      <strong>⚠️ Pagamento pendente:</strong> Esta página está aguardando confirmação de pagamento, mas está disponível
+      para visualização.
+    </div>
+  )
 
   // Tentar decodificar os dados comprimidos da URL
   let decodedData: any = null
@@ -144,7 +120,12 @@ export default async function PaginaDetalhes({
   const youtubeVideoId = extractYoutubeVideoId(combinedData.youtubeLink)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black to-gray-900 flex items-center justify-center py-10">
+    <div
+      className={`min-h-screen bg-gradient-to-br from-black to-gray-900 flex items-center justify-center ${!isPaid ? "pt-16 pb-10" : "py-10"}`}
+    >
+      {/* Mostrar banner de pagamento pendente se necessário */}
+      {!isPaid && <PaymentPendingBanner />}
+
       <div className="relative w-full max-w-md mx-auto">
         {/* Falling hearts */}
         <FallingHearts density="medium" contained={false} speed="normal" />

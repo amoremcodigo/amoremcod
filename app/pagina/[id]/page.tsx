@@ -318,14 +318,21 @@ export default function PaginaDetalhes() {
           {/* Header */}
           <div className="p-6 text-center">
             <h1 className="text-2xl font-bold mb-2 gradient-text">{pageData.coupleNames}</h1>
-            <div className="flex justify-center mb-4">
-              <div className="relative cursor-pointer" onClick={() => setShowQrOptions(!showQrOptions)}>
-                <QrCode className="h-8 w-8 text-primary" />
-                <Heart className="absolute -bottom-1 -right-1 h-4 w-4 text-pink-500" />
-              </div>
-            </div>
-
             {/* QR Code options */}
+            <div className="flex justify-center mb-4">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2 bg-gradient-to-r from-purple-600/30 to-pink-600/30 hover:from-purple-600/50 hover:to-pink-600/50 border-purple-500"
+                onClick={() => setShowQrOptions(!showQrOptions)}
+              >
+                <div className="relative">
+                  <QrCode className="h-5 w-5 text-white" />
+                  <Heart className="absolute -bottom-1 -right-1 h-3 w-3 text-pink-500" />
+                </div>
+                {showQrOptions ? "Ocultar QR Code" : "Mostrar QR Code"}
+              </Button>
+            </div>
             {showQrOptions && (
               <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 mb-4 flex flex-col gap-3 border border-gray-700 shadow-lg">
                 <h3 className="text-sm font-medium text-white mb-2">Compartilhar esta página</h3>
@@ -483,20 +490,24 @@ export default function PaginaDetalhes() {
                 </div>
               </div>
             ) : (
-              <div className="bg-gray-800/50 rounded-lg p-4 text-center relative group">
+              <div className="bg-gray-800/50 rounded-lg p-4 text-center">
                 <p
                   className="text-gray-300"
                   dangerouslySetInnerHTML={{
                     __html: pageData.message.replace(/\n/g, "<br>"),
                   }}
                 ></p>
-                <button
-                  onClick={() => setEditingMessage(true)}
-                  className="absolute top-2 right-2 bg-gray-700 hover:bg-gray-600 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="Editar mensagem"
-                >
-                  <Edit className="h-3.5 w-3.5" />
-                </button>
+                <div className="mt-3 flex justify-center">
+                  <Button
+                    onClick={() => setEditingMessage(true)}
+                    size="sm"
+                    variant="outline"
+                    className="flex items-center gap-1"
+                  >
+                    <Edit className="h-4 w-4" />
+                    Editar Mensagem
+                  </Button>
+                </div>
               </div>
             )}
           </div>

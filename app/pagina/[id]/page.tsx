@@ -191,7 +191,7 @@ export default function PaginaDetalhes() {
   const shareViaWhatsApp = async () => {
     try {
       // Gerar URL do QR Code com alta qualidade
-      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(window.location.href)}&margin=10&qzone=2&format=png`
+      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(window.location.href)}&margin=1&qzone=1&format=png`
 
       // Verificar se a API Web Share está disponível
       if (navigator.share) {
@@ -238,7 +238,7 @@ export default function PaginaDetalhes() {
           <body>
             <h2>${pageData?.coupleNames || "Amor em Código"}</h2>
             <div>
-              <img src="https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(window.location.href)}&margin=10&qzone=2&format=png" alt="QR Code" />
+              <img src="https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(window.location.href)}&margin=1&qzone=1&format=png" alt="QR Code" />
             </div>
             <p>Escaneie este QR Code para acessar nossa página personalizada</p>
           </body>
@@ -256,7 +256,7 @@ export default function PaginaDetalhes() {
   const downloadQrCode = () => {
     const link = document.createElement("a")
     // Usar parâmetros para melhorar a qualidade
-    link.href = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(window.location.href)}&margin=10&qzone=2&format=png`
+    link.href = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(window.location.href)}&margin=1&qzone=1&format=png`
     link.download = `qrcode-${pageData?.coupleNames || "amor-em-codigo"}.png`
     document.body.appendChild(link)
     link.click()
@@ -617,7 +617,7 @@ export default function PaginaDetalhes() {
               </div>
               <div className="mt-2 text-center bg-white p-1 rounded-lg shadow-inner">
                 <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(window.location.href)}&margin=10&qzone=2&format=png`}
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(window.location.href)}&margin=1&qzone=1&format=png`}
                   alt="QR Code"
                   className="inline-block max-w-[180px] rounded-lg"
                 />

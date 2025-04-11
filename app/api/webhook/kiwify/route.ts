@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { updatePaymentStatus, getPageById } from "@/lib/supabase"
+import { createClient } from "@supabase/supabase-js"
 
 export async function POST(request: Request) {
   console.log("Webhook da Kiwify recebido")
@@ -107,53 +108,109 @@ export async function POST(request: Request) {
       console.log("Usando status padrão:", status)
     }
 
-    console.log(`Atualizando status de pagamento para página ${reference}: ${status}`)
+    console.log(`Referência extraída: "${reference}" (tipo: ${typeof reference})`)
 
-    // Atualizar o status de pagamento no Supabase
-    await updatePaymentStatus(reference, status)
+    // Normalizar a referência (remover espaços, converter para string)
+    const normalizedReference = String(reference).trim()
+    console.log(`Referência normalizada: "${normalizedReference}"`)
 
-    // Se o pagamento foi aprovado, enviar o email com o QR Code
-    if (status === "approved" || status === "paid") {
-      console.log(`Pagamento aprovado para página ${reference}, enviando email...`)
-
+    // Verificar se a página existe antes de tentar atualizar
+    try {
       // Buscar os dados da página no Supabase
-      const pageData = await getPageById(reference)
+      const pageData = await getPageById(normalizedReference)
 
       if (!pageData) {
-        console.error(`Página ${reference} não encontrada`)
-        return NextResponse.json({ error: "Página não encontrada" }, { status: 404 })
+        console.error(`Página com ID "${normalizedReference}" não encontrada no Supabase`)
+
+        // Tentar listar todas as páginas para depuração
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+          process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
+        )
+
+        const { data: allPages, error: listError } = await supabase.from("pages").select("page_id").limit(10)
+
+        if (listError) {
+          console.error("Erro ao listar páginas:", listError)
+        } else {
+          console.log("Páginas disponíveis:", allPages)
+        }
+
+        // Continuar mesmo sem encontrar a página - apenas atualizar o status
+        console.log(`Atualizando status para referência "${normalizedReference}" mesmo sem encontrar a página`)
+
+        try {
+          await updatePaymentStatus(normalizedReference, status)
+          console.log(`Status atualizado para "${status}" na referência "${normalizedReference}"`)
+        } catch (updateError) {
+          console.error("Erro ao atualizar status:", updateError)
+        }
+
+        return NextResponse.json({
+          warning: `Página com ID "${normalizedReference}" não encontrada, mas o status foi atualizado`,
+          success: true,
+          processedData: {
+            reference: normalizedReference,
+            status,
+          },
+        })
       }
 
-      // Enviar o email com o QR Code
-      const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || ""}/api/send-email`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      // Se chegou aqui, a página foi encontrada
+      console.log(`Página encontrada: ${pageData.couple_names}`)
+      console.log(`Atualizando status de pagamento para "${status}"`)
+
+      // Atualizar o status de pagamento no Supabase
+      await updatePaymentStatus(normalizedReference, status)
+
+      // Se o pagamento foi aprovado, enviar o email com o QR Code
+      if (status === "approved" || status === "paid") {
+        console.log(`Pagamento aprovado para página ${normalizedReference}, enviando email...`)
+
+        // Enviar o email com o QR Code
+        const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || ""}/api/send-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: pageData.email,
+            pageUrl: pageData.page_url,
+            coupleNames: pageData.couple_names,
+            qrCodeUrl: pageData.qr_code_url,
+            isPending: false, // Pagamento confirmado
+          }),
+        })
+
+        if (!response.ok) {
+          console.error(`Erro ao enviar email: ${response.status} ${response.statusText}`)
+        } else {
+          console.log(`Email enviado com sucesso para ${pageData.email}`)
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Webhook processado com sucesso",
+        processedData: {
+          reference: normalizedReference,
+          status,
+          coupleName: pageData.couple_names,
         },
-        body: JSON.stringify({
-          email: pageData.email,
-          pageUrl: pageData.page_url,
-          coupleNames: pageData.couple_names,
-          qrCodeUrl: pageData.qr_code_url,
-          isPending: false, // Pagamento confirmado
-        }),
       })
+    } catch (pageError) {
+      console.error("Erro ao buscar página:", pageError)
 
-      if (!response.ok) {
-        console.error(`Erro ao enviar email: ${response.status} ${response.statusText}`)
-      } else {
-        console.log(`Email enviado com sucesso para ${pageData.email}`)
-      }
+      return NextResponse.json(
+        {
+          error: "Erro ao buscar página",
+          details: pageError instanceof Error ? pageError.message : String(pageError),
+          reference: normalizedReference,
+          status,
+        },
+        { status: 500 },
+      )
     }
-
-    return NextResponse.json({
-      success: true,
-      message: "Webhook processado com sucesso",
-      processedData: {
-        reference,
-        status,
-      },
-    })
   } catch (error) {
     console.error("Erro ao processar webhook da Kiwify:", error)
     return NextResponse.json(

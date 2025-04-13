@@ -1,0 +1,17 @@
+<svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100" height="100" rx="50" fill="white"/>
+  <g transform="translate(20, 20) scale(0.6)">
+    <!-- QR Code icon -->
+    <path d="M80 20H20C17.8 20 16 21.8 16 24V76C16 78.2 17.8 80 20 80H80C82.2 80 84 78.2 84 76V24C84 21.8 82.2 20 80 20Z" stroke="#9333EA" stroke-width="4" fill="none"/>
+    <path d="M32 32H48V48H32V32Z" stroke="#9333EA" stroke-width="4" fill="none"/>
+    <path d="M52 32H68V48H52V32Z" stroke="#9333EA" stroke-width="4" fill="none"/>
+    <path d="M32 52H48V68H32V52Z" stroke="#9333EA" stroke-width="4" fill="none"/>
+    <path d="M52 64H56V68H52V64Z" stroke="#9333EA" stroke-width="4" fill="none"/>
+    <path d="M60 52H68V60H60V52Z" stroke="#9333EA" stroke-width="4" fill="none"/>
+    <path d="M60 64H68V68H60V64Z" stroke="#9333EA" stroke-width="4" fill="none"/>
+    <path d="M52 56H56V60H52V56Z" stroke="#9333EA" stroke-width="4" fill="none"/>
+    
+    <!-- Heart icon -->
+    <path d="M90 62.5C90 68.8513 87.8393 74.0995 84.0147 77.9241C80.1901 81.7487 75.3396 84.2544 70 85L65 80L60 85C54.6604 84.2544 49.8099 81.7487 45.9853 77.9241C42.1607 74.0995 40 68.8513 40 62.5C40 58.8587 41.0557 55.2915 43.0335 52.2218C45.0113 49.1522 47.8226 46.7145 51.1421 45.1716C54.4615 43.6287 58.1698 43.0487 61.8289 43.5003C65.4881 43.9519 68.941 45.4108 71.7157 47.6985C74.4903 45.4108 77.9432 43.9519 81.6024 43.5003C85.2615 43.0487 88.9698 43.6287 92.2893 45.1716C95.6087 46.7145 98.42 49.1522 100.398 52.2218C102.376 55.2915 103.431 58.8587 103.431 62.5" fill="#ec4899"/>
+  </g>
+</svg>

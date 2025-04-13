@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Image from "next/image"
 import { Loader2 } from "lucide-react"
 
 interface CustomQRCodeProps {
@@ -58,17 +57,14 @@ export function CustomQRCode({ url, size = 300, logoSize = 60, className = "" }:
           transform: "translate(-50%, -50%)",
           width: logoSize,
           height: logoSize,
-          backgroundColor: "white",
-          borderRadius: "50%",
-          padding: "2px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
         }}
       >
-        <div className="relative w-full h-full">
-          <Image src="/logo-icon.png" alt="Logo" fill className="object-contain" />
-        </div>
+        <img
+          src="/qr-heart-logo.svg"
+          alt="Logo"
+          className="w-full h-full"
+          onError={() => console.error("Erro ao carregar o logo")}
+        />
       </div>
     </div>
   )

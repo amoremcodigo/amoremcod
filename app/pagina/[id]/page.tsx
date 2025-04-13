@@ -3,12 +3,13 @@
 import { useState, useEffect, useRef } from "react"
 import { useParams, useSearchParams } from "next/navigation"
 import { decompressFromEncodedURIComponent } from "lz-string"
-import { Heart, Music, QrCode, Download, Printer, Phone, Edit, Save, X, ChevronLeft, ChevronRight } from "lucide-react"
+import { Music, Download, Printer, Edit, Save, X, ChevronLeft, ChevronRight } from "lucide-react"
 import { FallingHearts } from "@/components/falling-hearts"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 import { CustomQRCode } from "@/components/custom-qr-code" // Import our new component
+import { QrHeartIcon } from "@/components/qr-heart-icon"
 
 // Função para extrair o ID do vídeo do YouTube
 const extractYoutubeVideoId = (url: string): string | null => {
@@ -192,7 +193,7 @@ export default function PaginaDetalhes() {
   const shareViaWhatsApp = async () => {
     try {
       const text = `${pageData.coupleNames} - Acesse nossa página personalizada: ${window.location.href}`
-      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank")
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}, "_blank")
     } catch (error) {
       console.error("Erro ao compartilhar via WhatsApp:", error)
     }
@@ -202,15 +203,15 @@ export default function PaginaDetalhes() {
   const printQrCode = () => {
     const printWindow = window.open("", "_blank")
     if (printWindow) {
-      printWindow.document.write(`
+      const html = `
       <html>
         <head>
           <title>QR Code - ${pageData?.coupleNames || "Amor em Código"}</title>
-          <style>
+          <style>\
             body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
             .qr-container { position: relative; width: 300px; height: 300px; margin: 20px auto; }
             .qr-code { width: 100%; height: 100%; }
-            .logo { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 60px; height: 60px; background: white; border-radius: 50%; padding: 2px; }
+            .logo { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 60px; height: 60px; }
             h2 { color: #9333EA; }
           </style>
         </head>
@@ -218,9 +219,7 @@ export default function PaginaDetalhes() {
           <h2>${pageData?.coupleNames || "Amor em Código"}</h2>
           <div class="qr-container">
             <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(window.location.href)}&margin=1&qzone=1&format=png&bgcolor=FFFFFF&color=000000&ecc=H" alt="QR Code" />
-            <div class="logo">
-              <img src="${window.location.origin}/logo-icon.png" alt="Logo" style="width: 100%; height: 100%; object-fit: contain;" />
-            </div>
+            <img class="logo" src="${window.location.origin}/qr-heart-logo.svg" alt="Logo" />
           </div>
           <p>Escaneie este QR Code para acessar nossa página personalizada</p>
           <script>
@@ -228,9 +227,10 @@ export default function PaginaDetalhes() {
           </script>
         </body>
       </html>
-    `)
-      printWindow.document.close()
-    }
+    `;
+    printWindow.document.write(html);
+    printWindow.document.close()
+  }
   }
 
   // Baixar QR Code
@@ -258,16 +258,10 @@ export default function PaginaDetalhes() {
       // Desenhar o QR Code
       ctx.drawImage(qrImg, 0, 0, size, size)
 
-      // Criar um círculo branco no centro
-      ctx.fillStyle = "white"
-      ctx.beginPath()
-      ctx.arc(size / 2, size / 2, logoSize / 2 + 5, 0, Math.PI * 2)
-      ctx.fill()
-
       // Carregar e desenhar o logo
       const logoImg = new Image()
       logoImg.crossOrigin = "anonymous"
-      logoImg.src = `${window.location.origin}/logo-icon.png`
+      logoImg.src = `${window.location.origin}/qr-heart-logo.svg`
 
       logoImg.onload = () => {
         // Desenhar o logo no centro
@@ -370,6 +364,13 @@ export default function PaginaDetalhes() {
     }
   }
 
+  // Localizar a função handleShareWhatsApp e atualizar a mensagem
+  const handleShareWhatsApp = () => {
+    const message = "Abre esse QR Code, prometo que vale a pena! 😉🎁💫"
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + " " + window.location.href)}`
+    window.open(whatsappUrl, "_blank")
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-black to-gray-900 flex items-center justify-center">
@@ -396,6 +397,9 @@ export default function PaginaDetalhes() {
 
   // Extrair ID do vídeo do YouTube
   const youtubeVideoId = extractYoutubeVideoId(pageData.youtubeLink)
+  const youtubeEmbedUrl = pageData.youtubeLink?.includes("embed")
+    ? pageData.youtubeLink
+    : pageData.youtubeLink?.replace("watch?v=", "embed/")
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black to-gray-900 flex items-center justify-center py-10">
@@ -408,10 +412,7 @@ export default function PaginaDetalhes() {
           <div className="p-6 text-center">
             <h1 className="text-2xl font-bold mb-2 gradient-text">{pageData.coupleNames}</h1>
             <div className="flex justify-center mb-4">
-              <div className="relative">
-                <QrCode className="h-8 w-8 text-primary" />
-                <Heart className="absolute -bottom-1 -right-1 h-4 w-4 text-pink-500" />
-              </div>
+              <QrHeartIcon qrSize={8} heartSize={4} qrColor="var(--color-primary)" heartColor="#ec4899" />
             </div>
           </div>
 
@@ -620,6 +621,20 @@ export default function PaginaDetalhes() {
             </div>
           )}
 
+          {youtubeEmbedUrl && (
+            <div className="mt-6 flex justify-center">
+              <a
+                href={youtubeEmbedUrl.replace("embed/", "watch?v=")}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors text-white"
+              >
+                <Music className="h-4 w-4 text-white" />
+                <span>Ir para o YouTube</span>
+              </a>
+            </div>
+          )}
+
           {/* QR Code options */}
           <div className="px-6 mb-6">
             <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 rounded-lg p-3 flex flex-col gap-2 border border-gray-700/70 shadow-md">
@@ -646,11 +661,23 @@ export default function PaginaDetalhes() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex flex-col items-center justify-center h-16 text-xs bg-gradient-to-br from-green-900/30 to-green-800/30 hover:from-green-800/50 hover:to-green-700/50 border-green-700/50 text-white"
-                  onClick={shareViaWhatsApp}
+                  className="flex items-center gap-1.5 text-xs"
+                  onClick={handleShareWhatsApp}
                 >
-                  <Phone className="h-5 w-5 mb-1 text-green-400" />
-                  WhatsApp
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="#25D366"
+                    stroke="currentColor"
+                    strokeWidth="0"
+                    className="size-4"
+                  >
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+                    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 22.5c-5.799 0-10.5-4.701-10.5-10.5S6.201 1.5 12 1.5 22.5 6.201 22.5 12 17.799 22.5 12 22.5z" />
+                  </svg>
+                  <span>Compartilhar</span>
                 </Button>
               </div>
               <div className="mt-2 text-center">

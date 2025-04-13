@@ -610,20 +610,19 @@ export default function PaginaDetalhes() {
             </div>
 
             {/* Botão de edição da mensagem (fora do box da mensagem) - não mostrar para plano premium */}
-            {pageData.plan !== "premium" && (
-              <div className="px-6 mb-6 flex justify-center">
-                <Button
-                  onClick={() => setEditingMessage(true)}
-                  size="sm"
-                  variant="outline"
-                  className="flex items-center gap-1"
-                  disabled={editingMessage}
-                >
-                  <Edit className="h-4 w-4" />
-                  Editar Mensagem
-                </Button>
-              </div>
-            )}
+
+            <div className="px-6 mb-6 flex justify-center">
+              <Button
+                onClick={() => setEditingMessage(true)}
+                size="sm"
+                variant="outline"
+                className="flex items-center gap-1"
+                disabled={editingMessage}
+              >
+                <Edit className="h-4 w-4" />
+                Editar Mensagem
+              </Button>
+            </div>
 
             {/* Área de edição da mensagem (aparece quando editingMessage é true) */}
             {editingMessage && (

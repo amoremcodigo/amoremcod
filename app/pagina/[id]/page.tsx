@@ -364,58 +364,10 @@ export default function PaginaDetalhes() {
 
   // Localizar a função handleShareWhatsApp e atualizar a mensagem
   const handleShareWhatsApp = () => {
-    // Criar um elemento canvas temporário para gerar a imagem do QR code
-    const canvas = document.createElement("canvas")
-    const ctx = canvas.getContext("2d")
-    const size = 500
-    
-    if (!ctx) {
-      toast.error("Seu navegador não suporta esta funcionalidade")
-      return
-    }
-    
-    canvas.width = size
-    canvas.height = size
-    
-    // Carregar o QR Code
-    const qrImg = new Image()
-    qrImg.crossOrigin = "anonymous"
-    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(window.location.href)}&margin=1&qzone=1&format=png&bgcolor=FFFFFF&color=000000&ecc=H`
-    
-    qrImg.onload = () => {
-      // Desenhar o QR Code
-      ctx.drawImage(qrImg, 0, 0, size, size)
-      
-      // Converter para data URL
-      const dataUrl = canvas.toDataURL("image/png")
-      
-      // Compartilhar a imagem (em dispositivos móveis, isso abrirá o menu de compartilhamento)
-      if (navigator.share) {
-        navigator.share({
-          title: `${pageData?.coupleNames || "Amor em Código"}`,
-          text: "Abre esse QR Code, prometo que vale a pena! 😉🎁💫",
-          url: window.location.href,
-        }).catch(err => {
-          // Fallback para WhatsApp se o compartilhamento falhar
-          const message = "Abre esse QR Code, prometo que vale a pena! 😉🎁💫"
-          const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + " " + window.location.href)}`
-          window.open(whatsappUrl, "_blank")
-        })
-      } else {
-        // Fallback para WhatsApp em navegadores que não suportam a API de compartilhamento
-        const message = "Abre esse QR Code, prometo que vale a pena! 😉🎁💫"
-        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + " " + window.location.href)}`
-        window.open(whatsappUrl, "_blank")
-      }
-    }
-    
-    qrImg.onerror = () => {
-      toast.error("Erro ao gerar QR Code para compartilhamento")
-      // Fallback para o método antigo
-      const message = "Abre esse QR Code, prometo que vale a pena! 😉🎁💫"
-      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + " " + window.location.href)}`
-      window.open(whatsappUrl, "_blank")
-    }
+    // Mensagem simples com o link
+    const message = "Abre esse QR Code, prometo que vale a pena! 😉🎁💫"
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + " " + window.location.href)}`
+    window.open(whatsappUrl, "_blank")
   }
 
   if (loading) {
@@ -459,8 +411,8 @@ export default function PaginaDetalhes() {
             <h1 className="text-2xl font-bold mb-2 gradient-text">{pageData.coupleNames}</h1>
             <div className="flex justify-center mb-4">
               <div className="relative">
-                <QrCode className="h-8 w-8 text-primary" /> {/* Aumentado de h-6 w-6 para h-8 w-8 */}
-                <Heart className="absolute -bottom-1 -right-1 h-4 w-4 text-pink-500" /> {/* Aumentado de h-3 w-3 para h-4 w-4 */}
+                <QrCode className="h-8 w-8 text-primary" />
+                <Heart className="absolute -bottom-1 -right-1 h-4 w-4 text-pink-500" />
               </div>
             </div>
           </div>
@@ -723,4 +675,18 @@ export default function PaginaDetalhes() {
                     strokeWidth="0"
                     className="h-5 w-5 mb-1"
                   >
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.4\
+                    <path
+                      d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.4\
+68-.985-.468-1.327-.022-.342.075-.679.243-.867.166-.187.359-.309.526-.371.166-.06.331-.089.526-.06.192.029.328.158.489.319.158.158.318.22.526.174.208-.047.407-.127.608-.208.2-.08.407-.16.614-.215.205-.058.413-.112.615-.082.203.03.323.196.461.359.133.158.271.219.472.174.199-.047.398-.149.596-.249.198-.099.401-.192.598-.265.198-.074.407-.192.487-.348.09-.174.182-.331.279-.487.097-.156.195-.266.304-.377.101-.099.204-.205.309-.307"
+                    />
+                  </svg>
+                  WhatsApp
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

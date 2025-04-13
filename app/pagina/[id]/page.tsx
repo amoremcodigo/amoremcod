@@ -8,7 +8,6 @@ import { FallingHearts } from "@/components/falling-hearts"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
-import { CustomQRCode } from "@/components/custom-qr-code" // Import our new component
 
 // Função para extrair o ID do vídeo do YouTube
 const extractYoutubeVideoId = (url: string): string | null => {
@@ -365,9 +364,58 @@ export default function PaginaDetalhes() {
 
   // Localizar a função handleShareWhatsApp e atualizar a mensagem
   const handleShareWhatsApp = () => {
-    const message = "Abre esse QR Code, prometo que vale a pena! 😉🎁💫"
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + " " + window.location.href)}`
-    window.open(whatsappUrl, "_blank")
+    // Criar um elemento canvas temporário para gerar a imagem do QR code
+    const canvas = document.createElement("canvas")
+    const ctx = canvas.getContext("2d")
+    const size = 500
+    
+    if (!ctx) {
+      toast.error("Seu navegador não suporta esta funcionalidade")
+      return
+    }
+    
+    canvas.width = size
+    canvas.height = size
+    
+    // Carregar o QR Code
+    const qrImg = new Image()
+    qrImg.crossOrigin = "anonymous"
+    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(window.location.href)}&margin=1&qzone=1&format=png&bgcolor=FFFFFF&color=000000&ecc=H`
+    
+    qrImg.onload = () => {
+      // Desenhar o QR Code
+      ctx.drawImage(qrImg, 0, 0, size, size)
+      
+      // Converter para data URL
+      const dataUrl = canvas.toDataURL("image/png")
+      
+      // Compartilhar a imagem (em dispositivos móveis, isso abrirá o menu de compartilhamento)
+      if (navigator.share) {
+        navigator.share({
+          title: `${pageData?.coupleNames || "Amor em Código"}`,
+          text: "Abre esse QR Code, prometo que vale a pena! 😉🎁💫",
+          url: window.location.href,
+        }).catch(err => {
+          // Fallback para WhatsApp se o compartilhamento falhar
+          const message = "Abre esse QR Code, prometo que vale a pena! 😉🎁💫"
+          const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + " " + window.location.href)}`
+          window.open(whatsappUrl, "_blank")
+        })
+      } else {
+        // Fallback para WhatsApp em navegadores que não suportam a API de compartilhamento
+        const message = "Abre esse QR Code, prometo que vale a pena! 😉🎁💫"
+        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + " " + window.location.href)}`
+        window.open(whatsappUrl, "_blank")
+      }
+    }
+    
+    qrImg.onerror = () => {
+      toast.error("Erro ao gerar QR Code para compartilhamento")
+      // Fallback para o método antigo
+      const message = "Abre esse QR Code, prometo que vale a pena! 😉🎁💫"
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + " " + window.location.href)}`
+      window.open(whatsappUrl, "_blank")
+    }
   }
 
   if (loading) {
@@ -411,8 +459,8 @@ export default function PaginaDetalhes() {
             <h1 className="text-2xl font-bold mb-2 gradient-text">{pageData.coupleNames}</h1>
             <div className="flex justify-center mb-4">
               <div className="relative">
-                <QrCode className="h-6 w-6 text-primary" />
-                <Heart className="absolute -bottom-1 -right-1 h-3 w-3 text-pink-500" />
+                <QrCode className="h-8 w-8 text-primary" /> {/* Aumentado de h-6 w-6 para h-8 w-8 */}
+                <Heart className="absolute -bottom-1 -right-1 h-4 w-4 text-pink-500" /> {/* Aumentado de h-3 w-3 para h-4 w-4 */}
               </div>
             </div>
           </div>
@@ -675,27 +723,4 @@ export default function PaginaDetalhes() {
                     strokeWidth="0"
                     className="h-5 w-5 mb-1"
                   >
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
-                    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 22.5c-5.799 0-10.5-4.701-10.5-10.5S6.201 1.5 12 1.5 22.5 6.201 22.5 12 17.799 22.5 12 22.5z" />
-                  </svg>
-                  <span>WhatsApp</span>
-                </Button>
-              </div>
-              <div className="mt-2 text-center">
-                {/* Use our custom QR code component with logo */}
-                <CustomQRCode url={window.location.href} size={180} logoSize={40} className="inline-block" />
-              </div>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="p-4 text-center border-t border-gray-800">
-            <p className="text-xs text-gray-500">
-              Criado com ❤️ por <span className="gradient-text font-medium">Amor em Código</span>
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.4\

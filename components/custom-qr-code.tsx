@@ -48,9 +48,9 @@ export function CustomQRCode({ url, size = 300, logoSize = 60, className = "" }:
         onError={() => setError("Erro ao carregar QR Code")}
       />
 
-      {/* Logo sobreposto */}
+      {/* Emoji de cadeado no centro */}
       <div
-        className="absolute"
+        className="absolute flex items-center justify-center bg-white rounded-full"
         style={{
           top: "50%",
           left: "50%",
@@ -59,12 +59,7 @@ export function CustomQRCode({ url, size = 300, logoSize = 60, className = "" }:
           height: logoSize,
         }}
       >
-        <img
-          src="/qr-heart-logo.svg"
-          alt="Logo"
-          className="w-full h-full"
-          onError={() => console.error("Erro ao carregar o logo")}
-        />
+        <span style={{ fontSize: logoSize * 0.6 }}>🔒</span>
       </div>
     </div>
   )

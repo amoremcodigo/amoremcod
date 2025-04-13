@@ -3,13 +3,12 @@
 import { useState, useEffect, useRef } from "react"
 import { useParams, useSearchParams } from "next/navigation"
 import { decompressFromEncodedURIComponent } from "lz-string"
-import { Music, Download, Printer, Edit, Save, X, ChevronLeft, ChevronRight } from "lucide-react"
+import { Music, Download, Printer, Edit, Save, X, ChevronLeft, ChevronRight, QrCode, Heart } from "lucide-react"
 import { FallingHearts } from "@/components/falling-hearts"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 import { CustomQRCode } from "@/components/custom-qr-code" // Import our new component
-import { QrHeartIcon } from "@/components/qr-heart-icon"
 
 // Função para extrair o ID do vídeo do YouTube
 const extractYoutubeVideoId = (url: string): string | null => {
@@ -411,7 +410,10 @@ export default function PaginaDetalhes() {
           <div className="p-6 text-center">
             <h1 className="text-2xl font-bold mb-2 gradient-text">{pageData.coupleNames}</h1>
             <div className="flex justify-center mb-4">
-              <QrHeartIcon qrSize={8} heartSize={4} qrColor="var(--color-primary)" heartColor="#ec4899" />
+              <div className="relative">
+                <QrCode className="h-6 w-6 text-primary" />
+                <Heart className="absolute -bottom-1 -right-1 h-3 w-3 text-pink-500" />
+              </div>
             </div>
           </div>
 

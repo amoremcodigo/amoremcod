@@ -388,13 +388,13 @@ export function Formulario() {
                     onChange={handleChange}
                   />
                   <div className="mt-1 text-sm flex items-center gap-1 whitespace-nowrap">
-                    <Music className="h-4 w-4 text-gray-400" />
                     <a
                       href="https://www.youtube.com.br"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-primary hover:text-primary/80 font-medium"
+                      className="text-primary hover:text-primary/80 font-medium flex items-center gap-1"
                     >
+                      <Music className="h-4 w-4" />
                       Ir para o YouTube
                     </a>
                   </div>

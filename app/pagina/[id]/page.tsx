@@ -775,7 +775,25 @@ export default function PaginaDetalhes() {
             </div>
           </div>
         </div>
+
+      {/* Rodapé */}
+      <div className="w-full mt-6 pb-4 px-4 text-center">
+        <div className="flex flex-col items-center justify-center">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="relative">
+              <QrCode className="h-5 w-5 text-primary" />
+              <Heart className="absolute -bottom-1 -right-1 h-2.5 w-2.5 text-pink-500" />
+            </div>
+            <span className="font-medium text-sm">
+              Amor em <span className="gradient-text">Código</span>
+            </span>
+          </div>
+          <p className="text-xs text-gray-400 flex items-center justify-center">
+            Feito com <Heart className="h-3 w-3 text-red-500 mx-1 fill-current" /> por Amor em Código
+          </p>
+          <p className="text-xs text-gray-400 mt-1">CNPJ: 60.289.342/0001-03</p>
+        </div>
       </div>
     </div>
-  )
+  );
 }

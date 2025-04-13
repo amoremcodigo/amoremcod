@@ -14,7 +14,7 @@ export function Hero() {
   const textOptions = [
     { text: "eu Amor", emoji: "❤️" },
     { text: "ua Amizade", emoji: "🤝" },
-    { text: "eu Familiar", emoji: "👨‍👩‍👧" },
+    { text: "eu Familiar", emoji: "👨‍👩‍👧‍👦" }, // Changed from 👨‍👩‍👧 to 👨‍👩‍👧‍👦
     { text: "eu Pet", emoji: "🐾" },
     { text: "ua Pessoa Especial", emoji: "✨" },
     { text: "eu Amigo", emoji: "🎭" },

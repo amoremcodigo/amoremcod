@@ -25,12 +25,12 @@ export function Testimonials() {
             {
               name: "Carlos & Família",
               text: "Criei uma página para o aniversário dos meus pais. O contador mostrando quanto tempo eles estão juntos foi muito especial para toda a família.",
-              image: "/solitary-contemplation.png",
+              image: "/carlos-familia.jpeg",
             },
             {
-              name: "Fernanda & Rex",
+              name: "Fernanda & Toby",
               text: "Fiz uma homenagem para meu cachorro! A possibilidade de adicionar nossa música favorita do YouTube tornou a experiência ainda mais divertida.",
-              image: "/woman-and-dog-park.png",
+              image: "/fernanda-toby.jpeg",
             },
             {
               name: "Guilherme & Raieli",

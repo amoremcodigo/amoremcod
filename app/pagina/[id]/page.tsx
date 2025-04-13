@@ -193,7 +193,7 @@ export default function PaginaDetalhes() {
   const shareViaWhatsApp = async () => {
     try {
       const text = `${pageData.coupleNames} - Acesse nossa página personalizada: ${window.location.href}`
-      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank")
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}, "_blank")
     } catch (error) {
       console.error("Erro ao compartilhar via WhatsApp:", error)
     }
@@ -201,15 +201,13 @@ export default function PaginaDetalhes() {
 
   // Imprimir QR Code
   const printQrCode = () => {
-    const printWindow = window.open("", "_blank")
-    if (printWindow) {
-      const secureUrl = window.location.href.replace("http://", "https://")
-      const html = `
+    const secureUrl = window.location.href.replace("http://", "https://")
+    const html = `
     <html>
       <head>
         <title>QR Code - ${pageData?.coupleNames || "Amor em Código"}</title>
-        <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: 'unsafe-inline'">
-        <style>
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: 'unsafe-inline'"/>
+        <style>\
           body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
           .qr-container { position: relative; width: 300px; height: 300px; margin: 20px auto; }
           .qr-code { width: 100%; height: 100%; }
@@ -230,8 +228,17 @@ export default function PaginaDetalhes() {
       </body>
     </html>
   `
-      printWindow.document.write(html)
-      printWindow.document.close()
+    const font = "Arial, sans-serif"
+    const family = "Arial"
+    const position = "relative"
+    const width = "300px"
+    let printWindow: any = null
+    if (typeof window !== 'undefined') {
+      printWindow = window.open('', '_blank')
+      if (printWindow) {
+        printWindow.document.write(html)
+        printWindow.document.close()
+      }
     }
   }
 
@@ -795,5 +802,5 @@ export default function PaginaDetalhes() {
         </div>
       </div>
     </div>
-  );
+  )
 }

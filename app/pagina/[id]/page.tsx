@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 import { CustomQRCode } from "@/components/custom-qr-code" // Import our new component
-import QRCode from "qrcode"
 
 // Função para extrair o ID do vídeo do YouTube
 const extractYoutubeVideoId = (url: string): string | null => {
@@ -204,118 +203,102 @@ export default function PaginaDetalhes() {
     const printWindow = window.open("", "_blank")
     if (printWindow) {
       printWindow.document.write(`
-        <html>
-          <head>
-            <title>QR Code - ${pageData?.coupleNames || "Amor em Código"}</title>
-            <style>
-              body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-              img { max-width: 300px; margin: 20px auto; }
-              h2 { color: #9333EA; }
-            </style>
-          </head>
-          <body>
-            <h2>${pageData?.coupleNames || "Amor em Código"}</h2>
-            <div id="qrcode" style="margin: 0 auto; width: 300px; height: 300px;"></div>
-            <p>Escaneie este QR Code para acessar nossa página personalizada</p>
-            <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-            <script>
-              // Create QR code with logo
-              const canvas = document.createElement('canvas');
-              QRCode.toCanvas(canvas, "${window.location.href}", {
-                errorCorrectionLevel: 'H',
-                margin: 1,
-                width: 300,
-                color: {
-                  dark: "#000000",
-                  light: "#FFFFFF"
-                }
-              }).then(() => {
-                document.getElementById('qrcode').appendChild(canvas);
-                
-                // Add logo
-                setTimeout(() => {
-                  const ctx = canvas.getContext('2d');
-                  const centerPosition = 150;
-                  const logoSize = 60;
-                  
-                  // Clear center
-                  ctx.fillStyle = "#FFFFFF";
-                  ctx.fillRect(centerPosition - logoSize/2 - 5, centerPosition - logoSize/2 - 5, logoSize + 10, logoSize + 10);
-                  
-                  // Add logo
-                  const logo = new Image();
-                  logo.crossOrigin = "anonymous";
-                  logo.src = "${window.location.origin}/logo-icon.png";
-                  logo.onload = function() {
-                    ctx.drawImage(logo, centerPosition - logoSize/2, centerPosition - logoSize/2, logoSize, logoSize);
-                    setTimeout(() => { window.print(); }, 200);
-                  };
-                }, 100);
-              });
-            </script>
-          </body>
-        </html>
-      `)
+      <html>
+        <head>
+          <title>QR Code - ${pageData?.coupleNames || "Amor em Código"}</title>
+          <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+            .qr-container { position: relative; width: 300px; height: 300px; margin: 20px auto; }
+            .qr-code { width: 100%; height: 100%; }
+            .logo { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 60px; height: 60px; background: white; border-radius: 50%; padding: 2px; }
+            h2 { color: #9333EA; }
+          </style>
+        </head>
+        <body>
+          <h2>${pageData?.coupleNames || "Amor em Código"}</h2>
+          <div class="qr-container">
+            <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(window.location.href)}&margin=1&qzone=1&format=png&bgcolor=FFFFFF&color=000000&ecc=H" alt="QR Code" />
+            <div class="logo">
+              <img src="${window.location.origin}/logo-icon.png" alt="Logo" style="width: 100%; height: 100%; object-fit: contain;" />
+            </div>
+          </div>
+          <p>Escaneie este QR Code para acessar nossa página personalizada</p>
+          <script>
+            setTimeout(() => { window.print(); }, 500);
+          </script>
+        </body>
+      </html>
+    `)
       printWindow.document.close()
     }
   }
 
   // Baixar QR Code
   const downloadQrCode = () => {
-    // Create a temporary canvas to generate the QR code with logo
+    // Criar um elemento canvas temporário
     const canvas = document.createElement("canvas")
+    const ctx = canvas.getContext("2d")
     const size = 500
     const logoSize = 100
+
+    if (!ctx) {
+      toast.error("Seu navegador não suporta esta funcionalidade")
+      return
+    }
 
     canvas.width = size
     canvas.height = size
 
-    // Generate QR code on canvas
-    QRCode.toCanvas(canvas, window.location.href, {
-      errorCorrectionLevel: "H",
-      margin: 1,
-      width: size,
-      color: {
-        dark: "#000000",
-        light: "#FFFFFF",
-      },
-    })
-      .then(() => {
-        // Get canvas context
-        const ctx = canvas.getContext("2d")
-        if (ctx) {
-          // Clear the center area for the logo
-          const centerPosition = size / 2
-          ctx.fillStyle = "#FFFFFF"
-          ctx.fillRect(
-            centerPosition - logoSize / 2 - 5,
-            centerPosition - logoSize / 2 - 5,
-            logoSize + 10,
-            logoSize + 10,
-          )
+    // Carregar o QR Code
+    const qrImg = new Image()
+    qrImg.crossOrigin = "anonymous"
+    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(window.location.href)}&margin=1&qzone=1&format=png&bgcolor=FFFFFF&color=000000&ecc=H`
 
-          // Add logo
-          const logo = new Image()
-          logo.crossOrigin = "anonymous"
-          logo.src = `${window.location.origin}/logo-icon.png`
-          logo.onload = () => {
-            ctx.drawImage(logo, centerPosition - logoSize / 2, centerPosition - logoSize / 2, logoSize, logoSize)
+    qrImg.onload = () => {
+      // Desenhar o QR Code
+      ctx.drawImage(qrImg, 0, 0, size, size)
 
-            // Convert to data URL and download
-            const dataUrl = canvas.toDataURL("image/png")
-            const link = document.createElement("a")
-            link.href = dataUrl
-            link.download = `qrcode-${pageData?.coupleNames || "amor-em-codigo"}.png`
-            document.body.appendChild(link)
-            link.click()
-            document.body.removeChild(link)
-          }
-        }
-      })
-      .catch((err) => {
-        console.error("Error generating QR code for download:", err)
-        toast.error("Erro ao gerar QR Code para download")
-      })
+      // Criar um círculo branco no centro
+      ctx.fillStyle = "white"
+      ctx.beginPath()
+      ctx.arc(size / 2, size / 2, logoSize / 2 + 5, 0, Math.PI * 2)
+      ctx.fill()
+
+      // Carregar e desenhar o logo
+      const logoImg = new Image()
+      logoImg.crossOrigin = "anonymous"
+      logoImg.src = `${window.location.origin}/logo-icon.png`
+
+      logoImg.onload = () => {
+        // Desenhar o logo no centro
+        ctx.drawImage(logoImg, size / 2 - logoSize / 2, size / 2 - logoSize / 2, logoSize, logoSize)
+
+        // Converter para data URL e baixar
+        const dataUrl = canvas.toDataURL("image/png")
+        const link = document.createElement("a")
+        link.href = dataUrl
+        link.download = `qrcode-${pageData?.coupleNames || "amor-em-codigo"}.png`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+      }
+
+      logoImg.onerror = () => {
+        toast.error("Erro ao carregar o logo")
+        // Ainda assim, baixar o QR Code sem o logo
+        const dataUrl = canvas.toDataURL("image/png")
+        const link = document.createElement("a")
+        link.href = dataUrl
+        link.download = `qrcode-${pageData?.coupleNames || "amor-em-codigo"}.png`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+      }
+    }
+
+    qrImg.onerror = () => {
+      toast.error("Erro ao gerar QR Code para download")
+    }
   }
 
   // Navegar para a foto anterior
@@ -672,15 +655,7 @@ export default function PaginaDetalhes() {
               </div>
               <div className="mt-2 text-center">
                 {/* Use our custom QR code component with logo */}
-                <CustomQRCode
-                  url={window.location.href}
-                  size={180}
-                  logoSize={40}
-                  bgColor="#FFFFFF"
-                  fgColor="#000000"
-                  logoUrl="/logo-icon.png"
-                  className="inline-block"
-                />
+                <CustomQRCode url={window.location.href} size={180} logoSize={40} className="inline-block" />
               </div>
             </div>
           </div>

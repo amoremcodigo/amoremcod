@@ -421,6 +421,7 @@ export function PreviewSite() {
 
                     {/* Contador */}
                     <div className="mb-4 relative z-10">
+                      <p className="text-center text-sm mb-1 text-gray-300">Juntos há</p>
                       <div className="grid grid-cols-5 gap-1 text-center">
                         <div className="bg-gray-800 rounded-lg p-1">
                           <div className="text-lg font-bold">{years}</div>

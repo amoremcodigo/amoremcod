@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useParams, useSearchParams } from "next/navigation"
 import { decompressFromEncodedURIComponent } from "lz-string"
-import { Music, Download, Printer, Edit, Save, X, ChevronLeft, ChevronRight, QrCode, Heart } from "lucide-react"
+import { Music, Download, Printer, Save, X, ChevronLeft, ChevronRight, QrCode, Heart } from "lucide-react"
 import { FallingHearts } from "@/components/falling-hearts"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -606,20 +606,6 @@ export default function PaginaDetalhes() {
                   }}
                 ></p>
               </div>
-            </div>
-
-            {/* Botão de edição da mensagem (fora do box da mensagem) */}
-            <div className="px-6 mb-6 flex justify-center">
-              <Button
-                onClick={() => setEditingMessage(true)}
-                size="sm"
-                variant="outline"
-                className="flex items-center gap-1"
-                disabled={editingMessage}
-              >
-                <Edit className="h-4 w-4" />
-                Editar Mensagem
-              </Button>
             </div>
 
             {/* Área de edição da mensagem (aparece quando editingMessage é true) */}

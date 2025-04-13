@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea"
 // Adicione a importação do toast se ainda não estiver presente
 import { toast } from "sonner"
 import { CustomQRCode } from "@/components/custom-qr-code" // Corrigido para usar importação nomeada
+// Adicionar a importação do Footer no topo do arquivo, junto com as outras importações
+import { Footer } from "@/components/footer"
 
 // Função para extrair o ID do vídeo do YouTube
 const extractYoutubeVideoId = (url: string): string | null => {
@@ -193,7 +195,7 @@ export default function PaginaDetalhes() {
   const shareViaWhatsApp = async () => {
     try {
       const text = `${pageData.coupleNames} - Acesse nossa página personalizada: ${window.location.href}`
-      window.open(`https://wa.me/?text=${encodeURIComponent(text)}, "_blank")
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank")
     } catch (error) {
       console.error("Erro ao compartilhar via WhatsApp:", error)
     }
@@ -201,13 +203,15 @@ export default function PaginaDetalhes() {
 
   // Imprimir QR Code
   const printQrCode = () => {
-    const secureUrl = window.location.href.replace("http://", "https://")
-    const html = `
+    const printWindow = window.open("", "_blank")
+    if (printWindow) {
+      const secureUrl = window.location.href.replace("http://", "https://")
+      const html = `
     <html>
       <head>
         <title>QR Code - ${pageData?.coupleNames || "Amor em Código"}</title>
-        <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: 'unsafe-inline'"/>
-        <style>\
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: 'unsafe-inline'">
+        <style>
           body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
           .qr-container { position: relative; width: 300px; height: 300px; margin: 20px auto; }
           .qr-code { width: 100%; height: 100%; }
@@ -228,17 +232,8 @@ export default function PaginaDetalhes() {
       </body>
     </html>
   `
-    const font = "Arial, sans-serif"
-    const family = "Arial"
-    const position = "relative"
-    const width = "300px"
-    let printWindow: any = null
-    if (typeof window !== 'undefined') {
-      printWindow = window.open('', '_blank')
-      if (printWindow) {
-        printWindow.document.write(html)
-        printWindow.document.close()
-      }
+      printWindow.document.write(html)
+      printWindow.document.close()
     }
   }
 
@@ -782,25 +777,11 @@ export default function PaginaDetalhes() {
             </div>
           </div>
         </div>
-
-      {/* Rodapé */}
-      <div className="w-full mt-6 pb-4 px-4 text-center">
-        <div className="flex flex-col items-center justify-center">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="relative">
-              <QrCode className="h-5 w-5 text-primary" />
-              <Heart className="absolute -bottom-1 -right-1 h-2.5 w-2.5 text-pink-500" />
-            </div>
-            <span className="font-medium text-sm">
-              Amor em <span className="gradient-text">Código</span>
-            </span>
-          </div>
-          <p className="text-xs text-gray-400 flex items-center justify-center">
-            Feito com <Heart className="h-3 w-3 text-red-500 mx-1 fill-current" /> por Amor em Código
-          </p>
-          <p className="text-xs text-gray-400 mt-1">CNPJ: 60.289.342/0001-03</p>
-        </div>
-      </div>
+    </div>
+    
+    {/* Adicionar o Footer */}
+    <div className="mt-12">
+      <Footer />
     </div>
   )
 }

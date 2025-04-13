@@ -8,6 +8,7 @@ import { FallingHearts } from "@/components/falling-hearts"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
+import CustomQRCode from "@/components/custom-qr-code"
 
 // Função para extrair o ID do vídeo do YouTube
 const extractYoutubeVideoId = (url: string): string | null => {
@@ -579,6 +580,18 @@ export default function PaginaDetalhes() {
             </div>
           )}
 
+          {/* QR Code da página */}
+          <div className="px-6 mb-6">
+            <div className="flex flex-col items-center">
+              <div className="mb-2 text-center">
+                <span className="text-sm text-gray-400">QR Code da página</span>
+              </div>
+              <div className="bg-white p-3 rounded-lg inline-block">
+                <CustomQRCode url={window.location.href} size={200} logoSize={40} />
+              </div>
+            </div>
+          </div>
+
           {/* YouTube (apenas para plano premium) */}
           {pageData.plan === "premium" && youtubeVideoId && (
             <div className="px-6 mb-6">
@@ -622,20 +635,6 @@ export default function PaginaDetalhes() {
             </div>
           )}
 
-          {youtubeWatchUrl && (
-            <div className="px-6 mb-6 flex justify-center">
-              <a
-                href={youtubeWatchUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors text-white"
-              >
-                <Music className="h-4 w-4 text-white" />
-                <span>Ir para o YouTube</span>
-              </a>
-            </div>
-          )}
-
           {/* QR Code options */}
           <div className="px-6 mb-6">
             <div className="bg-gradient-to-br from-gray-800/80 to-gray-900/80 rounded-lg p-3 flex flex-col gap-2 border border-gray-700/70 shadow-md">
@@ -667,18 +666,20 @@ export default function PaginaDetalhes() {
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
+                    width="24"
+                    height="24"
                     viewBox="0 0 24 24"
-                    fill="#25D366"
+                    fill="none"
                     stroke="currentColor"
-                    strokeWidth="0"
-                    className="h-5 w-5 mb-1"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-5 w-5 mb-1 text-green-400"
                   >
-                    <path
-                      d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.4\
-68-.985-.468-1.327-.022-.342.075-.679.243-.867.166-.187.359-.309.526-.371.166-.06.331-.089.526-.06.192.029.328.158.489.319.158.158.318.22.526.174.208-.047.407-.127.608-.208.2-.08.407-.16.614-.215.205-.058.413-.112.615-.082.203.03.323.196.461.359.133.158.271.219.472.174.199-.047.398-.149.596-.249.198-.099.401-.192.598-.265.198-.074.407-.192.487-.348.09-.174.182-.331.279-.487.097-.156.195-.266.304-.377.101-.099.204-.205.309-.307"
-                    />
+                    <path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21" />
+                    <path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1Z" />
+                    <path d="M13.5 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1Z" />
+                    <path d="M9 13.5a.5.5 0 0 0 .5.5h5a.5.5 0 0 0 0-1h-5a.5.5 0 0 0-.5.5Z" />
                   </svg>
                   WhatsApp
                 </Button>

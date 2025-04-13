@@ -488,7 +488,7 @@ export function PreviewSite() {
                         </div>
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <p className="text-gray-500 text-sm">Adicione uma foto do casal</p>
+                          <p className="text-gray-500 text-sm">Suas fotos aparecerão aqui</p>
                         </div>
                       )}
                     </div>
@@ -500,7 +500,7 @@ export function PreviewSite() {
                         dangerouslySetInnerHTML={{
                           __html: (
                             formData.message ||
-                            "Amor, cada momento ao seu lado é um presente. Você ilumina meus dias, transforma minha vida e faz meu coração transbordar de felicidade. Te amar é a melhor parte da minha vida! ❤️"
+                            "Cada momento ao seu lado é um presente. Você ilumina meus dias, transforma minha vida e faz meu coração transbordar de felicidade. Você é muito especial para mim! ❤️"
                           ).replace(/\n/g, "<br>"),
                         }}
                       ></p>

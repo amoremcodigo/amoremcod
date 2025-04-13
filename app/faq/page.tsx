@@ -23,7 +23,7 @@ export default function FAQPage() {
               {
                 question: "Como funciona o Amor em Código?",
                 answer:
-                  "O Amor em Código permite que você crie uma página personalizada para seu amor com fotos, mensagens e um contador de tempo de relacionamento. Após criar a página, você recebe um QR Code que pode ser compartilhado com seu parceiro(a) para acessar a página.",
+                  "O Amor em Código permite que você crie uma página personalizada para alguém especial com fotos, mensagens e um contador de tempo. Após criar a página, você recebe um QR Code que pode ser compartilhado para acessar a página.",
               },
               {
                 question: "Qual a diferença entre os planos?",
@@ -41,9 +41,9 @@ export default function FAQPage() {
                   "Sim, você pode editar sua página a qualquer momento fazendo login com o e-mail cadastrado. No entanto, algumas alterações podem ser limitadas dependendo do plano escolhido.",
               },
               {
-                question: "Como compartilho minha página com meu amor?",
+                question: "Como compartilho minha página?",
                 answer:
-                  "Após criar sua página, você receberá um QR Code que pode ser baixado ou compartilhado diretamente. Você também receberá um link que pode ser enviado por mensagem. Seu parceiro(a) pode escanear o QR Code ou clicar no link para acessar a página.",
+                  "Após criar sua página, você receberá um QR Code que pode ser baixado ou compartilhado diretamente. Você também receberá um link que pode ser enviado por mensagem. A pessoa pode escanear o QR Code ou clicar no link para acessar a página.",
               },
               {
                 question: "Posso adicionar mais fotos depois?",
@@ -53,7 +53,7 @@ export default function FAQPage() {
               {
                 question: "Como funciona a música do YouTube?",
                 answer:
-                  "No Plano Premium, você pode adicionar um link de um vídeo do YouTube que será incorporado à sua página. Quando seu parceiro(a) acessar a página, poderá reproduzir a música diretamente.",
+                  "No Plano Premium, você pode adicionar um link de um vídeo do YouTube que será incorporado à sua página. Quando a pessoa acessar a página, poderá reproduzir a música diretamente.",
               },
               {
                 question: "Posso solicitar reembolso?",

@@ -10,7 +10,7 @@ export function Testimonials() {
               O que nossos <span className="gradient-text">clientes</span> dizem
             </h2>
             <p className="mx-auto max-w-[700px] text-gray-400 md:text-xl">
-              Veja como nossa plataforma tem ajudado casais a expressar seu amor de forma única.
+              Veja como nossa plataforma tem ajudado pessoas a expressar seus sentimentos de forma única.
             </p>
           </div>
         </div>
@@ -23,16 +23,14 @@ export function Testimonials() {
                 "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/WhatsApp%20Image%202025-04-08%20at%202.46.15%20AM-U8k7zpVoboYvvADcFTfKwtivdIY5qY.jpeg",
             },
             {
-              name: "Carlos & Juliana",
-              text: "O contador mostrando quanto tempo estamos juntos é muito especial. Toda vez que abrimos a página, nos emocionamos.",
-              image:
-                "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/WhatsApp%20Image%202025-04-08%20at%202.41.00%20AM%20%283%29-QPBOH4I6leDO0e8mPIKkwqHnc15xAL.jpeg",
+              name: "Carlos & Família",
+              text: "Criei uma página para o aniversário dos meus pais. O contador mostrando quanto tempo eles estão juntos foi muito especial para toda a família.",
+              image: "/solitary-contemplation.png",
             },
             {
-              name: "Fernanda & Roberto",
-              text: "A possibilidade de adicionar nossa música favorita do YouTube tornou a experiência ainda mais romântica. Vale cada centavo!",
-              image:
-                "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/WhatsApp%20Image%202025-04-08%20at%202.41.00%20AM%20%284%29-WSOyTMDgRkIPVvF0Eaivn677IvAtr9.jpeg",
+              name: "Fernanda & Rex",
+              text: "Fiz uma homenagem para meu cachorro! A possibilidade de adicionar nossa música favorita do YouTube tornou a experiência ainda mais divertida.",
+              image: "/woman-and-dog-park.png",
             },
             {
               name: "Guilherme & Raieli",
@@ -41,16 +39,14 @@ export function Testimonials() {
                 "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/WhatsApp%20Image%202025-04-08%20at%202.41.00%20AM-Mc7oBM3VUk2jKDAfIhM8tnTuQOIPrk.jpeg",
             },
             {
-              name: "Gustavo & Camila",
-              text: "Interface super fácil de usar. Em poucos minutos criei uma página linda que vai ficar para sempre em nossas memórias.",
-              image:
-                "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/WhatsApp%20Image%202025-04-08%20at%202.45.28%20AM-gYV462keFvfVGVqYMnYtgn4V8OmDBm.jpeg",
+              name: "Grupo de Amigos",
+              text: "Criamos uma página para nossa amizade de 10 anos. Interface super fácil de usar e o resultado ficou incrível!",
+              image: "/man-portrait-4.png",
             },
             {
-              name: "Pedro & Luiza",
-              text: "Recomendo o plano premium! A possibilidade de ter a página para sempre e com várias fotos faz toda a diferença.",
-              image:
-                "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/WhatsApp%20Image%202025-04-08%20at%202.41.00%20AM%20%282%29-AXB4RwP2HeliWJjbwo5jppMEyYgXBD.jpeg",
+              name: "Pedro & Vovó Luiza",
+              text: "Recomendo o plano premium! Fiz para minha avó de 90 anos e ela se emocionou com as fotos antigas que colocamos.",
+              image: "/man-portrait-3.png",
             },
           ].map((testimonial, index) => (
             <div key={index} className="flex flex-col space-y-2 rounded-lg border border-gray-800 p-6 bg-black/50">

@@ -13,10 +13,15 @@ export function Hero() {
 
   const textOptions = [
     { text: "eu Amor", emoji: "❤️" },
+    { text: "ua Amizade", emoji: "🤝" },
+    { text: "eu Familiar", emoji: "👨‍👩‍👧" },
+    { text: "eu Pet", emoji: "🐾" },
+    { text: "ua Pessoa Especial", emoji: "✨" },
+    { text: "eu Amigo", emoji: "🎭" },
+    { text: "eu Noivo", emoji: "🤵🏻‍♂️" },
+    { text: "ua Noiva", emoji: "👰🏼‍♀️" },
     { text: "ua Namorada", emoji: "👩🏻" },
     { text: "eu Namorado", emoji: "👱🏼‍♂️" },
-    { text: "ua Noiva", emoji: "👰🏼‍♀️" },
-    { text: "eu Noivo", emoji: "🤵🏻‍♂️" },
     { text: "ua Crush", emoji: "🔥" },
   ]
 
@@ -81,7 +86,8 @@ export function Hero() {
               </h1>
               <p className="max-w-[600px] text-gray-400 md:text-xl">
                 Crie uma página personalizada e receba seu QR Code para compartilhar. Adicione fotos, mensagens e um
-                contador dinâmico para tornar o presente ainda mais especial.
+                contador dinâmico para tornar o presente ainda mais especial para qualquer pessoa importante em sua
+                vida.
               </p>
             </div>
             <div className="flex justify-center sm:justify-start pt-4">
@@ -140,7 +146,7 @@ export function Hero() {
                       </svg>
                     ))}
                   </div>
-                  <span className="ml-2 text-sm text-gray-400">+ de 3500 casais felizes</span>
+                  <span className="ml-2 text-sm text-gray-400">+ de 3500 clientes felizes</span>
                 </div>
               </div>
             </div>

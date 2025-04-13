@@ -38,7 +38,7 @@ export default function PrivacidadePage() {
             <p>Utilizamos suas informações para:</p>
             <ul>
               <li>Processar pagamentos e enviar links personalizados.</li>
-              <li>Personalizar e criar páginas do website.</li>
+              <li>Personalizar e criar páginas para pessoas especiais em sua vida.</li>
               <li>Melhorar nossos serviços e suporte ao cliente.</li>
             </ul>
 

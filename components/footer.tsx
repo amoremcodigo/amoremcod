@@ -9,7 +9,9 @@ export function Footer() {
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
           <div className="flex flex-col space-y-4">
             <Logo />
-            <p className="text-sm text-gray-400">Eternize momentos especiais com páginas personalizadas para casais.</p>
+            <p className="text-sm text-gray-400">
+              Eternize momentos especiais com páginas personalizadas para pessoas importantes em sua vida.
+            </p>
             <div className="flex space-x-4">
               <Link href="#" className="text-gray-400 hover:text-primary">
                 <Facebook className="h-5 w-5" />

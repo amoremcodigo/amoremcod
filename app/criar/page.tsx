@@ -37,7 +37,7 @@ export default function CriarPagina() {
               Crie sua página <span className="gradient-text">personalizada</span>
             </h1>
             <p className="mt-4 text-center text-gray-400">
-              Preencha os dados abaixo para criar uma página especial para seu amor.
+              Preencha os dados abaixo para criar uma página especial para alguém importante em sua vida.
             </p>
           </div>
 
@@ -70,7 +70,7 @@ export default function CriarPagina() {
           {step === 1 && (
             <Card className="border-gray-800 bg-black/50">
               <CardHeader>
-                <CardTitle>Informações do Casal</CardTitle>
+                <CardTitle>Informações</CardTitle>
                 <CardDescription>Preencha os dados básicos para personalizar sua página.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -80,12 +80,12 @@ export default function CriarPagina() {
                   <p className="text-xs text-gray-400">Usaremos para enviar o QR Code da sua página.</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="names">Nome do Casal</Label>
-                  <Input id="names" placeholder="Ex: Maria & João" />
+                  <Label htmlFor="names">Nome da Relação</Label>
+                  <Input id="names" placeholder="Ex: Maria & João, Família Silva, Eu & Rex..." />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="date">Data de Início</Label>
+                    <Label htmlFor="date">Data de Início da Relação</Label>
                     <Input id="date" type="date" className="bg-transparent" placeholder="dd/mm/aaaa" />
                   </div>
                   <div className="space-y-2">
@@ -97,7 +97,7 @@ export default function CriarPagina() {
                   <Label htmlFor="message">Mensagem Especial</Label>
                   <Textarea
                     id="message"
-                    placeholder="Escreva uma mensagem especial para seu amor..."
+                    placeholder="Escreva uma mensagem especial para essa pessoa..."
                     className="min-h-[120px]"
                   />
                 </div>

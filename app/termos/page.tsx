@@ -23,8 +23,8 @@ export default function TermosPage() {
             <h2>1. Introdução</h2>
             <p>
               Bem-vindo ao Amor em Código, uma plataforma criada para ajudar você a eternizar momentos especiais por
-              meio de páginas personalizadas. Nosso objetivo é oferecer uma experiência única e significativa para
-              nossos usuários.
+              meio de páginas personalizadas para qualquer pessoa importante em sua vida. Nosso objetivo é oferecer uma
+              experiência única e significativa para nossos usuários.
             </p>
 
             <h2>2. Idiomas Suportados</h2>
@@ -75,7 +75,7 @@ export default function TermosPage() {
             <h2>7. Responsabilidade do Usuário</h2>
             <p>
               O usuário é responsável por manter seguras as informações recebidas (link e QR Code) e garantir que as
-              mensagens e imagens enviadas não violem direitos de terceiros.
+              mensagens e imagens enviadas não violem direitos de terceiros ou contenham conteúdo inadequado.
             </p>
 
             <h2>8. Direitos Autorais e Propriedade Intelectual</h2>

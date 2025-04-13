@@ -300,7 +300,7 @@ export function Formulario() {
               Crie sua <span className="gradient-text">página personalizada</span>
             </h2>
             <p className="mx-auto max-w-[700px] text-gray-400 md:text-xl">
-              Preencha os dados abaixo para criar uma página especial para seu amor.
+              Preencha os dados abaixo para criar uma página especial para alguém importante em sua vida.
             </p>
           </div>
         </div>
@@ -309,7 +309,7 @@ export function Formulario() {
           <Card className="border-gray-800 bg-black/50">
             <form onSubmit={handleSubmit}>
               <CardHeader>
-                <CardTitle>Informações do Casal</CardTitle>
+                <CardTitle>Informações</CardTitle>
                 <CardDescription>Preencha os dados básicos para personalizar sua página.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -326,10 +326,10 @@ export function Formulario() {
                   <p className="text-xs text-gray-400">Usaremos para enviar o QR Code da sua página.</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="coupleNames">Nome do Casal</Label>
+                  <Label htmlFor="coupleNames">Nomes</Label>
                   <Input
                     id="coupleNames"
-                    placeholder="Ex: Maria & João"
+                    placeholder="Ex: Maria & João, Família Silva, Eu & Rex..."
                     value={formData.coupleNames}
                     onChange={handleChange}
                     required
@@ -387,20 +387,22 @@ export function Formulario() {
                     value={formData.youtubeLink}
                     onChange={handleChange}
                   />
-                  <a
-                    href="https://www.youtube.com.br"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-1 text-sm text-primary hover:text-primary/80 flex items-center gap-1 font-medium whitespace-nowrap"
-                  >
-                    <Music className="h-4 w-4" />
-                    Ir para o YouTube
-                  </a>
+                  <div className="mt-1 text-sm flex items-center gap-1 whitespace-nowrap">
+                    <Music className="h-4 w-4 text-gray-400" />
+                    <a
+                      href="https://www.youtube.com.br"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:text-primary/80 font-medium"
+                    >
+                      Ir para o YouTube
+                    </a>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label>
-                    Fotos do Casal <span className="text-xs text-gray-400 ml-2">(máximo 5 fotos)</span>
+                    Fotos <span className="text-xs text-gray-400 ml-2">(máximo 5 fotos)</span>
                   </Label>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">

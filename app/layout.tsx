@@ -8,8 +8,9 @@ import { FormProvider } from "@/context/form-context"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Amor em Código | Presentes digitais para casais",
-  description: "Crie páginas personalizadas para presentear seu amor com mensagens, fotos e lembranças especiais.",
+  title: "Amor em Código | Presentes digitais personalizados",
+  description:
+    "Crie páginas personalizadas para presentear pessoas especiais com mensagens, fotos e lembranças únicas.",
   icons: {
     icon: [
       { url: "/favicon.ico" },

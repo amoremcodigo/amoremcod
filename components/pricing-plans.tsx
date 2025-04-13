@@ -27,7 +27,7 @@ export function PricingPlans() {
               Escolha o plano <span className="gradient-text">ideal</span>
             </h2>
             <p className="mx-auto max-w-[700px] text-gray-400 md:text-xl">
-              Temos opções para todos os casais, escolha a que melhor se adapta às suas necessidades.
+              Temos opções para todos os tipos de relações, escolha a que melhor se adapta às suas necessidades.
             </p>
           </div>
         </div>

@@ -8,7 +8,7 @@ import { FallingHearts } from "@/components/falling-hearts"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
-import CustomQRCode from "@/components/custom-qr-code"
+import { CustomQRCode } from "@/components/custom-qr-code" // Corrigido para usar importação nomeada
 
 // Função para extrair o ID do vídeo do YouTube
 const extractYoutubeVideoId = (url: string): string | null => {

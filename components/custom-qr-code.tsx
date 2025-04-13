@@ -10,7 +10,8 @@ interface CustomQRCodeProps {
   className?: string
 }
 
-export default function CustomQRCode({ url, size = 300, logoSize = 60, className = "" }: CustomQRCodeProps) {
+// Usando exportação nomeada em vez de exportação padrão
+export function CustomQRCode({ url, size = 300, logoSize = 60, className = "" }: CustomQRCodeProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 

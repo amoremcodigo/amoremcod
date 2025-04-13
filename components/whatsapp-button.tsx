@@ -16,7 +16,7 @@ export function WhatsappButton() {
 
   const handleWhatsAppClick = () => {
     // Número de telefone para o WhatsApp (número atualizado)
-    const phoneNumber = "5561999695474" // Formato: código do país + DDD + número
+    const phoneNumber = "5561984452076" // Formato: código do país + DDD + número
     const message = "Olá! Gostaria de saber mais sobre o Amor em Código."
 
     // Criar URL do WhatsApp com o número e mensagem pré-definida

@@ -29,7 +29,7 @@ export function Testimonials() {
             },
             {
               name: "Fernanda & Toby",
-              text: "Fiz uma homenagem para meu cachorro! A possibilidade de adicionar nossa música favorita do YouTube tornou a experiência ainda mais divertida.",
+              text: "Fiz uma homenagem para meu cachorro! kkkkk mt bom recomendo.",
               image: "/fernanda-toby.jpeg",
             },
             {

@@ -1,6 +1,6 @@
 import { Logo } from "@/components/logo"
 import Link from "next/link"
-import { Facebook, Instagram, Twitter, Heart } from "lucide-react"
+import { Facebook, Instagram, Heart } from "lucide-react"
 
 export function Footer() {
   return (
@@ -17,13 +17,14 @@ export function Footer() {
                 <Facebook className="h-5 w-5" />
                 <span className="sr-only">Facebook</span>
               </Link>
-              <Link href="#" className="text-gray-400 hover:text-primary">
+              <Link
+                href="https://www.instagram.com/amoremcodigooficial"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-primary"
+              >
                 <Instagram className="h-5 w-5" />
                 <span className="sr-only">Instagram</span>
-              </Link>
-              <Link href="#" className="text-gray-400 hover:text-primary">
-                <Twitter className="h-5 w-5" />
-                <span className="sr-only">Twitter</span>
               </Link>
             </div>
           </div>

@@ -8,6 +8,8 @@ import { FallingHearts } from "@/components/falling-hearts"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
+import { CustomQRCode } from "@/components/custom-qr-code" // Import our new component
+import QRCode from "qrcode"
 
 // Função para extrair o ID do vídeo do YouTube
 const extractYoutubeVideoId = (url: string): string | null => {
@@ -190,34 +192,10 @@ export default function PaginaDetalhes() {
   // Compartilhar via WhatsApp
   const shareViaWhatsApp = async () => {
     try {
-      // Gerar URL do QR Code com alta qualidade
-      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(window.location.href)}&margin=0&qzone=0&format=png&bgcolor=00000000`
-
-      // Verificar se a API Web Share está disponível
-      if (navigator.share) {
-        // Buscar a imagem e convertê-la para blob
-        const response = await fetch(qrCodeUrl)
-        const blob = await response.blob()
-
-        // Criar um arquivo a partir do blob
-        const file = new File([blob], "qrcode.png", { type: "image/png" })
-
-        // Compartilhar o arquivo
-        await navigator.share({
-          title: `${pageData.coupleNames} - Amor em Código`,
-          text: "Escaneie este QR Code para acessar nossa página personalizada",
-          files: [file],
-        })
-      } else {
-        // Fallback para dispositivos que não suportam Web Share API
-        const text = `${pageData.coupleNames} - Escaneie este QR Code para acessar nossa página personalizada: ${window.location.href}`
-        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank")
-      }
-    } catch (error) {
-      console.error("Erro ao compartilhar via WhatsApp:", error)
-      // Fallback em caso de erro
       const text = `${pageData.coupleNames} - Acesse nossa página personalizada: ${window.location.href}`
       window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank")
+    } catch (error) {
+      console.error("Erro ao compartilhar via WhatsApp:", error)
     }
   }
 
@@ -237,30 +215,107 @@ export default function PaginaDetalhes() {
           </head>
           <body>
             <h2>${pageData?.coupleNames || "Amor em Código"}</h2>
-            <div>
-              <img src="https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(window.location.href)}&margin=0&qzone=0&format=png&bgcolor=00000000" alt="QR Code" />
-            </div>
+            <div id="qrcode" style="margin: 0 auto; width: 300px; height: 300px;"></div>
             <p>Escaneie este QR Code para acessar nossa página personalizada</p>
+            <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+            <script>
+              // Create QR code with logo
+              const canvas = document.createElement('canvas');
+              QRCode.toCanvas(canvas, "${window.location.href}", {
+                errorCorrectionLevel: 'H',
+                margin: 1,
+                width: 300,
+                color: {
+                  dark: "#000000",
+                  light: "#FFFFFF"
+                }
+              }).then(() => {
+                document.getElementById('qrcode').appendChild(canvas);
+                
+                // Add logo
+                setTimeout(() => {
+                  const ctx = canvas.getContext('2d');
+                  const centerPosition = 150;
+                  const logoSize = 60;
+                  
+                  // Clear center
+                  ctx.fillStyle = "#FFFFFF";
+                  ctx.fillRect(centerPosition - logoSize/2 - 5, centerPosition - logoSize/2 - 5, logoSize + 10, logoSize + 10);
+                  
+                  // Add logo
+                  const logo = new Image();
+                  logo.crossOrigin = "anonymous";
+                  logo.src = "${window.location.origin}/logo-icon.png";
+                  logo.onload = function() {
+                    ctx.drawImage(logo, centerPosition - logoSize/2, centerPosition - logoSize/2, logoSize, logoSize);
+                    setTimeout(() => { window.print(); }, 200);
+                  };
+                }, 100);
+              });
+            </script>
           </body>
         </html>
       `)
       printWindow.document.close()
-      printWindow.focus()
-      setTimeout(() => {
-        printWindow.print()
-      }, 500)
     }
   }
 
   // Baixar QR Code
   const downloadQrCode = () => {
-    const link = document.createElement("a")
-    // Usar parâmetros para melhorar a qualidade
-    link.href = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(window.location.href)}&margin=0&qzone=0&format=png&bgcolor=00000000`
-    link.download = `qrcode-${pageData?.coupleNames || "amor-em-codigo"}.png`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    // Create a temporary canvas to generate the QR code with logo
+    const canvas = document.createElement("canvas")
+    const size = 500
+    const logoSize = 100
+
+    canvas.width = size
+    canvas.height = size
+
+    // Generate QR code on canvas
+    QRCode.toCanvas(canvas, window.location.href, {
+      errorCorrectionLevel: "H",
+      margin: 1,
+      width: size,
+      color: {
+        dark: "#000000",
+        light: "#FFFFFF",
+      },
+    })
+      .then(() => {
+        // Get canvas context
+        const ctx = canvas.getContext("2d")
+        if (ctx) {
+          // Clear the center area for the logo
+          const centerPosition = size / 2
+          ctx.fillStyle = "#FFFFFF"
+          ctx.fillRect(
+            centerPosition - logoSize / 2 - 5,
+            centerPosition - logoSize / 2 - 5,
+            logoSize + 10,
+            logoSize + 10,
+          )
+
+          // Add logo
+          const logo = new Image()
+          logo.crossOrigin = "anonymous"
+          logo.src = `${window.location.origin}/logo-icon.png`
+          logo.onload = () => {
+            ctx.drawImage(logo, centerPosition - logoSize / 2, centerPosition - logoSize / 2, logoSize, logoSize)
+
+            // Convert to data URL and download
+            const dataUrl = canvas.toDataURL("image/png")
+            const link = document.createElement("a")
+            link.href = dataUrl
+            link.download = `qrcode-${pageData?.coupleNames || "amor-em-codigo"}.png`
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+          }
+        }
+      })
+      .catch((err) => {
+        console.error("Error generating QR code for download:", err)
+        toast.error("Erro ao gerar QR Code para download")
+      })
   }
 
   // Navegar para a foto anterior
@@ -616,10 +671,15 @@ export default function PaginaDetalhes() {
                 </Button>
               </div>
               <div className="mt-2 text-center">
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(window.location.href)}&margin=0&qzone=0&format=png&bgcolor=00000000`}
-                  alt="QR Code"
-                  className="inline-block max-w-[180px]"
+                {/* Use our custom QR code component with logo */}
+                <CustomQRCode
+                  url={window.location.href}
+                  size={180}
+                  logoSize={40}
+                  bgColor="#FFFFFF"
+                  fgColor="#000000"
+                  logoUrl="/logo-icon.png"
+                  className="inline-block"
                 />
               </div>
             </div>

@@ -7,6 +7,7 @@ import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { PromoBar } from "@/components/promo-bar"
 import { Download, Share2 } from "lucide-react"
+import { CustomQRCode } from "@/components/custom-qr-code"
 
 export default function QRCodePage() {
   const [copied, setCopied] = useState(false)
@@ -40,9 +41,14 @@ export default function QRCodePage() {
             </CardHeader>
             <CardContent className="flex flex-col items-center">
               <div className="h-64 w-64 bg-white p-4 rounded-lg flex items-center justify-center mb-6">
-                <div className="h-56 w-56 bg-gray-200 rounded-lg flex items-center justify-center">
-                  <p className="text-black text-sm text-center">QR Code da Página</p>
-                </div>
+                <CustomQRCode
+                  url="https://amoremcodigo.com.br/pagina/exemplo123"
+                  size={240}
+                  logoSize={50}
+                  bgColor="#FFFFFF"
+                  fgColor="#000000"
+                  logoUrl="/logo-icon.png"
+                />
               </div>
 
               <div className="w-full p-3 bg-gray-800 rounded-lg flex items-center justify-between mb-4">

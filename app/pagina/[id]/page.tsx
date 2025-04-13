@@ -193,7 +193,7 @@ export default function PaginaDetalhes() {
   const shareViaWhatsApp = async () => {
     try {
       const text = `${pageData.coupleNames} - Acesse nossa página personalizada: ${window.location.href}`
-      window.open(`https://wa.me/?text=${encodeURIComponent(text)}, "_blank")
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank")
     } catch (error) {
       console.error("Erro ao compartilhar via WhatsApp:", error)
     }
@@ -207,7 +207,7 @@ export default function PaginaDetalhes() {
       <html>
         <head>
           <title>QR Code - ${pageData?.coupleNames || "Amor em Código"}</title>
-          <style>\
+          <style>
             body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
             .qr-container { position: relative; width: 300px; height: 300px; margin: 20px auto; }
             .qr-code { width: 100%; height: 100%; }
@@ -227,10 +227,10 @@ export default function PaginaDetalhes() {
           </script>
         </body>
       </html>
-    `;
-    printWindow.document.write(html);
-    printWindow.document.close()
-  }
+    `
+      printWindow.document.write(html)
+      printWindow.document.close()
+    }
   }
 
   // Baixar QR Code
@@ -397,9 +397,8 @@ export default function PaginaDetalhes() {
 
   // Extrair ID do vídeo do YouTube
   const youtubeVideoId = extractYoutubeVideoId(pageData.youtubeLink)
-  const youtubeEmbedUrl = pageData.youtubeLink?.includes("embed")
-    ? pageData.youtubeLink
-    : pageData.youtubeLink?.replace("watch?v=", "embed/")
+  const youtubeEmbedUrl = youtubeVideoId ? `https://www.youtube.com/embed/${youtubeVideoId}` : null
+  const youtubeWatchUrl = youtubeVideoId ? `https://www.youtube.com/watch?v=${youtubeVideoId}` : null
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black to-gray-900 flex items-center justify-center py-10">
@@ -621,10 +620,10 @@ export default function PaginaDetalhes() {
             </div>
           )}
 
-          {youtubeEmbedUrl && (
-            <div className="mt-6 flex justify-center">
+          {youtubeWatchUrl && (
+            <div className="px-6 mb-6 flex justify-center">
               <a
-                href={youtubeEmbedUrl.replace("embed/", "watch?v=")}
+                href={youtubeWatchUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors text-white"
@@ -661,7 +660,7 @@ export default function PaginaDetalhes() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex items-center gap-1.5 text-xs"
+                  className="flex flex-col items-center justify-center h-16 text-xs bg-gradient-to-br from-green-900/30 to-green-800/30 hover:from-green-800/50 hover:to-green-700/50 border-green-700/50 text-white"
                   onClick={handleShareWhatsApp}
                 >
                   <svg
@@ -672,12 +671,12 @@ export default function PaginaDetalhes() {
                     fill="#25D366"
                     stroke="currentColor"
                     strokeWidth="0"
-                    className="size-4"
+                    className="h-5 w-5 mb-1"
                   >
                     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
                     <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 22.5c-5.799 0-10.5-4.701-10.5-10.5S6.201 1.5 12 1.5 22.5 6.201 22.5 12 17.799 22.5 12 22.5z" />
                   </svg>
-                  <span>Compartilhar</span>
+                  <span>WhatsApp</span>
                 </Button>
               </div>
               <div className="mt-2 text-center">

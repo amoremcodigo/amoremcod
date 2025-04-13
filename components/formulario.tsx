@@ -458,7 +458,7 @@ export function Formulario() {
                   </div>
                 </div>
               </CardContent>
-              <CardFooter>
+              <CardFooter className="flex flex-col gap-4">
                 <Button type="submit" className="w-full gradient-bg">
                   Continuar para Escolher o Plano
                 </Button>

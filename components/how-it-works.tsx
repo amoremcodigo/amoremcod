@@ -1,4 +1,5 @@
-import { Heart, QrCode, ImageIcon, Clock } from "lucide-react"
+import { Heart, QrCode, ImageIcon, Clock, ExternalLink } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 export function HowItWorks() {
   return (
@@ -39,6 +40,20 @@ export function HowItWorks() {
               <h3 className="text-xl font-bold">{item.title}</h3>
             </div>
           ))}
+        </div>
+
+        {/* Botão de exemplo após os boxes */}
+        <div className="flex justify-center mt-10">
+          <a
+            href="https://www.amoremcodigo.com.br/pagina/u2fvrk?d=N4IgdiBcIEoIYDM4FMA2ACAZOgMgVwGMBLOMOEAGhABMoQAmABgEYA2AWkYBZ3mBmSiAAudQQFs6+YqTgV0BONTjoxAezHIwQ1ejg6AzsjzpUinUIBOpfQlUWxynQXV4x6ZG6Jhk+gI55kAgBbgDc0ADp0AGUjdH07CyJ49CJUVy9lDTx9dGoSfTlkOLxlAAcLH00Ac+U4BVQHFVjnKyqAY9VIgBUixTEiC1U5ISKK-VLkIm13OTqiRuoioTxqIfQR3TVIgHkAI0SAczN0Urs45Asm41OLacMDvEH3K5U4IjPyyq1kSIBhdXQIVUBAAV8MVjokAAvc5aIirbq9NRyQxiT6RQDIBOh4Eg0IIAJ50AAWQiEpX0kAA9JT8ao8MtwrtkJTkAApbasegAdQA1gBxKEEACqAH59EQALxQgBCADEALIAEQA+gBNGDsAAe0oAWshlQBFKKCUpQADaIBJZIp1KI4SIu124WclLA8q5OpgAFZmAArSmLehegCcjAA7HxGF6+NRwr7SgdBFbyVTKXaHU6XRY+ZqxAAJVhQsSU1gEAAcrGDZa9CGYyHoP3jiaoyZtaftjudqhp0oA0ox8dQxPiS9RWKxdgRObtg0g4wmk6SU7aO5nu7t5SwQowhL5KUGkGGw8HHbtqPR583LUu2+nOy6cIqABqygjUADusspcGDYYnCDLKsQy4S8QAAXSoUpUDoT5+lcEAAF8gA"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Button size="lg" className="gradient-bg flex items-center gap-2">
+              <ExternalLink className="h-5 w-5" />
+              Ver Exemplo Pronto
+            </Button>
+          </a>
         </div>
       </div>
     </section>

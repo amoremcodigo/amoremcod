@@ -16,7 +16,7 @@ export function CustomQRCode({ url, size = 300, logoSize = 60, className = "" }:
   const [error, setError] = useState<string | null>(null)
 
   // Usar uma abordagem mais simples com a API QR Code Generator
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(url)}&margin=1&qzone=1&format=png&bgcolor=FFFFFF&color=000000&ecc=H`
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(url.replace("http://", "https://"))}&margin=1&qzone=1&format=png&bgcolor=FFFFFF&color=000000&ecc=H`
 
   // Simular carregamento para dar tempo de carregar a imagem
   useEffect(() => {

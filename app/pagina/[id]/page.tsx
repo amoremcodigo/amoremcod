@@ -7,6 +7,7 @@ import { Music, Download, Printer, Edit, Save, X, ChevronLeft, ChevronRight, QrC
 import { FallingHearts } from "@/components/falling-hearts"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+// Adicione a importação do toast se ainda não estiver presente
 import { toast } from "sonner"
 import { CustomQRCode } from "@/components/custom-qr-code" // Corrigido para usar importação nomeada
 
@@ -202,31 +203,33 @@ export default function PaginaDetalhes() {
   const printQrCode = () => {
     const printWindow = window.open("", "_blank")
     if (printWindow) {
+      const secureUrl = window.location.href.replace("http://", "https://")
       const html = `
-      <html>
-        <head>
-          <title>QR Code - ${pageData?.coupleNames || "Amor em Código"}</title>
-          <style>
-            body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-            .qr-container { position: relative; width: 300px; height: 300px; margin: 20px auto; }
-            .qr-code { width: 100%; height: 100%; }
-            .logo { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 60px; height: 60px; }
-            h2 { color: #9333EA; }
-          </style>
-        </head>
-        <body>
-          <h2>${pageData?.coupleNames || "Amor em Código"}</h2>
-          <div class="qr-container">
-            <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(window.location.href)}&margin=1&qzone=1&format=png&bgcolor=FFFFFF&color=000000&ecc=H" alt="QR Code" />
-            <img class="logo" src="${window.location.origin}/qr-heart-logo.svg" alt="Logo" />
-          </div>
-          <p>Escaneie este QR Code para acessar nossa página personalizada</p>
-          <script>
-            setTimeout(() => { window.print(); }, 500);
-          </script>
-        </body>
-      </html>
-    `
+    <html>
+      <head>
+        <title>QR Code - ${pageData?.coupleNames || "Amor em Código"}</title>
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: 'unsafe-inline'">
+        <style>
+          body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+          .qr-container { position: relative; width: 300px; height: 300px; margin: 20px auto; }
+          .qr-code { width: 100%; height: 100%; }
+          .logo { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 60px; height: 60px; }
+          h2 { color: #9333EA; }
+        </style>
+      </head>
+      <body>
+        <h2>${pageData?.coupleNames || "Amor em Código"}</h2>
+        <div class="qr-container">
+          <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(secureUrl)}&margin=1&qzone=1&format=png&bgcolor=FFFFFF&color=000000&ecc=H" alt="QR Code" />
+          <img class="logo" src="${window.location.origin.replace("http://", "https://")}/qr-heart-logo.svg" alt="Logo" />
+        </div>
+        <p>Escaneie este QR Code para acessar nossa página personalizada</p>
+        <script>
+          setTimeout(() => { window.print(); }, 500);
+        </script>
+      </body>
+    </html>
+  `
       printWindow.document.write(html)
       printWindow.document.close()
     }
@@ -239,6 +242,7 @@ export default function PaginaDetalhes() {
     const ctx = canvas.getContext("2d")
     const size = 500
     const logoSize = 100
+    const secureUrl = window.location.href.replace("http://", "https://")
 
     if (!ctx) {
       toast.error("Seu navegador não suporta esta funcionalidade")
@@ -251,7 +255,7 @@ export default function PaginaDetalhes() {
     // Carregar o QR Code
     const qrImg = new Image()
     qrImg.crossOrigin = "anonymous"
-    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(window.location.href)}&margin=1&qzone=1&format=png&bgcolor=FFFFFF&color=000000&ecc=H`
+    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(secureUrl)}&margin=1&qzone=1&format=png&bgcolor=FFFFFF&color=000000&ecc=H`
 
     qrImg.onload = () => {
       // Desenhar o QR Code
@@ -260,7 +264,7 @@ export default function PaginaDetalhes() {
       // Carregar e desenhar o logo
       const logoImg = new Image()
       logoImg.crossOrigin = "anonymous"
-      logoImg.src = `${window.location.origin}/qr-heart-logo.svg`
+      logoImg.src = `${window.location.origin.replace("http://", "https://")}/qr-heart-logo.svg`
 
       logoImg.onload = () => {
         // Desenhar o logo no centro
@@ -364,12 +368,96 @@ export default function PaginaDetalhes() {
   }
 
   // Localizar a função handleShareWhatsApp e atualizar a mensagem
-  const handleShareWhatsApp = () => {
-    // Mensagem simples com o link
-    const message = "Abre esse QR Code, prometo que vale a pena! 😉🎁💫"
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + " " + window.location.href)}`
-    window.open(whatsappUrl, "_blank")
+  const handleShareWhatsApp = async () => {
+    try {
+      // Garantir que estamos usando HTTPS para a URL do QR code
+      const currentUrl = window.location.href
+      const secureUrl = currentUrl.replace("http://", "https://")
+
+      // Gerar a imagem do QR code usando HTTPS
+      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(secureUrl)}&margin=1&qzone=1&format=png&bgcolor=FFFFFF&color=000000&ecc=H`
+
+      // Baixar a imagem do QR code
+      const response = await fetch(qrCodeUrl)
+      const blob = await response.blob()
+
+      // Criar um arquivo a partir do blob
+      const file = new File([blob], `qrcode-${pageData?.coupleNames || "amor-em-codigo"}.png`, { type: "image/png" })
+
+      // Verificar se o navegador suporta o compartilhamento de arquivos
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        // Usar a Web Share API para compartilhar a imagem
+        await navigator.share({
+          title: `QR Code - ${pageData?.coupleNames || "Amor em Código"}`,
+          text: "Abre esse QR Code, prometo que vale a pena! 😉🎁💫",
+          files: [file],
+        })
+      } else {
+        // Fallback para dispositivos que não suportam compartilhamento de arquivos
+        // Criar uma URL temporária para a imagem
+        const imageUrl = URL.createObjectURL(blob)
+
+        // Abrir uma nova janela com a imagem
+        const newWindow = window.open("", "_blank")
+        if (newWindow) {
+          newWindow.document.write(`
+          <html>
+            <head>
+              <title>QR Code - ${pageData?.coupleNames || "Amor em Código"}</title>
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob: 'unsafe-inline'">
+              <style>
+                body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+                img { max-width: 100%; height: auto; }
+                .instructions { margin-top: 20px; padding: 10px; background: #f5f5f5; border-radius: 5px; }
+              </style>
+            </head>
+            <body>
+              <h2>${pageData?.coupleNames || "Amor em Código"}</h2>
+              <img src="${imageUrl}" alt="QR Code" />
+              <div class="instructions">
+                <p>Para compartilhar esta imagem:</p>
+                <p>1. Pressione e segure a imagem</p>
+                <p>2. Selecione "Salvar imagem" ou "Compartilhar imagem"</p>
+                <p>3. Escolha WhatsApp ou outro aplicativo para compartilhar</p>
+              </div>
+            </body>
+          </html>
+        `)
+          newWindow.document.close()
+        } else {
+          // Se não conseguir abrir uma nova janela, usar o método tradicional
+          const whatsappUrl = `https://wa.me/?text=${encodeURIComponent("Abre esse QR Code, prometo que vale a pena! 😉🎁💫")}`
+          window.open(whatsappUrl, "_blank")
+          toast.info("Salve e compartilhe o QR Code separadamente para melhor experiência")
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao compartilhar QR Code:", error)
+      // Fallback para o método tradicional em caso de erro
+      const secureUrl = window.location.href.replace("http://", "https://")
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent("Abre esse QR Code, prometo que vale a pena! 😉🎁💫 " + secureUrl)}`
+      window.open(whatsappUrl, "_blank")
+    }
   }
+
+  useEffect(() => {
+    // Adicionar meta tags de segurança
+    const metaCSP = document.createElement("meta")
+    metaCSP.httpEquiv = "Content-Security-Policy"
+    metaCSP.content =
+      "default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data: blob:;"
+    document.head.appendChild(metaCSP)
+
+    // Forçar HTTPS
+    if (window.location.protocol === "http:" && window.location.hostname !== "localhost") {
+      window.location.href = window.location.href.replace("http://", "https://")
+    }
+
+    return () => {
+      document.head.removeChild(metaCSP)
+    }
+  }, [])
 
   if (loading) {
     return (

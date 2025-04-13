@@ -33,6 +33,14 @@ export default function RootLayout({
     <html lang="pt-BR" className="bg-black">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+        <meta
+          httpEquiv="Content-Security-Policy"
+          content="default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data: blob:;"
+        />
+        <meta httpEquiv="X-Content-Type-Options" content="nosniff" />
+        <meta httpEquiv="X-Frame-Options" content="SAMEORIGIN" />
+        <meta httpEquiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
+        <meta name="referrer" content="strict-origin-when-cross-origin" />
         <meta name="theme-color" content="#000000" />
         <style>
           {`

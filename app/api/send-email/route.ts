@@ -74,6 +74,10 @@ export async function POST(request: Request) {
           <div style="background-color: #f8f8f8; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
             <p>Olá,</p>
             <p>Sua página personalizada para <strong>${coupleNames}</strong> foi criada com sucesso!</p>
+            
+            ${
+              !isPending
+                ? `
             <p>Você pode acessar e compartilhar sua página através do link abaixo:</p>
             
             <div style="text-align: center; margin: 25px 0;">
@@ -82,6 +86,12 @@ export async function POST(request: Request) {
             
             <p>Ou copie e cole este link no navegador:</p>
             <p style="background-color: #eee; padding: 10px; border-radius: 5px; word-break: break-all; font-size: 14px;">${pageUrl}</p>
+            `
+                : `
+            <p>Assim que seu pagamento for confirmado, você receberá outro e-mail com o link para acessar sua página personalizada.</p>
+            <p>Isso geralmente ocorre em poucos minutos, mas pode levar até 24 horas em alguns casos.</p>
+            `
+            }
           </div>
           
           ${

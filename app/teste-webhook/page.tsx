@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -35,6 +35,12 @@ export default function TesteWebhookPage() {
   const [result, setResult] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [origin, setOrigin] = useState("")
+
+  // Set the origin only on the client side
+  useEffect(() => {
+    setOrigin(window.location.origin)
+  }, [])
 
   const updatePayload = (id: string, customerEmail: string, paymentStatus: string) => {
     try {
@@ -135,7 +141,7 @@ export default function TesteWebhookPage() {
 
   // Função para copiar a URL do webhook para o clipboard
   const copyWebhookUrl = () => {
-    const webhookUrl = `${window.location.origin}/api/webhook/kiwify`
+    const webhookUrl = `${origin}/api/webhook/kiwify`
     navigator.clipboard.writeText(webhookUrl)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
@@ -228,15 +234,17 @@ export default function TesteWebhookPage() {
                     />
                   </div>
 
-                  <div className="mt-4 p-3 bg-gray-800/50 rounded-lg">
-                    <div className="flex justify-between items-center">
-                      <Label className="text-xs text-gray-400">URL do Webhook (para configurar na Kiwify)</Label>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={copyWebhookUrl}>
-                        {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                      </Button>
+                  {origin && (
+                    <div className="mt-4 p-3 bg-gray-800/50 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <Label className="text-xs text-gray-400">URL do Webhook (para configurar na Kiwify)</Label>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={copyWebhookUrl}>
+                          {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-gray-300 mt-1 break-all">{origin}/api/webhook/kiwify</p>
                     </div>
-                    <p className="text-xs text-gray-300 mt-1 break-all">{window.location.origin}/api/webhook/kiwify</p>
-                  </div>
+                  )}
                 </CardContent>
                 <CardFooter>
                   <Button onClick={handleSubmitWebhook} className="w-full gradient-bg" disabled={isLoading}>
@@ -290,26 +298,28 @@ export default function TesteWebhookPage() {
                     </select>
                   </div>
 
-                  <div className="mt-4 p-3 bg-gray-800/50 rounded-lg">
-                    <div className="flex justify-between items-center">
-                      <Label className="text-xs text-gray-400">
-                        URL do Webhook Simples (para configurar na Kiwify)
-                      </Label>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={() => {
-                          navigator.clipboard.writeText(`${window.location.origin}/api/webhook/simples`)
-                          setCopied(true)
-                          setTimeout(() => setCopied(false), 2000)
-                        }}
-                      >
-                        {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                      </Button>
+                  {origin && (
+                    <div className="mt-4 p-3 bg-gray-800/50 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <Label className="text-xs text-gray-400">
+                          URL do Webhook Simples (para configurar na Kiwify)
+                        </Label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${origin}/api/webhook/simples`)
+                            setCopied(true)
+                            setTimeout(() => setCopied(false), 2000)
+                          }}
+                        >
+                          {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-gray-300 mt-1 break-all">{origin}/api/webhook/simples</p>
                     </div>
-                    <p className="text-xs text-gray-300 mt-1 break-all">{window.location.origin}/api/webhook/simples</p>
-                  </div>
+                  )}
                 </CardContent>
                 <CardFooter>
                   <Button onClick={handleSubmitSimples} className="w-full gradient-bg" disabled={isLoading}>

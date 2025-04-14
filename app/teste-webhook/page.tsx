@@ -11,21 +11,18 @@ import { Textarea } from "@/components/ui/textarea"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { PromoBar } from "@/components/promo-bar"
-import { Loader2, AlertTriangle } from "lucide-react"
+import { Loader2, Copy, Check } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function TesteWebhookPage() {
   const [pageId, setPageId] = useState("")
-  const [status, setStatus] = useState("approved")
+  const [status, setStatus] = useState("paid")
   const [payload, setPayload] = useState(
     JSON.stringify(
       {
-        data: {
-          order: {
-            reference: "",
-            status: "approved",
-          },
-        },
+        order_id: "dcf5fb8c-e611-4d1d-9b6a-abe89d39054c",
+        order_ref: "",
+        order_status: "paid",
         token: "qsdl3p7msh4",
       },
       null,
@@ -35,14 +32,14 @@ export default function TesteWebhookPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [result, setResult] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   const updatePayload = (id: string, paymentStatus: string) => {
     try {
       const data = JSON.parse(payload)
-      if (data.data && data.data.order) {
-        data.data.order.reference = id
-        data.data.order.status = paymentStatus
-      }
+      // Atualizar no formato real da Kiwify
+      data.order_ref = id
+      data.order_status = paymentStatus
       setPayload(JSON.stringify(data, null, 2))
     } catch (e) {
       console.error("Erro ao atualizar payload:", e)
@@ -66,8 +63,8 @@ export default function TesteWebhookPage() {
   }
 
   const handleSubmitWebhook = async () => {
-    if (!payload) {
-      setError("Por favor, forneça um payload válido")
+    if (!pageId) {
+      setError("Por favor, informe o ID da página")
       return
     }
 
@@ -76,15 +73,8 @@ export default function TesteWebhookPage() {
     setResult(null)
 
     try {
-      let payloadObj
-      try {
-        payloadObj = JSON.parse(payload)
-      } catch (e) {
-        throw new Error("Payload JSON inválido")
-      }
-
       // Adicionar o pageId como parâmetro de URL para garantir que funcione
-      const response = await fetch(`/api/webhook/kiwify?reference=${pageId}&status=${status}`, {
+      const response = await fetch(`/api/webhook/kiwify?reference=${pageId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -135,6 +125,14 @@ export default function TesteWebhookPage() {
     }
   }
 
+  // Função para copiar a URL do webhook para o clipboard
+  const copyWebhookUrl = () => {
+    const webhookUrl = `${window.location.origin}/api/webhook/kiwify?reference=${pageId}`
+    navigator.clipboard.writeText(webhookUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-black to-gray-900">
       <PromoBar />
@@ -151,13 +149,12 @@ export default function TesteWebhookPage() {
             </p>
           </div>
 
-          <div className="bg-amber-900/20 border border-amber-800/50 rounded-lg p-4 mb-8 flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+          <div className="bg-green-900/20 border border-green-800/50 rounded-lg p-4 mb-8 flex items-start gap-3">
+            <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
             <div>
-              <h3 className="font-medium text-amber-500 mb-1">Importante</h3>
-              <p className="text-sm text-amber-300/80">
-                Se o webhook normal não funcionar, use o webhook simples. O webhook simples aceita apenas o ID da página
-                e o status, sem qualquer verificação adicional.
+              <h3 className="font-medium text-green-500 mb-1">Formato Kiwify Detectado</h3>
+              <p className="text-sm text-green-300/80">
+                O webhook agora está configurado para o formato real da Kiwify com os campos order_ref e order_status.
               </p>
             </div>
           </div>
@@ -189,7 +186,8 @@ export default function TesteWebhookPage() {
                       onChange={handleStatusChange}
                       className="w-full rounded-md border border-gray-800 bg-black p-2"
                     >
-                      <option value="approved">Aprovado</option>
+                      <option value="paid">Pago (paid)</option>
+                      <option value="approved">Aprovado (approved)</option>
                       <option value="pending">Pendente</option>
                       <option value="refused">Recusado</option>
                       <option value="refunded">Reembolsado</option>
@@ -204,6 +202,20 @@ export default function TesteWebhookPage() {
                       className="min-h-[200px] font-mono text-xs"
                     />
                   </div>
+
+                  {pageId && (
+                    <div className="mt-4 p-3 bg-gray-800/50 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <Label className="text-xs text-gray-400">URL do Webhook (para configurar na Kiwify)</Label>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={copyWebhookUrl}>
+                          {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-gray-300 mt-1 break-all">
+                        {window.location.origin}/api/webhook/kiwify?reference={pageId}
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
                 <CardFooter>
                   <Button onClick={handleSubmitWebhook} className="w-full gradient-bg" disabled={isLoading}>
@@ -241,12 +253,40 @@ export default function TesteWebhookPage() {
                       onChange={handleStatusChange}
                       className="w-full rounded-md border border-gray-800 bg-black p-2"
                     >
-                      <option value="approved">Aprovado</option>
+                      <option value="paid">Pago (paid)</option>
+                      <option value="approved">Aprovado (approved)</option>
                       <option value="pending">Pendente</option>
                       <option value="refused">Recusado</option>
                       <option value="refunded">Reembolsado</option>
                     </select>
                   </div>
+
+                  {pageId && (
+                    <div className="mt-4 p-3 bg-gray-800/50 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <Label className="text-xs text-gray-400">
+                          URL do Webhook Simples (para configurar na Kiwify)
+                        </Label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => {
+                            navigator.clipboard.writeText(
+                              `${window.location.origin}/api/webhook/simples?pageId=${pageId}`,
+                            )
+                            setCopied(true)
+                            setTimeout(() => setCopied(false), 2000)
+                          }}
+                        >
+                          {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-gray-300 mt-1 break-all">
+                        {window.location.origin}/api/webhook/simples?pageId={pageId}
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
                 <CardFooter>
                   <Button onClick={handleSubmitSimples} className="w-full gradient-bg" disabled={isLoading}>

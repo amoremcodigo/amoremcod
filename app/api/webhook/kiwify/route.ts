@@ -1,216 +1,98 @@
 import { NextResponse } from "next/server"
 import { updatePaymentStatus, getPageById } from "@/lib/supabase"
-import { createClient } from "@supabase/supabase-js"
 
 export async function POST(request: Request) {
   console.log("Webhook da Kiwify recebido")
 
   try {
-    // Obter o corpo da requisição como texto para depuração
-    const bodyText = await request.text()
-    console.log("Corpo da requisição (texto):", bodyText)
+    // Obter o corpo da requisição
+    const webhookData = await request.json()
+    console.log("Dados do webhook:", JSON.stringify(webhookData, null, 2))
 
-    // Tentar analisar o JSON
-    let webhookData
-    try {
-      webhookData = JSON.parse(bodyText)
-      console.log("Dados do webhook (JSON):", JSON.stringify(webhookData, null, 2))
-    } catch (jsonError) {
-      console.error("Erro ao analisar JSON:", jsonError)
-      return NextResponse.json({ error: "Formato JSON inválido" }, { status: 400 })
+    // Verificar o token de autenticação
+    const authHeader = request.headers.get("authorization") || ""
+    const token = authHeader.replace("Bearer ", "")
+
+    // Verificar se o token é válido (pode estar no cabeçalho ou como parâmetro na URL)
+    const webhookToken = process.env.KIWIFY_WEBHOOK_TOKEN || "hbmn3ylowx3"
+    const isValidToken = token === webhookToken || webhookData.token === webhookToken
+
+    if (!isValidToken) {
+      console.error("Token de autenticação inválido")
+      return NextResponse.json({ error: "Token de autenticação inválido" }, { status: 401 })
     }
 
-    // Verificar se temos algum dado
-    if (!webhookData) {
-      console.error("Dados do webhook vazios")
-      return NextResponse.json({ error: "Dados do webhook vazios" }, { status: 400 })
-    }
-
-    // Extrair a referência e o status de diferentes formatos possíveis
+    // Extrair a referência (ID da página) e o status do pagamento
+    // A estrutura exata pode variar dependendo da configuração da Kiwify
     let reference = null
     let status = null
 
-    // Formato 1: { order: { order_status, order_ref } }
+    // Tentar extrair de diferentes formatos possíveis
     if (webhookData.order) {
-      status = webhookData.order.order_status
-      reference = webhookData.order.order_ref
-      console.log("Formato 1 detectado: { order: { order_status, order_ref } }")
-    }
-    // Formato 2: { data: { status, reference } }
-    else if (webhookData.data) {
-      status = webhookData.data.status
+      reference = webhookData.order.reference || webhookData.order.order_ref
+      status = webhookData.order.status || webhookData.order.order_status
+    } else if (webhookData.data) {
       reference = webhookData.data.reference
-      console.log("Formato 2 detectado: { data: { status, reference } }")
-    }
-    // Formato 3: { status, reference } diretamente no objeto raiz
-    else if (webhookData.status && webhookData.reference) {
-      status = webhookData.status
+      status = webhookData.data.status
+    } else if (webhookData.reference && webhookData.status) {
       reference = webhookData.reference
-      console.log("Formato 3 detectado: { status, reference } no objeto raiz")
-    }
-    // Formato 4: { transaction: { status, reference } }
-    else if (webhookData.transaction) {
-      status = webhookData.transaction.status
+      status = webhookData.status
+    } else if (webhookData.transaction) {
       reference = webhookData.transaction.reference
-      console.log("Formato 4 detectado: { transaction: { status, reference } }")
-    }
-    // Formato 5: { payment: { status }, order: { reference } }
-    else if (webhookData.payment && webhookData.payment.status && webhookData.order && webhookData.order.reference) {
-      status = webhookData.payment.status
-      reference = webhookData.order.reference
-      console.log("Formato 5 detectado: { payment: { status }, order: { reference } }")
-    }
-    // Formato 6: Tentar encontrar campos com nomes similares em qualquer nível
-    else {
-      // Função recursiva para procurar propriedades em um objeto
-      const findProperty = (obj: any, propNames: string[]): any => {
-        if (!obj || typeof obj !== "object") return null
-
-        // Verificar propriedades diretas
-        for (const propName of propNames) {
-          if (obj[propName] !== undefined) return obj[propName]
-        }
-
-        // Verificar propriedades aninhadas
-        for (const key in obj) {
-          if (typeof obj[key] === "object") {
-            const result = findProperty(obj[key], propNames)
-            if (result !== null) return result
-          }
-        }
-
-        return null
-      }
-
-      // Procurar status e referência em qualquer lugar do objeto
-      status = findProperty(webhookData, ["status", "order_status", "payment_status", "state"])
-      reference = findProperty(webhookData, ["reference", "order_ref", "ref", "id", "order_id", "transaction_id"])
-
-      console.log("Formato desconhecido, tentativa de extração: status =", status, "reference =", reference)
+      status = webhookData.transaction.status
     }
 
-    // Verificar se conseguimos extrair os dados necessários
     if (!reference) {
       console.error("Referência (ID da página) não encontrada nos dados do webhook")
-      return NextResponse.json(
-        {
-          error: "Referência (ID da página) não encontrada",
-          webhookData,
-        },
-        { status: 400 },
-      )
+      return NextResponse.json({ error: "Referência (ID da página) não encontrada" }, { status: 400 })
     }
 
-    if (!status) {
-      console.error("Status de pagamento não encontrado nos dados do webhook")
-      // Continuar mesmo sem status, usando "processing" como padrão
-      status = "processing"
-      console.log("Usando status padrão:", status)
-    }
+    console.log(`Processando pagamento para página ${reference} com status ${status}`)
 
-    console.log(`Referência extraída: "${reference}" (tipo: ${typeof reference})`)
+    // Atualizar o status de pagamento no Supabase
+    await updatePaymentStatus(reference, status)
 
-    // Normalizar a referência (remover espaços, converter para string)
-    const normalizedReference = String(reference).trim()
-    console.log(`Referência normalizada: "${normalizedReference}"`)
+    // Se o pagamento foi aprovado, enviar o email com a URL da página
+    if (status === "approved" || status === "paid") {
+      console.log(`Pagamento aprovado para página ${reference}, enviando email...`)
 
-    // Verificar se a página existe antes de tentar atualizar
-    try {
       // Buscar os dados da página no Supabase
-      const pageData = await getPageById(normalizedReference)
+      const pageData = await getPageById(reference)
 
       if (!pageData) {
-        console.error(`Página com ID "${normalizedReference}" não encontrada no Supabase`)
-
-        // Tentar listar todas as páginas para depuração
-        const supabase = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-          process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-        )
-
-        const { data: allPages, error: listError } = await supabase.from("pages").select("page_id").limit(10)
-
-        if (listError) {
-          console.error("Erro ao listar páginas:", listError)
-        } else {
-          console.log("Páginas disponíveis:", allPages)
-        }
-
-        // Continuar mesmo sem encontrar a página - apenas atualizar o status
-        console.log(`Atualizando status para referência "${normalizedReference}" mesmo sem encontrar a página`)
-
-        try {
-          await updatePaymentStatus(normalizedReference, status)
-          console.log(`Status atualizado para "${status}" na referência "${normalizedReference}"`)
-        } catch (updateError) {
-          console.error("Erro ao atualizar status:", updateError)
-        }
-
-        return NextResponse.json({
-          warning: `Página com ID "${normalizedReference}" não encontrada, mas o status foi atualizado`,
-          success: true,
-          processedData: {
-            reference: normalizedReference,
-            status,
-          },
-        })
+        console.error(`Página ${reference} não encontrada`)
+        return NextResponse.json({ error: "Página não encontrada" }, { status: 404 })
       }
 
-      // Se chegou aqui, a página foi encontrada
-      console.log(`Página encontrada: ${pageData.couple_names}`)
-      console.log(`Atualizando status de pagamento para "${status}"`)
-
-      // Atualizar o status de pagamento no Supabase
-      await updatePaymentStatus(normalizedReference, status)
-
-      // Se o pagamento foi aprovado, enviar o email com o QR Code
-      if (status === "approved" || status === "paid") {
-        console.log(`Pagamento aprovado para página ${normalizedReference}, enviando email...`)
-
-        // Enviar o email com o QR Code
-        const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || ""}/api/send-email`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: pageData.email,
-            pageUrl: pageData.page_url,
-            coupleNames: pageData.couple_names,
-            qrCodeUrl: pageData.qr_code_url,
-            isPending: false, // Pagamento confirmado
-          }),
-        })
-
-        if (!response.ok) {
-          console.error(`Erro ao enviar email: ${response.status} ${response.statusText}`)
-        } else {
-          console.log(`Email enviado com sucesso para ${pageData.email}`)
-        }
-      }
-
-      return NextResponse.json({
-        success: true,
-        message: "Webhook processado com sucesso",
-        processedData: {
-          reference: normalizedReference,
-          status,
-          coupleName: pageData.couple_names,
+      // Enviar o email com a URL da página
+      const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || ""}/api/send-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          email: pageData.email,
+          pageUrl: pageData.page_url,
+          coupleNames: pageData.couple_names,
+          qrCodeUrl: pageData.qr_code_url,
+          isPending: false, // Pagamento confirmado
+        }),
       })
-    } catch (pageError) {
-      console.error("Erro ao buscar página:", pageError)
 
-      return NextResponse.json(
-        {
-          error: "Erro ao buscar página",
-          details: pageError instanceof Error ? pageError.message : String(pageError),
-          reference: normalizedReference,
-          status,
-        },
-        { status: 500 },
-      )
+      if (!response.ok) {
+        console.error(`Erro ao enviar email: ${response.status} ${response.statusText}`)
+        return NextResponse.json({ error: "Erro ao enviar email" }, { status: 500 })
+      }
+
+      console.log(`Email enviado com sucesso para ${pageData.email}`)
     }
+
+    return NextResponse.json({
+      success: true,
+      message: "Webhook processado com sucesso",
+      reference,
+      status,
+    })
   } catch (error) {
     console.error("Erro ao processar webhook da Kiwify:", error)
     return NextResponse.json(

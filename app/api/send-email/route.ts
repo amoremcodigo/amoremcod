@@ -5,8 +5,15 @@ export async function POST(request: Request) {
     // Extrair dados do corpo da requisição
     const { email, pageUrl, coupleNames, qrCodeUrl, isPending = false } = await request.json()
 
+    console.log("Recebida solicitação para enviar email:")
+    console.log("Email:", email)
+    console.log("URL da página:", pageUrl)
+    console.log("Nomes:", coupleNames)
+    console.log("Status de pagamento:", isPending ? "Pendente" : "Confirmado")
+
     // Validar dados
     if (!email || !pageUrl || !coupleNames) {
+      console.error("Dados incompletos:", { email, pageUrl, coupleNames })
       return NextResponse.json({ error: "Email, pageUrl e coupleNames são obrigatórios" }, { status: 400 })
     }
 
@@ -82,6 +89,9 @@ export async function POST(request: Request) {
       `,
     }
 
+    console.log("Enviando email via MailerSend...")
+    console.log("API Key:", process.env.mailersend_API_KEY ? "Configurada" : "NÃO CONFIGURADA")
+
     // Enviar o email usando a API do MailerSend
     const response = await fetch("https://api.mailersend.com/v1/email", {
       method: "POST",
@@ -93,16 +103,21 @@ export async function POST(request: Request) {
     })
 
     const responseData = await response.json()
+    console.log("Resposta da API do MailerSend:", JSON.stringify(responseData, null, 2))
 
-    // Verificar se houve erro na API  do MailerSend
+    // Verificar se houve erro na API do MailerSend
     if (!response.ok) {
       console.error("Erro na API do MailerSend:", responseData)
       return NextResponse.json({ error: "Erro ao enviar email", details: responseData }, { status: response.status })
     }
 
+    console.log("Email enviado com sucesso!")
     return NextResponse.json({ success: true, data: responseData })
   } catch (error) {
     console.error("Erro ao enviar email:", error)
-    return NextResponse.json({ error: "Erro ao enviar email" }, { status: 500 })
+    return NextResponse.json(
+      { error: "Erro ao enviar email", details: error instanceof Error ? error.message : String(error) },
+      { status: 500 },
+    )
   }
 }

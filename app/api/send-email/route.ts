@@ -5,7 +5,7 @@ export async function POST(request: Request) {
     // Extrair dados do corpo da requisição
     const { email, pageUrl, coupleNames, qrCodeUrl, isPending = false } = await request.json()
 
-    console.log("Recebida solicitação para enviar email:")
+    console.log("=== ENVIANDO EMAIL ===")
     console.log("Email:", email)
     console.log("URL da página:", pageUrl)
     console.log("Nomes:", coupleNames)
@@ -32,6 +32,15 @@ export async function POST(request: Request) {
           <p style="margin: 0; font-weight: bold;">✅ Pagamento confirmado</p>
           <p style="margin-top: 10px;">Seu pagamento foi confirmado e sua página está pronta para ser compartilhada!</p>
         </div>`
+
+    // Verificar a chave API do MailerSend
+    const apiKey = process.env.mailersend_API_KEY
+    if (!apiKey) {
+      console.error("API Key do MailerSend não configurada")
+      return NextResponse.json({ error: "API Key do MailerSend não configurada" }, { status: 500 })
+    }
+
+    console.log("API Key do MailerSend:", apiKey.substring(0, 10) + "..." + apiKey.substring(apiKey.length - 5))
 
     // Configurar o corpo da requisição para a API do MailerSend
     const mailData = {
@@ -90,25 +99,45 @@ export async function POST(request: Request) {
     }
 
     console.log("Enviando email via MailerSend...")
-    console.log("API Key:", process.env.mailersend_API_KEY ? "Configurada" : "NÃO CONFIGURADA")
 
     // Enviar o email usando a API do MailerSend
     const response = await fetch("https://api.mailersend.com/v1/email", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.mailersend_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify(mailData),
     })
 
-    const responseData = await response.json()
-    console.log("Resposta da API do MailerSend:", JSON.stringify(responseData, null, 2))
+    // Obter a resposta completa para diagnóstico
+    const responseText = await response.text()
+    console.log("Resposta bruta da API do MailerSend:", responseText)
+
+    let responseData
+    try {
+      responseData = JSON.parse(responseText)
+      console.log("Resposta da API do MailerSend (JSON):", JSON.stringify(responseData, null, 2))
+    } catch (e) {
+      console.log("Resposta não é JSON válido")
+    }
 
     // Verificar se houve erro na API do MailerSend
     if (!response.ok) {
-      console.error("Erro na API do MailerSend:", responseData)
-      return NextResponse.json({ error: "Erro ao enviar email", details: responseData }, { status: response.status })
+      console.error("Erro na API do MailerSend:", responseData || responseText)
+
+      // SOLUÇÃO DE EMERGÊNCIA: Tentar enviar o email usando um método alternativo
+      // Aqui você poderia implementar um fallback para outro serviço de email
+
+      return NextResponse.json(
+        {
+          error: "Erro ao enviar email",
+          details: responseData || responseText,
+          status: response.status,
+          statusText: response.statusText,
+        },
+        { status: response.status },
+      )
     }
 
     console.log("Email enviado com sucesso!")

@@ -19,9 +19,11 @@ export default function TesteWebhookPage() {
   const [payload, setPayload] = useState(
     JSON.stringify(
       {
-        order: {
-          reference: "",
-          status: "approved",
+        data: {
+          order: {
+            reference: "",
+            status: "approved",
+          },
         },
         token: "hbmn3ylowx3",
       },
@@ -36,9 +38,9 @@ export default function TesteWebhookPage() {
   const updatePayload = (id: string, paymentStatus: string) => {
     try {
       const data = JSON.parse(payload)
-      if (data.order) {
-        data.order.reference = id
-        data.order.status = paymentStatus
+      if (data.data && data.data.order) {
+        data.data.order.reference = id
+        data.data.order.status = paymentStatus
       }
       setPayload(JSON.stringify(data, null, 2))
     } catch (e) {
@@ -80,7 +82,8 @@ export default function TesteWebhookPage() {
         throw new Error("Payload JSON inválido")
       }
 
-      const response = await fetch("/api/webhook/kiwify", {
+      // Adicionar o pageId como parâmetro de URL para garantir que funcione
+      const response = await fetch(`/api/webhook/kiwify?reference=${pageId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

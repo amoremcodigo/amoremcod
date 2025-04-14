@@ -11,18 +11,20 @@ import { Textarea } from "@/components/ui/textarea"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { PromoBar } from "@/components/promo-bar"
-import { Loader2, Copy, Check } from "lucide-react"
+import { Loader2, Copy, Check, AlertCircle } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function TesteWebhookPage() {
   const [pageId, setPageId] = useState("")
+  const [email, setEmail] = useState("")
   const [status, setStatus] = useState("paid")
   const [payload, setPayload] = useState(
     JSON.stringify(
       {
         order_id: "dcf5fb8c-e611-4d1d-9b6a-abe89d39054c",
-        order_ref: "",
+        order_ref: "ItTftqU",
         order_status: "paid",
+        customer_email: "",
         token: "qsdl3p7msh4",
       },
       null,
@@ -34,11 +36,12 @@ export default function TesteWebhookPage() {
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
-  const updatePayload = (id: string, paymentStatus: string) => {
+  const updatePayload = (id: string, customerEmail: string, paymentStatus: string) => {
     try {
       const data = JSON.parse(payload)
       // Atualizar no formato real da Kiwify
       data.order_ref = id
+      data.customer_email = customerEmail
       data.order_status = paymentStatus
       setPayload(JSON.stringify(data, null, 2))
     } catch (e) {
@@ -49,13 +52,19 @@ export default function TesteWebhookPage() {
   const handlePageIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const id = e.target.value
     setPageId(id)
-    updatePayload(id, status)
+    updatePayload(id, email, status)
+  }
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newEmail = e.target.value
+    setEmail(newEmail)
+    updatePayload(pageId, newEmail, status)
   }
 
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = e.target.value
     setStatus(newStatus)
-    updatePayload(pageId, newStatus)
+    updatePayload(pageId, email, newStatus)
   }
 
   const handlePayloadChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -63,8 +72,8 @@ export default function TesteWebhookPage() {
   }
 
   const handleSubmitWebhook = async () => {
-    if (!pageId) {
-      setError("Por favor, informe o ID da página")
+    if (!email) {
+      setError("Por favor, informe o e-mail do cliente")
       return
     }
 
@@ -73,8 +82,7 @@ export default function TesteWebhookPage() {
     setResult(null)
 
     try {
-      // Adicionar o pageId como parâmetro de URL para garantir que funcione
-      const response = await fetch(`/api/webhook/kiwify?reference=${pageId}`, {
+      const response = await fetch(`/api/webhook/kiwify`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -98,8 +106,8 @@ export default function TesteWebhookPage() {
   }
 
   const handleSubmitSimples = async () => {
-    if (!pageId) {
-      setError("Por favor, informe o ID da página")
+    if (!email) {
+      setError("Por favor, informe o e-mail do cliente")
       return
     }
 
@@ -109,7 +117,7 @@ export default function TesteWebhookPage() {
 
     try {
       // Usar o webhook simples
-      const response = await fetch(`/api/webhook/simples?pageId=${pageId}&status=${status}`)
+      const response = await fetch(`/api/webhook/simples?email=${encodeURIComponent(email)}&status=${status}`)
 
       const data = await response.json()
 
@@ -127,7 +135,7 @@ export default function TesteWebhookPage() {
 
   // Função para copiar a URL do webhook para o clipboard
   const copyWebhookUrl = () => {
-    const webhookUrl = `${window.location.origin}/api/webhook/kiwify?reference=${pageId}`
+    const webhookUrl = `${window.location.origin}/api/webhook/kiwify`
     navigator.clipboard.writeText(webhookUrl)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
@@ -149,12 +157,13 @@ export default function TesteWebhookPage() {
             </p>
           </div>
 
-          <div className="bg-green-900/20 border border-green-800/50 rounded-lg p-4 mb-8 flex items-start gap-3">
-            <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+          <div className="bg-amber-900/20 border border-amber-800/50 rounded-lg p-4 mb-8 flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
             <div>
-              <h3 className="font-medium text-green-500 mb-1">Formato Kiwify Detectado</h3>
-              <p className="text-sm text-green-300/80">
-                O webhook agora está configurado para o formato real da Kiwify com os campos order_ref e order_status.
+              <h3 className="font-medium text-amber-500 mb-1">Importante: Novo Método</h3>
+              <p className="text-sm text-amber-300/80">
+                Agora usamos o e-mail do cliente para identificar a página correta. O ID da página não é mais necessário
+                no webhook, pois o sistema encontrará a página automaticamente pelo e-mail.
               </p>
             </div>
           </div>
@@ -175,8 +184,24 @@ export default function TesteWebhookPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="pageId">ID da Página</Label>
+                    <Label htmlFor="email" className="text-amber-400">
+                      E-mail do Cliente (obrigatório)
+                    </Label>
+                    <Input
+                      id="email"
+                      value={email}
+                      onChange={handleEmailChange}
+                      placeholder="cliente@exemplo.com"
+                      className="border-amber-800/50 focus:border-amber-500"
+                    />
+                    <p className="text-xs text-amber-400">
+                      Este e-mail será usado para encontrar a página correta na Supabase.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pageId">ID da Venda (opcional)</Label>
                     <Input id="pageId" value={pageId} onChange={handlePageIdChange} placeholder="Ex: abc123" />
+                    <p className="text-xs text-gray-400">Este é apenas o ID da venda na Kiwify, não o ID da página.</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="status">Status do Pagamento</Label>
@@ -203,19 +228,15 @@ export default function TesteWebhookPage() {
                     />
                   </div>
 
-                  {pageId && (
-                    <div className="mt-4 p-3 bg-gray-800/50 rounded-lg">
-                      <div className="flex justify-between items-center">
-                        <Label className="text-xs text-gray-400">URL do Webhook (para configurar na Kiwify)</Label>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={copyWebhookUrl}>
-                          {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                        </Button>
-                      </div>
-                      <p className="text-xs text-gray-300 mt-1 break-all">
-                        {window.location.origin}/api/webhook/kiwify?reference={pageId}
-                      </p>
+                  <div className="mt-4 p-3 bg-gray-800/50 rounded-lg">
+                    <div className="flex justify-between items-center">
+                      <Label className="text-xs text-gray-400">URL do Webhook (para configurar na Kiwify)</Label>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={copyWebhookUrl}>
+                        {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                      </Button>
                     </div>
-                  )}
+                    <p className="text-xs text-gray-300 mt-1 break-all">{window.location.origin}/api/webhook/kiwify</p>
+                  </div>
                 </CardContent>
                 <CardFooter>
                   <Button onClick={handleSubmitWebhook} className="w-full gradient-bg" disabled={isLoading}>
@@ -237,13 +258,21 @@ export default function TesteWebhookPage() {
                 <CardHeader>
                   <CardTitle>Webhook Simples</CardTitle>
                   <CardDescription>
-                    Use esta opção simplificada que aceita apenas o ID da página e o status.
+                    Use esta opção simplificada que aceita apenas o e-mail do cliente e o status.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="pageIdSimples">ID da Página</Label>
-                    <Input id="pageIdSimples" value={pageId} onChange={handlePageIdChange} placeholder="Ex: abc123" />
+                    <Label htmlFor="emailSimples" className="text-amber-400">
+                      E-mail do Cliente (obrigatório)
+                    </Label>
+                    <Input
+                      id="emailSimples"
+                      value={email}
+                      onChange={handleEmailChange}
+                      placeholder="cliente@exemplo.com"
+                      className="border-amber-800/50 focus:border-amber-500"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="statusSimples">Status do Pagamento</Label>
@@ -261,32 +290,26 @@ export default function TesteWebhookPage() {
                     </select>
                   </div>
 
-                  {pageId && (
-                    <div className="mt-4 p-3 bg-gray-800/50 rounded-lg">
-                      <div className="flex justify-between items-center">
-                        <Label className="text-xs text-gray-400">
-                          URL do Webhook Simples (para configurar na Kiwify)
-                        </Label>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                          onClick={() => {
-                            navigator.clipboard.writeText(
-                              `${window.location.origin}/api/webhook/simples?pageId=${pageId}`,
-                            )
-                            setCopied(true)
-                            setTimeout(() => setCopied(false), 2000)
-                          }}
-                        >
-                          {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                        </Button>
-                      </div>
-                      <p className="text-xs text-gray-300 mt-1 break-all">
-                        {window.location.origin}/api/webhook/simples?pageId={pageId}
-                      </p>
+                  <div className="mt-4 p-3 bg-gray-800/50 rounded-lg">
+                    <div className="flex justify-between items-center">
+                      <Label className="text-xs text-gray-400">
+                        URL do Webhook Simples (para configurar na Kiwify)
+                      </Label>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/api/webhook/simples`)
+                          setCopied(true)
+                          setTimeout(() => setCopied(false), 2000)
+                        }}
+                      >
+                        {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                      </Button>
                     </div>
-                  )}
+                    <p className="text-xs text-gray-300 mt-1 break-all">{window.location.origin}/api/webhook/simples</p>
+                  </div>
                 </CardContent>
                 <CardFooter>
                   <Button onClick={handleSubmitSimples} className="w-full gradient-bg" disabled={isLoading}>

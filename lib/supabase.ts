@@ -446,3 +446,70 @@ export async function createTestPage() {
     return { success: false, error: error instanceof Error ? error.message : String(error) }
   }
 }
+
+// Função para buscar páginas pelo e-mail do cliente
+export async function getPagesByEmail(email: string, limit = 5) {
+  try {
+    console.log(`Buscando páginas para o e-mail: "${email}"`)
+
+    // Normalizar o e-mail (trim e lowercase)
+    const normalizedEmail = email.trim().toLowerCase()
+
+    // Tentar primeiro com o cliente admin (se disponível)
+    if (supabaseAdmin !== supabase) {
+      console.log("Usando cliente admin para buscar páginas por e-mail")
+      const { data, error } = await supabaseAdmin
+        .from("pages")
+        .select("*")
+        .eq("email", normalizedEmail)
+        .order("created_at", { ascending: false })
+        .limit(limit)
+
+      if (error) {
+        console.error("Erro ao buscar páginas por e-mail com cliente admin:", error)
+        console.log("Tentando com cliente normal...")
+
+        // Se falhar com admin, tentar com cliente normal
+        const normalResult = await supabase
+          .from("pages")
+          .select("*")
+          .eq("email", normalizedEmail)
+          .order("created_at", { ascending: false })
+          .limit(limit)
+
+        if (normalResult.error) {
+          console.error("Erro ao buscar páginas por e-mail com cliente normal:", normalResult.error)
+          return null
+        }
+
+        console.log(
+          `${normalResult.data.length} páginas encontradas para o e-mail ${normalizedEmail} com cliente normal`,
+        )
+        return normalResult.data
+      }
+
+      console.log(`${data.length} páginas encontradas para o e-mail ${normalizedEmail} com cliente admin`)
+      return data
+    } else {
+      // Se não temos cliente admin, usar o cliente normal
+      console.log("Usando cliente normal para buscar páginas por e-mail")
+      const { data, error } = await supabase
+        .from("pages")
+        .select("*")
+        .eq("email", normalizedEmail)
+        .order("created_at", { ascending: false })
+        .limit(limit)
+
+      if (error) {
+        console.error("Erro ao buscar páginas por e-mail:", error)
+        return null
+      }
+
+      console.log(`${data.length} páginas encontradas para o e-mail ${normalizedEmail}`)
+      return data
+    }
+  } catch (error) {
+    console.error("Exceção ao buscar páginas por e-mail:", error)
+    return null
+  }
+}

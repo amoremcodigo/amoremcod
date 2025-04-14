@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
-import { updatePaymentStatus, getPageById } from "@/lib/supabase"
+import { updatePaymentStatus, getPagesByEmail } from "@/lib/supabase"
 
-// Rota de webhook simplificada que aceita apenas o ID da página e o status
+// Rota de webhook simplificada que aceita apenas o e-mail do cliente e o status
 export async function GET(request: Request) {
   console.log("=== WEBHOOK SIMPLES RECEBIDO (GET) ===")
   return handleWebhook(request)
@@ -16,15 +16,35 @@ async function handleWebhook(request: Request) {
   try {
     // Extrair parâmetros da URL
     const url = new URL(request.url)
-    const pageId = url.searchParams.get("pageId") || url.searchParams.get("id") || url.searchParams.get("reference")
+    const email = url.searchParams.get("email") || url.searchParams.get("customer_email")
     const status = url.searchParams.get("status") || "approved" // Usar "approved" como padrão
 
-    console.log(`Parâmetros recebidos - pageId: ${pageId}, status: ${status}`)
+    console.log(`Parâmetros recebidos - email: ${email}, status: ${status}`)
 
-    if (!pageId) {
-      return NextResponse.json({ error: "ID da página não fornecido" }, { status: 400 })
+    if (!email) {
+      return NextResponse.json({ error: "E-mail do cliente não fornecido" }, { status: 400 })
     }
 
+    // Buscar as páginas do cliente pelo e-mail
+    const pages = await getPagesByEmail(email)
+
+    // Se não encontramos nenhuma página, retornar erro
+    if (!pages || pages.length === 0) {
+      console.error(`Nenhuma página encontrada para o e-mail ${email}`)
+      return NextResponse.json(
+        {
+          error: `Nenhuma página encontrada para o e-mail ${email}`,
+          email,
+        },
+        { status: 404 },
+      )
+    }
+
+    // Pegar a página mais recente (a primeira da lista, já que ordenamos por created_at desc)
+    const pageData = pages[0]
+    const pageId = pageData.page_id
+
+    console.log(`Página encontrada: ${pageId} para o e-mail ${email}`)
     console.log(`Processando pagamento para página ${pageId} com status ${status}`)
 
     // Atualizar o status de pagamento no Supabase
@@ -34,44 +54,24 @@ async function handleWebhook(request: Request) {
     if (status === "approved" || status === "paid") {
       console.log(`Pagamento aprovado para página ${pageId}, enviando email...`)
 
-      // Buscar os dados da página no Supabase
-      const pageData = await getPageById(pageId)
-
-      if (!pageData) {
-        console.error(`Página ${pageId} não encontrada`)
-        return NextResponse.json({ error: "Página não encontrada" }, { status: 404 })
-      }
-
-      // Enviar o email com a URL da página
+      // Enviar o email com o QR Code
       try {
-        const emailUrl = `${process.env.NEXT_PUBLIC_SITE_URL || ""}/api/send-email`
-        console.log(`Enviando email para ${emailUrl}`)
-
-        const emailPayload = {
-          email: pageData.email,
-          pageUrl: pageData.page_url,
-          coupleNames: pageData.couple_names,
-          qrCodeUrl: pageData.qr_code_url,
-          isPending: false, // Pagamento confirmado
-        }
-
-        console.log("Payload do email:", JSON.stringify(emailPayload, null, 2))
-
-        const response = await fetch(emailUrl, {
+        const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || ""}/api/send-email`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(emailPayload),
+          body: JSON.stringify({
+            email: pageData.email,
+            pageUrl: pageData.page_url,
+            coupleNames: pageData.couple_names,
+            qrCodeUrl: pageData.qr_code_url,
+            isPending: false, // Pagamento confirmado
+          }),
         })
 
-        if (!response.ok) {
-          const responseText = await response.text()
-          console.error(`Erro ao enviar email: ${response.status} ${response.statusText}`)
-          console.error(`Resposta do serviço de email: ${responseText}`)
-
-          // Continuar mesmo com erro no email
-          console.log("Continuando apesar do erro no envio de email")
+        if (!emailResponse.ok) {
+          console.error(`Erro ao enviar email: ${emailResponse.status}`)
         } else {
           console.log(`Email enviado com sucesso para ${pageData.email}`)
         }
@@ -85,6 +85,7 @@ async function handleWebhook(request: Request) {
       success: true,
       message: "Webhook processado com sucesso",
       pageId,
+      email,
       status,
     })
   } catch (error) {

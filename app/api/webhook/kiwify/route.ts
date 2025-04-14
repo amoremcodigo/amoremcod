@@ -1,15 +1,11 @@
 import { NextResponse } from "next/server"
-import { updatePaymentStatus, getPageById } from "@/lib/supabase"
+import { updatePaymentStatus, getPagesByEmail } from "@/lib/supabase"
 
 export async function POST(request: Request) {
   console.log("=== WEBHOOK DA KIWIFY RECEBIDO ===")
   console.log("URL completa:", request.url)
 
   try {
-    // Extrair a referência da URL (fallback)
-    const url = new URL(request.url)
-    const urlReference = url.searchParams.get("reference") || url.searchParams.get("ref")
-
     // Obter o corpo da requisição como texto bruto
     const rawBody = await request.text()
     console.log("Corpo bruto da requisição (primeiros 200 caracteres):", rawBody.substring(0, 200))
@@ -28,67 +24,58 @@ export async function POST(request: Request) {
     //   "order_id": "dcf5fb8c-e611-4d1d-9b6a-abe89d39054c",
     //   "order_ref": "ItTftqU",
     //   "order_status": "paid",
+    //   "customer_email": "cliente@exemplo.com",
     //   ...
     // }
 
-    // Extrair a referência do webhook (formato real da Kiwify)
-    let reference = webhookData.order_ref || null
+    // Extrair o status do pagamento
+    const status = webhookData.order_status || webhookData.status || "pending"
+    console.log(`Status do pagamento: ${status}`)
 
-    // Extrair o status do pagamento (formato real da Kiwify)
-    let status = webhookData.order_status || "pending"
+    // Extrair o e-mail do cliente
+    const customerEmail = webhookData.customer_email || webhookData.email || webhookData.buyer_email || null
+    console.log(`E-mail do cliente: ${customerEmail}`)
 
-    // Fallbacks para outros formatos possíveis
-    if (!reference) {
-      // Tentar outros formatos possíveis
-      reference =
-        webhookData.reference || webhookData.data?.order?.reference || webhookData.order?.reference || urlReference
-    }
-
-    if (status === "pending") {
-      // Tentar outros formatos possíveis
-      status =
-        webhookData.status ||
-        webhookData.data?.order?.status ||
-        webhookData.order?.status ||
-        url.searchParams.get("status") ||
-        "pending"
-    }
-
-    console.log(`Referência extraída: ${reference}`)
-    console.log(`Status extraído: ${status}`)
-
-    // Se não encontramos uma referência, retornar erro
-    if (!reference) {
-      console.error("Referência não encontrada nos dados do webhook")
+    // Se não temos o e-mail do cliente, não podemos continuar
+    if (!customerEmail) {
+      console.error("E-mail do cliente não encontrado nos dados do webhook")
       return NextResponse.json(
         {
-          error: "Referência não encontrada nos dados do webhook",
+          error: "E-mail do cliente não encontrado nos dados do webhook",
           webhookData,
         },
         { status: 400 },
       )
     }
 
+    // Buscar as páginas do cliente pelo e-mail
+    const pages = await getPagesByEmail(customerEmail)
+
+    // Se não encontramos nenhuma página, retornar erro
+    if (!pages || pages.length === 0) {
+      console.error(`Nenhuma página encontrada para o e-mail ${customerEmail}`)
+      return NextResponse.json(
+        {
+          error: `Nenhuma página encontrada para o e-mail ${customerEmail}`,
+          customerEmail,
+        },
+        { status: 404 },
+      )
+    }
+
+    // Pegar a página mais recente (a primeira da lista, já que ordenamos por created_at desc)
+    const pageData = pages[0]
+    const pageId = pageData.page_id
+
+    console.log(`Página encontrada: ${pageId} para o e-mail ${customerEmail}`)
+
     // Atualizar o status de pagamento no Supabase
-    console.log(`Atualizando status de pagamento para ${reference}: ${status}`)
-    await updatePaymentStatus(reference, status)
+    console.log(`Atualizando status de pagamento para ${pageId}: ${status}`)
+    await updatePaymentStatus(pageId, status)
 
     // Se o pagamento foi aprovado, enviar o email com o QR Code
     if (status === "approved" || status === "paid") {
-      console.log(`Pagamento aprovado para página ${reference}, enviando email...`)
-
-      // Buscar os dados da página no Supabase
-      const pageData = await getPageById(reference)
-
-      if (!pageData) {
-        console.error(`Página ${reference} não encontrada`)
-        return NextResponse.json({
-          success: true,
-          message: "Status atualizado, mas página não encontrada",
-          reference,
-          status,
-        })
-      }
+      console.log(`Pagamento aprovado para página ${pageId}, enviando email...`)
 
       // Enviar o email com o QR Code
       try {
@@ -120,7 +107,8 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       message: "Webhook processado com sucesso",
-      reference,
+      pageId,
+      customerEmail,
       status,
     })
   } catch (error) {

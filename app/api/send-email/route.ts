@@ -89,13 +89,12 @@ export async function POST(request: Request) {
             `
                 : `
             <p>Assim que seu pagamento for confirmado, você receberá outro e-mail com o link para acessar sua página personalizada.</p>
-            <p>Isso geralmente ocorre em poucos minutos, mas pode levar até 24 horas em alguns casos.</p>
             `
             }
           </div>
           
           ${
-            qrCodeUrl
+            !isPending && qrCodeUrl
               ? `
           <div style="text-align: center; margin: 30px 0;">
             <p style="margin-bottom: 15px; font-weight: bold;">QR Code da sua página:</p>
@@ -107,7 +106,7 @@ export async function POST(request: Request) {
           }
           
           <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 20px; font-size: 14px; color: #666;">
-            <p>Compartilhe este link ou QR Code com seu amor para uma surpresa especial!</p>
+            ${!isPending ? `<p>Compartilhe este link ou QR Code com seu amor para uma surpresa especial!</p>` : ""}
             <p>Se tiver alguma dúvida, entre em contato conosco pelo WhatsApp.</p>
             <p style="margin-top: 20px;">Atenciosamente,<br>Equipe Amor em Código</p>
           </div>

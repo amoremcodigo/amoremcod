@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import Script from "next/script"
-import { usePathname, useSearchParams } from "next/navigation"
+import { usePathname } from "next/navigation"
 
 // Facebook Pixel ID
 const FB_PIXEL_ID = "645764484878124"
@@ -31,7 +31,7 @@ export const initFacebookPixel = () => {
 
 // Track page views
 export const trackPageView = (url: string) => {
-  if (typeof window.fbq !== "undefined") {
+  if (typeof window !== "undefined" && typeof window.fbq !== "undefined") {
     window.fbq("track", "PageView", {
       page_path: url,
     })
@@ -41,7 +41,6 @@ export const trackPageView = (url: string) => {
 // Facebook Pixel component
 export default function FacebookPixel() {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
 
   useEffect(() => {
     // Initialize Facebook Pixel
@@ -49,13 +48,19 @@ export default function FacebookPixel() {
 
     // Track page view on first load
     trackPageView(pathname)
-  }, [])
 
-  // Track page views on route changes
-  useEffect(() => {
-    const url = pathname + (searchParams?.toString() ? `?${searchParams.toString()}` : "")
-    trackPageView(url)
-  }, [pathname, searchParams])
+    // Setup router event listener for client-side navigation
+    const handleRouteChange = () => {
+      trackPageView(window.location.pathname + window.location.search)
+    }
+
+    // Add event listener for route changes
+    window.addEventListener("popstate", handleRouteChange)
+
+    return () => {
+      window.removeEventListener("popstate", handleRouteChange)
+    }
+  }, [pathname])
 
   return (
     <>

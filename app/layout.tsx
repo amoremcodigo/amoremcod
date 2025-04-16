@@ -4,6 +4,8 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { FormProvider } from "@/context/form-context"
+// Import the FacebookPixel component at the top of the file
+import FacebookPixel from "@/components/facebook-pixel"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -24,6 +26,7 @@ export const metadata: Metadata = {
     generator: 'v0.dev'
 }
 
+// Add the FacebookPixel component inside the body tag, right before the closing tag
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -35,7 +38,7 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
         <meta
           httpEquiv="Content-Security-Policy"
-          content="default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data: blob:;"
+          content="default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data: blob:; connect-src 'self' https://connect.facebook.net https://www.facebook.com;"
         />
         <meta httpEquiv="X-Content-Type-Options" content="nosniff" />
         <meta httpEquiv="X-Frame-Options" content="SAMEORIGIN" />
@@ -56,6 +59,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <FormProvider>{children}</FormProvider>
         </ThemeProvider>
+        <FacebookPixel />
       </body>
     </html>
   )

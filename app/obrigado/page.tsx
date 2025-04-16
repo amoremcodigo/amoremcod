@@ -9,17 +9,23 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Loader2, CheckCircle, AlertCircle, ArrowRight } from "lucide-react"
 import Link from "next/link"
 
+// Import the tracking function at the top of the file
+import { trackPurchase } from "@/lib/facebook-pixel"
+
 export default function ObrigadoPage() {
   const [pageId, setPageId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [checkCount, setCheckCount] = useState(0)
+  const [status, setStatus] = useState<string | null>(null)
 
   useEffect(() => {
     // Recuperar o ID da página do localStorage
     const storedPageId = localStorage.getItem("lastPageId")
+    const storedStatus = localStorage.getItem("status")
     setPageId(storedPageId)
+    setStatus(storedStatus)
 
     if (storedPageId) {
       checkPaymentStatus(storedPageId)
@@ -68,6 +74,15 @@ export default function ObrigadoPage() {
       checkPaymentStatus(pageId)
     }
   }
+
+  // Add tracking when payment is confirmed
+  useEffect(() => {
+    // If payment is confirmed, track the purchase
+    if (paymentStatus === "approved" || paymentStatus === "paid") {
+      // Track purchase event with the appropriate value
+      trackPurchase(status === "premium" ? 39.9 : 19.9)
+    }
+  }, [paymentStatus, status])
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-black to-gray-900">

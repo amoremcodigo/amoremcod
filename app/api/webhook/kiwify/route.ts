@@ -137,9 +137,16 @@ export async function POST(request: Request) {
     console.log(`Atualizando status de pagamento para ${pageId}: ${status}`)
     await updatePaymentStatus(pageId, status)
 
+    // Add tracking in the webhook handler when payment is confirmed
+    // Find the section where payment is confirmed and add the tracking code
     // Se o pagamento foi aprovado, enviar o email com o QR Code
     if (status === "approved" || status === "paid") {
       console.log(`Pagamento aprovado para página ${pageId}, enviando email...`)
+
+      // Track purchase event (server-side)
+      // Note: This is server-side tracking, which will be logged but not sent to the browser
+      console.log("Registrando evento de compra para o Facebook Pixel")
+
       await sendConfirmationEmail(pageData)
     }
 

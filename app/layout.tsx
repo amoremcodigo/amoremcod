@@ -6,6 +6,9 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { FormProvider } from "@/context/form-context"
 // Adicionar a importação do componente FacebookPixel
 import FacebookPixel from "@/components/facebook-pixel"
+// Adicionar a importação do Analytics no topo do arquivo
+import { Analytics } from "@vercel/analytics/react"
+import { Suspense } from "react"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -57,9 +60,12 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-          <FormProvider>{children}</FormProvider>
+          <Suspense>
+            <FormProvider>{children}</FormProvider>
+          </Suspense>
         </ThemeProvider>
         <FacebookPixel />
+        <Analytics />
       </body>
     </html>
   )

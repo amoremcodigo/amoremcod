@@ -34,99 +34,62 @@ const capitalizeWords = (text: string): string => {
     .join(" ")
 }
 
-// Substituir a função compressImage por esta versão mais robusta:
-
+// Função para comprimir a imagem
 const compressImage = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
-    try {
-      const reader = new FileReader()
-      reader.readAsDataURL(file)
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
 
-      reader.onload = (event) => {
-        try {
-          if (!event.target || !event.target.result) {
-            reject(new Error("Falha ao ler o arquivo"))
-            return
+    reader.onload = (event) => {
+      const img = new Image()
+      img.src = event.target?.result as string
+
+      img.onload = () => {
+        // Criar um canvas para redimensionar a imagem
+        const canvas = document.createElement("canvas")
+        const MAX_WIDTH = 800
+        const MAX_HEIGHT = 800
+
+        let width = img.width
+        let height = img.height
+
+        // Calcular as novas dimensões mantendo a proporção
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height = Math.round((height * MAX_WIDTH) / width)
+            width = MAX_WIDTH
           }
-
-          const img = new Image()
-          img.crossOrigin = "anonymous" // Importante para evitar problemas de CORS
-
-          img.onload = () => {
-            try {
-              // Criar um canvas para redimensionar a imagem
-              const canvas = document.createElement("canvas")
-              const MAX_WIDTH = 800
-              const MAX_HEIGHT = 800
-
-              let width = img.width
-              let height = img.height
-
-              // Calcular as novas dimensões mantendo a proporção
-              if (width > height) {
-                if (width > MAX_WIDTH) {
-                  height = Math.round((height * MAX_WIDTH) / width)
-                  width = MAX_WIDTH
-                }
-              } else {
-                if (height > MAX_HEIGHT) {
-                  width = Math.round((width * MAX_HEIGHT) / height)
-                  height = MAX_HEIGHT
-                }
-              }
-
-              canvas.width = width
-              canvas.height = height
-
-              // Desenhar a imagem redimensionada no canvas
-              const ctx = canvas.getContext("2d")
-              if (!ctx) {
-                reject(new Error("Não foi possível obter o contexto do canvas"))
-                return
-              }
-
-              ctx.drawImage(img, 0, 0, width, height)
-
-              // Converter para base64 com qualidade reduzida
-              const dataUrl = canvas.toDataURL("image/jpeg", 0.7)
-
-              // Verificar o tamanho da imagem comprimida
-              const sizeInKB = Math.round(dataUrl.length / 1024)
-              console.log(`Imagem comprimida: ${sizeInKB}KB`)
-
-              resolve(dataUrl)
-            } catch (canvasError) {
-              console.error("Erro ao processar canvas:", canvasError)
-              // Fallback: retornar a imagem original sem compressão
-              resolve(event.target.result as string)
-            }
-          }
-
-          img.onerror = () => {
-            console.error("Erro ao carregar a imagem")
-            // Fallback: retornar a imagem original sem compressão
-            resolve(event.target.result as string)
-          }
-
-          img.src = event.target.result as string
-        } catch (imgError) {
-          console.error("Erro ao processar imagem:", imgError)
-          // Fallback: retornar a imagem original sem compressão
-          if (event.target && event.target.result) {
-            resolve(event.target.result as string)
-          } else {
-            reject(new Error("Falha ao processar imagem"))
+        } else {
+          if (height > MAX_HEIGHT) {
+            width = Math.round((width * MAX_HEIGHT) / height)
+            height = MAX_HEIGHT
           }
         }
+
+        canvas.width = width
+        canvas.height = height
+
+        // Desenhar a imagem redimensionada no canvas
+        const ctx = canvas.getContext("2d")
+        ctx?.drawImage(img, 0, 0, width, height)
+
+        // Converter para base64 com qualidade reduzida
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.7)
+
+        // Verificar o tamanho da imagem comprimida
+        const sizeInKB = Math.round(dataUrl.length / 1024)
+        console.log(`Imagem comprimida: ${sizeInKB}KB`)
+
+        resolve(dataUrl)
       }
 
-      reader.onerror = (error) => {
-        console.error("Erro ao ler o arquivo:", error)
-        reject(new Error("Erro ao ler o arquivo"))
+      img.onerror = () => {
+        reject(new Error("Erro ao carregar a imagem"))
       }
-    } catch (error) {
-      console.error("Erro geral na compressão:", error)
-      reject(error)
+    }
+
+    reader.onerror = () => {
+      reject(new Error("Erro ao ler o arquivo"))
     }
   })
 }
@@ -212,69 +175,97 @@ export function Formulario() {
   }
 
   // Função simplificada para lidar com o upload de fotos
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>, startIndex: number) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
 
-    // Marcar como carregando
+    console.log(`Processando ${files.length} fotos a partir do índice ${startIndex}`)
+
+    // Verificar quantas fotos já existem
+    const existingPhotosCount = formData.photos.filter((photo) => photo !== "").length
+
+    // Criar cópias dos estados atuais
     const newIsUploading = [...isUploading]
-    newIsUploading[index] = true
-    setIsUploading([...newIsUploading])
-
-    // Limpar erro anterior
     const newUploadError = [...uploadError]
-    newUploadError[index] = null
-    setUploadError([...newUploadError])
+    const newPhotoPreview = [...photoPreview]
+    const newPhotos = [...formData.photos]
 
-    try {
-      // Criar URL para preview
-      const objectUrl = URL.createObjectURL(file)
-      const newPhotoPreview = [...photoPreview]
-      newPhotoPreview[index] = objectUrl
-      setPhotoPreview(newPhotoPreview)
+    // Verificar se ultrapassará o limite de 5 fotos
+    if (existingPhotosCount + files.length > 5) {
+      const remainingSlots = Math.max(0, 5 - existingPhotosCount)
+      alert(
+        `Você só pode adicionar até 5 fotos no total. ${remainingSlots > 0 ? `Você ainda pode adicionar ${remainingSlots} foto(s).` : "Você já atingiu o limite de fotos."}`,
+      )
 
-      // Usar FileReader para converter para base64
-      const reader = new FileReader()
-
-      reader.onload = (e) => {
-        if (e.target?.result) {
-          // Adicionar diretamente ao contexto
-          addPhoto(e.target.result as string, index)
-
-          // Finalizar carregamento
-          const updatedIsUploading = [...isUploading]
-          updatedIsUploading[index] = false
-          setIsUploading(updatedIsUploading)
-        }
-      }
-
-      reader.onerror = () => {
-        // Tratar erro
-        const updatedErrors = [...uploadError]
-        updatedErrors[index] = "Erro ao ler o arquivo"
-        setUploadError(updatedErrors)
-
-        // Finalizar carregamento
-        const updatedIsUploading = [...isUploading]
-        updatedIsUploading[index] = false
-        setIsUploading(updatedIsUploading)
-      }
-
-      // Iniciar leitura como URL de dados
-      reader.readAsDataURL(file)
-    } catch (error) {
-      console.error("Erro ao processar imagem:", error)
-
-      // Atualizar estado de erro
-      const updatedErrors = [...uploadError]
-      updatedErrors[index] = "Erro ao processar a imagem"
-      setUploadError(updatedErrors)
-
-      // Finalizar carregamento
-      const updatedIsUploading = [...isUploading]
-      updatedIsUploading[index] = false
-      setIsUploading(updatedIsUploading)
+      // Se não houver slots restantes, retornar
+      if (remainingSlots <= 0) return
     }
+
+    // Processar cada arquivo
+    for (let i = 0; i < files.length; i++) {
+      const currentIndex = startIndex + i
+
+      // Parar se atingirmos o máximo de 5 fotos
+      if (currentIndex >= 5) {
+        console.log(`Limite de 5 fotos atingido. Ignorando fotos adicionais.`)
+        break
+      }
+
+      // Verificar se já atingimos o limite total de 5 fotos
+      const currentTotalPhotos = newPhotos.filter((photo) => photo !== "").length
+      if (currentTotalPhotos >= 5) {
+        console.log(`Limite total de 5 fotos atingido.`)
+        break
+      }
+
+      const file = files[i]
+      console.log(`Processando foto ${i + 1}/${files.length} para o slot ${currentIndex + 1}`)
+
+      // Atualizar estado de carregamento
+      newIsUploading[currentIndex] = true
+      setIsUploading([...newIsUploading])
+
+      // Limpar erro anterior
+      newUploadError[currentIndex] = null
+      setUploadError([...newUploadError])
+
+      try {
+        // Verificar o tamanho do arquivo
+        const fileSizeMB = file.size / (1024 * 1024)
+        if (fileSizeMB > 5) {
+          console.error(`Arquivo muito grande (${fileSizeMB.toFixed(1)}MB) para o slot ${currentIndex + 1}`)
+          newUploadError[currentIndex] = `Arquivo muito grande (${fileSizeMB.toFixed(1)}MB). O tamanho máximo é 5MB.`
+          setUploadError([...newUploadError])
+          continue
+        }
+
+        // Criar URL para preview
+        const objectUrl = URL.createObjectURL(file)
+        newPhotoPreview[currentIndex] = objectUrl
+        setPhotoPreview([...newPhotoPreview])
+
+        // Comprimir a imagem
+        const compressedImage = await compressImage(file)
+
+        // Adicionar a foto ao array
+        newPhotos[currentIndex] = compressedImage
+
+        console.log(`Foto ${currentIndex + 1} processada com sucesso`)
+      } catch (error) {
+        console.error(`Erro ao processar imagem ${currentIndex + 1}:`, error)
+        newUploadError[currentIndex] = "Erro ao processar a imagem."
+        setUploadError([...newUploadError])
+      } finally {
+        // Finalizar o carregamento
+        newIsUploading[currentIndex] = false
+        setIsUploading([...newIsUploading])
+      }
+    }
+
+    // Atualizar todas as fotos de uma vez
+    updatePhotos(newPhotos)
+
+    console.log(`Processamento de múltiplas fotos concluído`)
   }
 
   const handleRemovePhoto = (index: number) => {

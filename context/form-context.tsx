@@ -156,25 +156,21 @@ export function FormProvider({ children }: { children: ReactNode }) {
 
   // Adicionar uma foto em um índice específico
   const addPhoto = (photo: string, index: number) => {
-    try {
-      console.log(`FormContext: Adicionando foto no índice ${index}`)
+    console.log(`FormContext: Adicionando foto no índice ${index}`)
 
-      // Criar uma cópia do array de fotos
-      const newPhotos = [...formData.photos]
+    // Criar uma cópia do array de fotos
+    const newPhotos = [...formData.photos]
 
-      // Adicionar a nova foto no índice especificado
-      newPhotos[index] = photo
+    // Adicionar a nova foto no índice especificado
+    newPhotos[index] = photo
 
-      // Atualizar o estado com o novo array de fotos
-      setFormData((prevState) => ({
-        ...prevState,
-        photos: newPhotos,
-      }))
+    // Atualizar o estado com o novo array de fotos
+    setFormData((prevState) => ({
+      ...prevState,
+      photos: newPhotos,
+    }))
 
-      console.log(`FormContext: Foto adicionada no índice ${index}`)
-    } catch (error) {
-      console.error("Erro ao adicionar foto:", error)
-    }
+    console.log(`FormContext: Foto adicionada no índice ${index}`)
   }
 
   // Atualizar todas as fotos de uma vez

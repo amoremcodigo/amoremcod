@@ -109,165 +109,8 @@ const saveLocalFallback = (pageId: string, pageData: any) => {
   return false
 }
 
-// Add tracking to the processForm function
-const processForm = async () => {
-  const { formData, isFormValid, updateFormData } = useFormContext()
-  if (!isFormValid() || isProcessing) return
-
-  try {
-    setIsProcessing(true)
-    setLoadingText("Processando...")
-    console.log("=== INICIANDO PROCESSO DE SUBMISSÃO ===")
-
-    // Track lead event when form is submitted
-    trackLead()
-
-    // Normalizar o e-mail (trim e lowercase)
-    const normalizedEmail = formData.email.trim().toLowerCase()
-
-    // Capitalizar o nome do casal e substituir "e" por "&"
-    const capitalizedCoupleNames = capitalizeWords(formData.coupleNames)
-
-    // Atualizar o formData com o nome capitalizado e e-mail normalizado
-    updateFormData({
-      coupleNames: capitalizedCoupleNames,
-      email: normalizedEmail,
-    })
-
-    // Generate a unique ID for the page
-    const pageId = Math.random().toString(36).substring(2, 8)
-    console.log("ID da página gerado:", pageId)
-
-    setLoadingText("Enviando fotos...")
-    // Fazer upload das fotos para o servidor
-    const photoUrls = [...formData.photoUrls]
-    for (let i = 0; i < formData.photos.length; i++) {
-      if (formData.photos[i] && formData.photos[i].startsWith("data:image")) {
-        try {
-          console.log(`Iniciando upload da foto ${i + 1}...`)
-          photoUrls[i] = await uploadImageToServer(formData.photos[i])
-          console.log(`Foto ${i + 1} enviada para o servidor, URL:`, photoUrls[i])
-        } catch (error) {
-          console.error(`Erro ao enviar foto ${i + 1} para o servidor:`, error)
-          // Continuar mesmo com erro na foto
-          console.log("Continuando mesmo com erro na foto...")
-        }
-      }
-    }
-
-    // Criar um objeto com dados essenciais para a URL
-    const essentialData = {
-      n: capitalizedCoupleNames, // Nome do casal
-      d: formData.date, // Data
-      t: formData.time, // Hora
-      m: formData.message, // Mensagem
-      y: formData.youtubeLink, // Link do YouTube
-      p: photoUrls, // URLs das fotos
-      pl: formData.plan, // Plano
-    }
-
-    // Comprimir os dados para a URL
-    const compressedData = compressDataForUrl(essentialData)
-
-    // Construir a URL completa da página
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
-    const pageUrl = `${siteUrl}/pagina/${pageId}?d=${compressedData}`
-    console.log("URL da página gerada:", pageUrl)
-
-    setLoadingText("Gerando QR Code...")
-    // Gerar QR Code para o email
-    let qrCodeUrl = null
-    try {
-      console.log("Gerando QR Code...")
-      const QRCode = await import("qrcode")
-      qrCodeUrl = await QRCode.toDataURL(pageUrl, {
-        width: 300,
-        margin: 1,
-        errorCorrectionLevel: "H",
-        color: {
-          dark: "#000000",
-          light: "#FFFFFF",
-        },
-      })
-      console.log("QR Code gerado com sucesso")
-    } catch (qrError) {
-      console.error("Erro ao gerar QR Code:", qrError)
-      // Continuar mesmo sem QR code
-    }
-
-    // Preparar os dados da página
-    const pageData = {
-      page_id: pageId,
-      email: normalizedEmail,
-      couple_names: capitalizedCoupleNames,
-      date: formData.date,
-      time: formData.time || "",
-      message: formData.message,
-      youtube_link: formData.youtubeLink || "",
-      photo_urls: photoUrls.filter((url) => url), // Filtrar URLs vazias
-      plan: formData.plan || "basic",
-      page_url: pageUrl,
-      qr_code_url: qrCodeUrl || "",
-      payment_status: "pending",
-    }
-
-    // Salvar localmente primeiro como backup
-    saveLocalFallback(pageId, pageData)
-
-    setLoadingText("Salvando página...")
-    // Salvar os dados usando a API
-    try {
-      console.log("Salvando dados via API...")
-      const response = await fetch("/api/save-page", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(pageData),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(`Erro ao salvar página: ${errorData.error || response.statusText}`)
-      }
-
-      const result = await response.json()
-      console.log("Resposta da API:", result)
-
-      // Salvar o pageId no localStorage para verificação posterior
-      localStorage.setItem("lastPageId", pageId)
-
-      // Add tracking before redirecting to checkout
-      setLoadingText("Redirecionando para pagamento...")
-      // Track initiate checkout event
-      trackInitiateCheckout(formData.plan === "premium" ? 39.9 : 19.9)
-
-      // Redirecionar para o checkout
-      if (result.checkoutUrl) {
-        console.log("Redirecionando para:", result.checkoutUrl)
-        window.location.href = result.checkoutUrl
-      } else {
-        // Fallback para URL de checkout padrão
-        const checkoutUrl =
-          formData.plan === "premium" ? "https://pay.kiwify.com.br/MN5HRnF" : "https://pay.kiwify.com.br/x7zu8ul"
-        const checkoutUrlWithRef = `${checkoutUrl}?ref=${pageId}`
-        console.log("Redirecionando para URL fallback:", checkoutUrlWithRef)
-        window.location.href = checkoutUrlWithRef
-      }
-    } catch (apiError) {
-      console.error("Erro na API de salvamento:", apiError)
-      alert("Ocorreu um erro ao salvar sua página. Por favor, tente novamente.")
-      setIsProcessing(false)
-    }
-  } catch (error) {
-    console.error("Erro durante o processamento:", error)
-    alert("Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.")
-    setIsProcessing(false)
-  }
-}
-
 export function PreviewSite() {
-  const { formData, isFormValid, isSubmitting, updateFormData } = useFormContext()
+  const { formData, isFormValid, submitForm, isSubmitting, updateFormData } = useFormContext()
   const [years, setYears] = useState(0)
   const [days, setDays] = useState(0)
   const [hours, setHours] = useState(0)
@@ -384,6 +227,30 @@ export function PreviewSite() {
   // Função para navegar para a próxima foto
   const nextPhoto = () => {
     setCurrentPhotoIndex((prevIndex) => (prevIndex + 1) % validPhotos.length)
+  }
+
+  // Função para processar o formulário
+  const handleSubmitForm = async () => {
+    if (!isFormValid() || isProcessing) return
+
+    try {
+      setIsProcessing(true)
+      setLoadingText("Processando...")
+
+      // Track lead event when form is submitted
+      trackLead()
+
+      // Chamar a função submitForm do contexto
+      await submitForm()
+
+      // Se chegou aqui, é porque deu certo
+      trackInitiateCheckout(formData.plan === "premium" ? 39.9 : 19.9)
+    } catch (error) {
+      console.error("Erro ao processar formulário:", error)
+      alert("Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.")
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   return (
@@ -573,10 +440,10 @@ export function PreviewSite() {
           <Button
             size="lg"
             className="gradient-bg text-lg px-8 py-6 relative"
-            disabled={!isFormValid() || isProcessing}
-            onClick={processForm}
+            disabled={!isFormValid() || isProcessing || isSubmitting}
+            onClick={handleSubmitForm}
           >
-            {isProcessing ? (
+            {isProcessing || isSubmitting ? (
               <>
                 <div className="flex items-center">
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />

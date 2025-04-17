@@ -33,10 +33,9 @@ export function Testimonials() {
               image: "/fernanda-toby.jpeg",
             },
             {
-              name: "Guilherme & Raieli",
+              name: "Ronieri e Carla S",
               text: "Fiz uma surpresa para o nosso aniversário de 5 anos. Ela chorou ao ver todas as nossas fotos e mensagens especiais.",
-              image:
-                "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/WhatsApp%20Image%202025-04-08%20at%202.41.00%20AM-Mc7oBM3VUk2jKDAfIhM8tnTuQOIPrk.jpeg",
+              image: "/guilherme-raieli.jpeg",
             },
             {
               name: "Grupo de Amigos",

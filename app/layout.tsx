@@ -4,6 +4,8 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { FormProvider } from "@/context/form-context"
+// Adicionar a importação do componente FacebookPixel
+import FacebookPixel from "@/components/facebook-pixel"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -24,6 +26,7 @@ export const metadata: Metadata = {
     generator: 'v0.dev'
 }
 
+// Dentro da função RootLayout, adicionar o componente FacebookPixel antes do fechamento da tag body
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -56,6 +59,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <FormProvider>{children}</FormProvider>
         </ThemeProvider>
+        <FacebookPixel />
       </body>
     </html>
   )

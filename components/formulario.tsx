@@ -212,118 +212,68 @@ export function Formulario() {
   }
 
   // Função simplificada para lidar com o upload de fotos
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>, startIndex: number) => {
-    const files = e.target.files
-    if (!files || files.length === 0) return
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const file = e.target.files?.[0]
+    if (!file) return
 
-    console.log(`Processando ${files.length} fotos a partir do índice ${startIndex}`)
-
-    // Verificar quantas fotos já existem
-    const existingPhotosCount = formData.photos.filter((photo) => photo !== "").length
-
-    // Criar cópias dos estados atuais
+    // Marcar como carregando
     const newIsUploading = [...isUploading]
+    newIsUploading[index] = true
+    setIsUploading([...newIsUploading])
+
+    // Limpar erro anterior
     const newUploadError = [...uploadError]
-    const newPhotoPreview = [...photoPreview]
-    const newPhotos = [...formData.photos]
+    newUploadError[index] = null
+    setUploadError([...newUploadError])
 
-    // Verificar se ultrapassará o limite de 5 fotos
-    if (existingPhotosCount + files.length > 5) {
-      const remainingSlots = Math.max(0, 5 - existingPhotosCount)
-      alert(
-        `Você só pode adicionar até 5 fotos no total. ${remainingSlots > 0 ? `Você ainda pode adicionar ${remainingSlots} foto(s).` : "Você já atingiu o limite de fotos."}`,
-      )
+    try {
+      // Criar URL para preview
+      const objectUrl = URL.createObjectURL(file)
+      const newPhotoPreview = [...photoPreview]
+      newPhotoPreview[index] = objectUrl
+      setPhotoPreview(newPhotoPreview)
 
-      // Se não houver slots restantes, retornar
-      if (remainingSlots <= 0) return
-    }
+      // Usar FileReader para converter para base64
+      const reader = new FileReader()
 
-    // Processar cada arquivo
-    for (let i = 0; i < files.length; i++) {
-      const currentIndex = startIndex + i
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          // Adicionar diretamente ao contexto
+          addPhoto(e.target.result as string, index)
 
-      // Parar se atingirmos o máximo de 5 fotos
-      if (currentIndex >= 5) {
-        console.log(`Limite de 5 fotos atingido. Ignorando fotos adicionais.`)
-        break
+          // Finalizar carregamento
+          const updatedIsUploading = [...isUploading]
+          updatedIsUploading[index] = false
+          setIsUploading(updatedIsUploading)
+        }
       }
 
-      // Verificar se já atingimos o limite total de 5 fotos
-      const currentTotalPhotos = newPhotos.filter((photo) => photo !== "").length
-      if (currentTotalPhotos >= 5) {
-        console.log(`Limite total de 5 fotos atingido.`)
-        break
+      reader.onerror = () => {
+        // Tratar erro
+        const updatedErrors = [...uploadError]
+        updatedErrors[index] = "Erro ao ler o arquivo"
+        setUploadError(updatedErrors)
+
+        // Finalizar carregamento
+        const updatedIsUploading = [...isUploading]
+        updatedIsUploading[index] = false
+        setIsUploading(updatedIsUploading)
       }
 
-      const file = files[i]
-      console.log(`Processando foto ${i + 1}/${files.length} para o slot ${currentIndex + 1}`)
+      // Iniciar leitura como URL de dados
+      reader.readAsDataURL(file)
+    } catch (error) {
+      console.error("Erro ao processar imagem:", error)
 
-      // Atualizar estado de carregamento
-      newIsUploading[currentIndex] = true
-      setIsUploading([...newIsUploading])
+      // Atualizar estado de erro
+      const updatedErrors = [...uploadError]
+      updatedErrors[index] = "Erro ao processar a imagem"
+      setUploadError(updatedErrors)
 
-      // Limpar erro anterior
-      newUploadError[currentIndex] = null
-      setUploadError([...newUploadError])
-
-      try {
-        // Verificar o tamanho do arquivo
-        const fileSizeMB = file.size / (1024 * 1024)
-        if (fileSizeMB > 5) {
-          console.error(`Arquivo muito grande (${fileSizeMB.toFixed(1)}MB) para o slot ${currentIndex + 1}`)
-          newUploadError[currentIndex] = `Arquivo muito grande (${fileSizeMB.toFixed(1)}MB). O tamanho máximo é 5MB.`
-          setUploadError([...newUploadError])
-          newIsUploading[currentIndex] = false
-          setIsUploading([...newIsUploading])
-          continue
-        }
-
-        // Criar URL para preview
-        const objectUrl = URL.createObjectURL(file)
-        newPhotoPreview[currentIndex] = objectUrl
-        setPhotoPreview([...newPhotoPreview])
-
-        // Usar FileReader para ler o arquivo como data URL
-        const reader = new FileReader()
-        reader.onload = (event) => {
-          try {
-            if (event.target && event.target.result) {
-              // Adicionar a foto ao array
-              newPhotos[currentIndex] = event.target.result as string
-
-              // Atualizar o estado
-              addPhoto(event.target.result as string, currentIndex)
-
-              console.log(`Foto ${currentIndex + 1} processada com sucesso`)
-            }
-          } catch (error) {
-            console.error(`Erro ao processar resultado da imagem ${currentIndex + 1}:`, error)
-            newUploadError[currentIndex] = "Erro ao processar a imagem."
-            setUploadError([...newUploadError])
-          } finally {
-            // Finalizar o carregamento
-            newIsUploading[currentIndex] = false
-            setIsUploading([...newIsUploading])
-          }
-        }
-
-        reader.onerror = (error) => {
-          console.error(`Erro ao ler arquivo ${currentIndex + 1}:`, error)
-          newUploadError[currentIndex] = "Erro ao ler o arquivo."
-          setUploadError([...newUploadError])
-          newIsUploading[currentIndex] = false
-          setIsUploading([...newIsUploading])
-        }
-
-        // Iniciar a leitura do arquivo
-        reader.readAsDataURL(file)
-      } catch (error) {
-        console.error(`Erro ao processar imagem ${currentIndex + 1}:`, error)
-        newUploadError[currentIndex] = "Erro ao processar a imagem."
-        setUploadError([...newUploadError])
-        newIsUploading[currentIndex] = false
-        setIsUploading([...newIsUploading])
-      }
+      // Finalizar carregamento
+      const updatedIsUploading = [...isUploading]
+      updatedIsUploading[index] = false
+      setIsUploading(updatedIsUploading)
     }
   }
 

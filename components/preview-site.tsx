@@ -110,7 +110,7 @@ const saveLocalFallback = (pageId: string, pageData: any) => {
 }
 
 export function PreviewSite() {
-  const { formData, isFormValid, submitForm, isSubmitting, updateFormData } = useFormContext()
+  const { formData, isFormValid, submitForm, isSubmitting } = useFormContext()
   const [years, setYears] = useState(0)
   const [days, setDays] = useState(0)
   const [hours, setHours] = useState(0)
@@ -230,13 +230,10 @@ export function PreviewSite() {
   }
 
   // Função para processar o formulário
-  const handleSubmitForm = async () => {
-    if (!isFormValid() || isProcessing) return
+  const handleProcessForm = async () => {
+    if (!isFormValid() || isProcessing || isSubmitting) return
 
     try {
-      setIsProcessing(true)
-      setLoadingText("Processando...")
-
       // Track lead event when form is submitted
       trackLead()
 
@@ -248,8 +245,6 @@ export function PreviewSite() {
     } catch (error) {
       console.error("Erro ao processar formulário:", error)
       alert("Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.")
-    } finally {
-      setIsProcessing(false)
     }
   }
 
@@ -441,13 +436,13 @@ export function PreviewSite() {
             size="lg"
             className="gradient-bg text-lg px-8 py-6 relative"
             disabled={!isFormValid() || isProcessing || isSubmitting}
-            onClick={handleSubmitForm}
+            onClick={handleProcessForm}
           >
-            {isProcessing || isSubmitting ? (
+            {isSubmitting ? (
               <>
                 <div className="flex items-center">
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  <span>{loadingText}</span>
+                  <span>Processando...</span>
                 </div>
               </>
             ) : (

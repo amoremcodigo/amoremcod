@@ -153,7 +153,7 @@ export default function CriarPagina() {
                     <RadioGroupItem value="basic" id="basic" className="mt-1" />
                     <div className="flex-1">
                       <Label htmlFor="basic" className="text-lg font-medium">
-                        Plano Básico - R$ 19,90
+                        Plano Básico - R$ 9,90
                       </Label>
                       <p className="text-sm text-gray-400 mt-1">
                         Validade de 1 ano, 1 foto, cronômetro dinâmico de tempo de relacionamento.
@@ -181,7 +181,7 @@ export default function CriarPagina() {
                     <div className="flex-1">
                       <div className="flex items-center">
                         <Label htmlFor="premium" className="text-lg font-medium">
-                          Plano Premium - R$ 39,90
+                          Plano Premium - R$ 14,90
                         </Label>
                         <span className="ml-2 px-2 py-0.5 text-xs bg-primary text-white rounded-full">Recomendado</span>
                       </div>
@@ -283,7 +283,7 @@ export default function CriarPagina() {
               <CardFooter className="flex flex-col space-y-4">
                 <div className="w-full flex justify-between items-center py-2 border-t border-gray-800">
                   <span className="font-medium">Total:</span>
-                  <span className="font-bold text-lg">{selectedPlan === "basic" ? "R$ 19,90" : "R$ 39,90"}</span>
+                  <span className="font-bold text-lg">{selectedPlan === "basic" ? "R$ 9,90" : "R$ 14,90"}</span>
                 </div>
                 <div className="flex justify-between w-full">
                   <Button variant="outline" onClick={prevStep}>

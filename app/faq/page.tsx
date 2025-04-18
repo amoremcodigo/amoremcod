@@ -28,7 +28,7 @@ export default function FAQPage() {
               {
                 question: "Qual a diferença entre os planos?",
                 answer:
-                  "O Plano Básico (R$ 19,90) oferece uma página com validade de 1 ano, 1 foto e um contador dinâmico. O Plano Premium (R$ 39,90) oferece uma página com validade permanente, até 5 fotos, contador em tempo real e a possibilidade de adicionar uma música do YouTube.",
+                  "O Plano Básico (R$ 9,90) oferece uma página com validade de 1 ano, 1 foto e um contador dinâmico. O Plano Premium (R$ 14,90) oferece uma página com validade permanente, até 5 fotos, contador em tempo real e a possibilidade de adicionar uma música do YouTube.",
               },
               {
                 question: "Por quanto tempo minha página ficará disponível?",

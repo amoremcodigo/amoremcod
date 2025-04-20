@@ -140,7 +140,7 @@ export function PreviewSite() {
       const now = new Date()
       const difference = now.getTime() - startDate.getTime()
 
-      // Calcular anos (aproximado, não considera anos bissextos precisamente)
+      // Calcular anos (aproximado, não considera anos bissextos)
       const millisecondsInYear = 1000 * 60 * 60 * 24 * 365.25
       const y = Math.floor(difference / millisecondsInYear)
 
@@ -381,10 +381,11 @@ export function PreviewSite() {
         <div className="flex flex-col items-center justify-center space-y-4 text-center mb-10">
           <div className="space-y-2">
             <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
-              Veja como ficará sua <span className="gradient-text">página personalizada</span>
+              Prévia <span className="gradient-text">simplificada</span> da sua página
             </h2>
             <p className="mx-auto max-w-[700px] text-gray-400 md:text-xl">
-              Prévia de como sua página ficará após a personalização.
+              Esta é apenas uma demonstração básica para você ter uma ideia de como sua página personalizada ficará. A
+              versão final terá mais recursos e melhor acabamento.
             </p>
           </div>
         </div>
@@ -399,14 +400,45 @@ export function PreviewSite() {
                   </div>
 
                   {/* Phone screen content with falling hearts */}
-                  <div className="pt-6 pb-2 px-2 bg-gray-900 relative">
+                  <div className="pt-0 pb-2 px-2 bg-gray-900 relative">
+                    {/* Smartphone header - more delicate version */}
+                    <div className="relative z-30 bg-gray-900/80 backdrop-blur-sm text-white text-[10px] px-3 py-1.5 border-b border-gray-800/50">
+                      <div className="flex justify-between items-center">
+                        <div className="text-gray-300 font-light">14:25</div>
+                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center">
+                          <div className="w-1 h-1 rounded-full bg-gray-500 mx-0.5"></div>
+                          <div className="w-1 h-1 rounded-full bg-gray-500 mx-0.5"></div>
+                        </div>
+                        <div className="flex items-center space-x-1.5">
+                          <div className="w-3 h-3 relative">
+                            <div className="absolute inset-0.5 border border-gray-300 rounded-sm"></div>
+                            <div className="absolute bottom-0.5 left-0.5 right-0.5 h-1.5 bg-gray-300 rounded-b-sm"></div>
+                          </div>
+                          <div className="flex space-x-0.5">
+                            {[1, 2, 3, 4].map((i) => (
+                              <div
+                                key={i}
+                                className="h-2 w-0.5 bg-gray-300 rounded-full"
+                                style={{ height: `${i * 0.15 + 0.3}rem` }}
+                              ></div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-center mt-0.5">
+                        <span className="text-gray-400 text-opacity-80 font-light tracking-wide">
+                          amoremcodigo.com.br
+                        </span>
+                      </div>
+                    </div>
+
                     {/* Falling hearts contained within the phone screen - com velocidade aumentada */}
                     <div className="absolute inset-0 overflow-hidden z-20">
                       <FallingHearts density="medium" contained={true} speed="fast" />
                     </div>
 
                     {/* Adicionando espaço extra no topo para mover o nome para baixo */}
-                    <div className="pt-4 relative z-10"></div>
+                    <div className="pt-6 relative z-10"></div>
 
                     {/* Header with logo - similar to personalized page */}
                     <h1 className="text-lg font-bold mb-2 gradient-text relative z-10 text-center mt-4">

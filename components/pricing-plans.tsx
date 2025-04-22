@@ -34,20 +34,6 @@ export function PricingPlans() {
         <div className="mx-auto grid max-w-4xl grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 lg:gap-8 mt-8 md:mt-10">
           {[
             {
-              title: "Plano Básico",
-              price: "R$ 9,90",
-              description: "Perfeito para uma surpresa especial",
-              features: [
-                { text: "Validade de 1 ano", included: true },
-                { text: "1 foto", included: true },
-                { text: "Cronômetro dinâmico", included: true },
-                { text: "Música do YouTube", included: false },
-                { text: "Múltiplas fotos", included: false },
-              ],
-              popular: false,
-              id: "basic",
-            },
-            {
               title: "Plano Premium",
               price: "R$ 14,90",
               originalPrice: "R$ 29,90",
@@ -62,6 +48,20 @@ export function PricingPlans() {
               ],
               popular: true,
               id: "premium",
+            },
+            {
+              title: "Plano Básico",
+              price: "R$ 9,90",
+              description: "Perfeito para uma surpresa especial",
+              features: [
+                { text: "Validade de 1 ano", included: true },
+                { text: "1 foto", included: true },
+                { text: "Cronômetro dinâmico", included: true },
+                { text: "Música do YouTube", included: false },
+                { text: "Múltiplas fotos", included: false },
+              ],
+              popular: false,
+              id: "basic",
             },
           ].map((plan, index) => (
             <Card

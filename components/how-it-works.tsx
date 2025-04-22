@@ -43,7 +43,7 @@ export function HowItWorks() {
         </div>
 
         {/* Botão de exemplo após os boxes */}
-        <div className="flex justify-center mt-10">
+        <div className="flex justify-center mt-16 mb-16">
           <a
             href="https://www.amoremcodigo.com.br/pagina/a7t970?d=N4IgdiBcIEoIYDM4FMA2ACAZOgMgVwGMBLOMOEAGhABMoQAmABgEYA2AWkYBZ3mBmSiAAudQQFs6+YqTgV0BONTjoxAezHIwQ1ejg6AzsjzpUinUIBOpfQlUWxynQXV4x6ZG6Jhk+gI55kAgBbgDc0ADoAHTAAZSN0fTsLIkT0IlRXL2UNPH10ahJ9OWQEvGUABwsfTQBz5TgFVAcVeOcrGoBj1XD0ABUSxTEiC1U5IRKq-XLkIm13OQaiZuoSoTxqUfRx3TUegHkAI2SAczN0crsE5AsW4wuLOcNjvBH3W5U4IkvK6q1kHoAwup0CFVAQAFdjdY6JAALyuWiIGx6-R2m0MYh+PXY6HgSDQggAnnQABZCITlfSQAD01MJqjwa3CB2Q1OQACk9qx6AB1ADWAHFYQQAKoAfn0RAAvLCAEIAMQAsgARAD6AE0YOwAB6ygBayFVAEUYoJylAANogMkUqm0ojhIgHA7hZzUnDKgAa8oI1AA7vLqXAAJwAdlYBwQAA5g1GAKzBrjhABW5WOghtlJp1IdTpdboOipYIUYQl81PocaQodDwedB2o9BTaYz5Kz9sdztdqjpsoA0oxCdQxITqaxqKwIwRuQdg0hm+mqJm7TnO-mexYBdqxAAJViwsRjghR1ixqvMZD0f6pxfWtsr3Ndt1gRU8vUwOPMZPUlaV4OMUM+EYOM+GoBcQAAXSocpUDoH4hlcEAAF8gA"
             target="_blank"

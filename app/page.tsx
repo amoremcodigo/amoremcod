@@ -8,7 +8,7 @@ import { Testimonials } from "@/components/testimonials"
 import { Footer } from "@/components/footer"
 import { PromoBar } from "@/components/promo-bar"
 import { WhatsappButton } from "@/components/whatsapp-button"
-import { MySitesButton } from "@/components/my-sites-button" // Adicionar importação
+import { ExampleButton } from "@/components/example-button" // Adicionar importação do novo componente
 
 export default function Home() {
   return (
@@ -21,7 +21,7 @@ export default function Home() {
       <PricingPlans />
       <PreviewSite />
       <Testimonials />
-      <MySitesButton /> {/* Adicionar o componente aqui */}
+      <ExampleButton /> {/* Substituir MySitesButton por ExampleButton */}
       <Footer />
       <WhatsappButton />
     </main>

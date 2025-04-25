@@ -236,52 +236,16 @@ export function PreviewSite() {
       setLoadingText("Enviando fotos...")
       // Fazer upload das fotos para o servidor
       const photoUrls = [...formData.photoUrls]
-      let uploadedCount = 0
-      const totalPhotos = formData.photos.filter((photo) => photo && photo.startsWith("data:image")).length
-
       for (let i = 0; i < formData.photos.length; i++) {
         if (formData.photos[i] && formData.photos[i].startsWith("data:image")) {
           try {
-            console.log(`Iniciando upload da foto ${i + 1}/${totalPhotos}...`)
-            setLoadingText(`Enviando foto ${uploadedCount + 1}/${totalPhotos}...`)
-
-            // Atualizar progresso
-            const newProgress = [...uploadProgress]
-            newProgress[i] = 10 // Iniciando upload
-            setUploadProgress(newProgress)
-
+            console.log(`Iniciando upload da foto ${i + 1}...`)
             photoUrls[i] = await uploadImageToServer(formData.photos[i])
-
-            // Atualizar progresso
-            newProgress[i] = 100 // Upload completo
-            setUploadProgress(newProgress)
-
-            console.log(`Foto ${i + 1} enviada para o ImgBB com sucesso, URL:`, photoUrls[i])
-            uploadedCount++
+            console.log(`Foto ${i + 1} enviada para o servidor, URL:`, photoUrls[i])
           } catch (error) {
-            console.error(`Erro ao enviar foto ${i + 1} para o ImgBB:`, error)
-
-            // Atualizar progresso com erro
-            const newProgress = [...uploadProgress]
-            newProgress[i] = -1 // Erro no upload
-            setUploadProgress(newProgress)
-
-            // Tentar novamente uma vez
-            try {
-              console.log(`Tentando novamente o upload da foto ${i + 1}...`)
-              photoUrls[i] = await uploadImageToServer(formData.photos[i])
-
-              // Atualizar progresso se sucesso na segunda tentativa
-              newProgress[i] = 100
-              setUploadProgress(newProgress)
-
-              console.log(`Foto ${i + 1} enviada para o ImgBB na segunda tentativa, URL:`, photoUrls[i])
-              uploadedCount++
-            } catch (retryError) {
-              console.error(`Falha na segunda tentativa de upload da foto ${i + 1}:`, retryError)
-              // Continuar mesmo com erro na foto
-              console.log("Continuando mesmo com erro na foto...")
-            }
+            console.error(`Erro ao enviar foto ${i + 1} para o servidor:`, error)
+            // Continuar mesmo com erro na foto
+            console.log("Continuando mesmo com erro na foto...")
           }
         }
       }
@@ -347,7 +311,7 @@ export function PreviewSite() {
       setLoadingText("Salvando página...")
       // Salvar os dados usando a API
       try {
-        console.log("Salvando dados via API...", pageData)
+        console.log("Salvando dados via API...")
         const response = await fetch("/api/save-page", {
           method: "POST",
           headers: {

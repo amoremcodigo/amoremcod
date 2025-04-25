@@ -7,8 +7,8 @@ import { useFormContext } from "@/context/form-context"
 import { FallingHearts } from "@/components/falling-hearts"
 import { compressToEncodedURIComponent } from "lz-string"
 
-// Função para fazer upload da imagem para o ImgBB
-const uploadImageToServer = async (base64Image: string): Promise<string> => {
+// Função para fazer upload da imagem para o ImgBB com retry
+const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetries = 3): Promise<string> => {
   try {
     // Remover o prefixo do data URL se existir
     const base64Data = base64Image.includes("base64,") ? base64Image.split("base64,")[1] : base64Image
@@ -16,7 +16,7 @@ const uploadImageToServer = async (base64Image: string): Promise<string> => {
     // Chave da API do ImgBB
     const apiKey = "b0aebf5fbd0f7f940e0184c796125175"
 
-    console.log("Iniciando upload para ImgBB...")
+    console.log(`Iniciando upload para ImgBB (tentativa ${retryCount + 1}/${maxRetries + 1})...`)
 
     // Preparar os dados para o upload
     const formData = new FormData()
@@ -31,7 +31,14 @@ const uploadImageToServer = async (base64Image: string): Promise<string> => {
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error("Erro na resposta da API ImgBB:", errorText)
+      console.error(`Erro na resposta da API ImgBB (tentativa ${retryCount + 1}):`, errorText)
+
+      if (retryCount < maxRetries) {
+        console.log(`Tentando novamente em ${(retryCount + 1) * 2} segundos...`)
+        await new Promise((resolve) => setTimeout(resolve, (retryCount + 1) * 2000))
+        return uploadImageToServer(base64Image, retryCount + 1, maxRetries)
+      }
+
       throw new Error(`Erro na resposta da API ImgBB: ${response.status} ${response.statusText}`)
     }
 
@@ -39,14 +46,28 @@ const uploadImageToServer = async (base64Image: string): Promise<string> => {
 
     // Verificar se o upload foi bem-sucedido
     if (data.success) {
-      console.log("Imagem enviada com sucesso para o ImgBB:", data.data.url)
+      console.log(`Imagem enviada com sucesso para o ImgBB (tentativa ${retryCount + 1}):`, data.data.url)
       return data.data.url
     } else {
-      console.error("Falha no upload para ImgBB:", data.error)
+      console.error(`Falha no upload para ImgBB (tentativa ${retryCount + 1}):`, data.error)
+
+      if (retryCount < maxRetries) {
+        console.log(`Tentando novamente em ${(retryCount + 1) * 2} segundos...`)
+        await new Promise((resolve) => setTimeout(resolve, (retryCount + 1) * 2000))
+        return uploadImageToServer(base64Image, retryCount + 1, maxRetries)
+      }
+
       throw new Error("Falha ao fazer upload da imagem: " + (data.error?.message || "Erro desconhecido"))
     }
   } catch (error) {
-    console.error("Erro ao fazer upload da imagem para o ImgBB:", error)
+    console.error(`Erro ao fazer upload da imagem para o ImgBB (tentativa ${retryCount + 1}):`, error)
+
+    if (retryCount < maxRetries) {
+      console.log(`Tentando novamente em ${(retryCount + 1) * 2} segundos...`)
+      await new Promise((resolve) => setTimeout(resolve, (retryCount + 1) * 2000))
+      return uploadImageToServer(base64Image, retryCount + 1, maxRetries)
+    }
+
     throw error
   }
 }
@@ -98,6 +119,7 @@ export function PreviewSite() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [loadingText, setLoadingText] = useState("Processando...")
   const [uploadProgress, setUploadProgress] = useState<number[]>([0, 0, 0, 0, 0])
+  const [uploadStatus, setUploadStatus] = useState<string[]>(["", "", "", "", ""])
 
   // Usar a data do formulário ou uma data padrão
   const startDate = formData.date
@@ -233,32 +255,37 @@ export function PreviewSite() {
       const pageId = Math.random().toString(36).substring(2, 8)
       console.log("ID da página gerado:", pageId)
 
-      setLoadingText("Enviando fotos...")
       // Fazer upload das fotos para o servidor
       const photoUrls = [...formData.photoUrls]
       let uploadedCount = 0
-      const totalPhotos = formData.photos.filter((photo) => photo && photo.startsWith("data:image")).length
+      const photosToUpload = formData.photos.filter((photo) => photo && photo.startsWith("data:image"))
+      const totalPhotos = photosToUpload.length
 
-      for (let i = 0; i < formData.photos.length; i++) {
-        if (formData.photos[i] && formData.photos[i].startsWith("data:image")) {
-          try {
-            console.log(`Iniciando upload da foto ${i + 1}/${totalPhotos}...`)
-            setLoadingText(`Enviando foto ${uploadedCount + 1}/${totalPhotos}...`)
+      if (totalPhotos > 0) {
+        setLoadingText(`Enviando fotos (0/${totalPhotos})...`)
 
-            photoUrls[i] = await uploadImageToServer(formData.photos[i])
-            console.log(`Foto ${i + 1} enviada para o ImgBB com sucesso, URL:`, photoUrls[i])
-            uploadedCount++
-          } catch (error) {
-            console.error(`Erro ao enviar foto ${i + 1} para o ImgBB:`, error)
+        // Atualizar status de upload para cada foto
+        const newUploadStatus = [...uploadStatus]
 
-            // Tentar novamente uma vez
+        for (let i = 0; i < formData.photos.length; i++) {
+          if (formData.photos[i] && formData.photos[i].startsWith("data:image")) {
             try {
-              console.log(`Tentando novamente o upload da foto ${i + 1}...`)
-              photoUrls[i] = await uploadImageToServer(formData.photos[i])
-              console.log(`Foto ${i + 1} enviada para o ImgBB na segunda tentativa, URL:`, photoUrls[i])
               uploadedCount++
-            } catch (retryError) {
-              console.error(`Falha na segunda tentativa de upload da foto ${i + 1}:`, retryError)
+              setLoadingText(`Enviando foto ${uploadedCount}/${totalPhotos}...`)
+              newUploadStatus[i] = "uploading"
+              setUploadStatus([...newUploadStatus])
+
+              console.log(`Iniciando upload da foto ${i + 1}/${totalPhotos}...`)
+              photoUrls[i] = await uploadImageToServer(formData.photos[i])
+
+              console.log(`Foto ${i + 1} enviada para o ImgBB com sucesso, URL:`, photoUrls[i])
+              newUploadStatus[i] = "success"
+              setUploadStatus([...newUploadStatus])
+            } catch (error) {
+              console.error(`Erro ao enviar foto ${i + 1} para o ImgBB:`, error)
+              newUploadStatus[i] = "error"
+              setUploadStatus([...newUploadStatus])
+
               // Continuar mesmo com erro na foto
               console.log("Continuando mesmo com erro na foto...")
             }
@@ -273,7 +300,7 @@ export function PreviewSite() {
         t: formData.time, // Hora
         m: formData.message, // Mensagem
         y: formData.youtubeLink, // Link do YouTube
-        p: photoUrls, // URLs das fotos
+        p: photoUrls.filter((url) => url), // URLs das fotos (filtrar vazias)
         pl: formData.plan, // Plano
       }
 
@@ -343,6 +370,10 @@ export function PreviewSite() {
 
         const result = await response.json()
         console.log("Resposta da API:", result)
+
+        if (!result.success) {
+          throw new Error(`Erro ao salvar página: ${result.error || "Erro desconhecido"}`)
+        }
 
         setLoadingText("Redirecionando para pagamento...")
         // Redirecionar para o checkout

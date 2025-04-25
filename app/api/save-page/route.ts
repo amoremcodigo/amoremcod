@@ -21,6 +21,11 @@ export async function POST(request: Request) {
 
     // Verificar se temos os dados necessários
     if (!pageData.page_id || !pageData.email || !pageData.couple_names) {
+      console.error("Dados incompletos:", {
+        page_id: pageData.page_id ? "OK" : "Faltando",
+        email: pageData.email ? "OK" : "Faltando",
+        couple_names: pageData.couple_names ? "OK" : "Faltando",
+      })
       return NextResponse.json(
         { error: "Dados incompletos", details: "ID da página, email e nome do casal são obrigatórios" },
         { status: 400 },
@@ -55,8 +60,23 @@ export async function POST(request: Request) {
 
     // Salvar no Supabase
     console.log("Salvando página no Supabase...")
-    const result = await savePage(pageData)
-    console.log("Resultado do salvamento:", result)
+    try {
+      const result = await savePage(pageData)
+      console.log("Resultado do salvamento:", result)
+
+      if (!result || !result.success) {
+        throw new Error("Falha ao salvar no Supabase: resposta inválida")
+      }
+    } catch (saveError) {
+      console.error("Erro ao salvar no Supabase:", saveError)
+      return NextResponse.json(
+        {
+          error: "Erro ao salvar no Supabase",
+          details: saveError instanceof Error ? saveError.message : String(saveError),
+        },
+        { status: 500 },
+      )
+    }
 
     // Determinar URL de checkout com base no plano
     const checkoutUrl =
@@ -82,6 +102,7 @@ export async function POST(request: Request) {
           qrCodeUrl: pageData.qr_code_url,
           isPending: true, // Pagamento pendente
         }),
+        cache: "no-store",
       })
       console.log("Email enviado com sucesso!")
     } catch (emailError) {

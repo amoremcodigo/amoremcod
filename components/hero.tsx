@@ -146,7 +146,7 @@ export function Hero() {
                       </svg>
                     ))}
                   </div>
-                  <span className="ml-2 text-sm text-gray-400">Aprovado por 31.742 pessoas</span>
+                  <span className="ml-2 text-sm text-gray-400">+ de 3500 clientes felizes</span>
                 </div>
               </div>
             </div>

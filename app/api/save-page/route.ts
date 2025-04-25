@@ -1,120 +1,66 @@
 import { NextResponse } from "next/server"
-import { savePage } from "@/lib/supabase"
-import QRCode from "qrcode"
+import { createClient } from "@supabase/supabase-js"
 
 export async function POST(request: Request) {
+  console.log("API save-page: Iniciando processamento da requisição")
+
   try {
-    // Obter os dados do corpo da requisição
-    const rawBody = await request.text()
-    console.log("=== API SAVE-PAGE: CORPO BRUTO DA REQUISIÇÃO ===")
-    console.log(rawBody.substring(0, 200) + "...") // Log apenas do início para não sobrecarregar
+    // Obter os dados da requisição
+    const requestBody = await request.text()
+    console.log("API save-page: Corpo da requisição recebido:", requestBody.substring(0, 200) + "...")
 
-    let pageData
-    try {
-      pageData = JSON.parse(rawBody)
-    } catch (parseError) {
-      console.error("Erro ao analisar JSON:", parseError)
-      return NextResponse.json(
-        { error: "Formato de dados inválido", details: "O corpo da requisição não é um JSON válido" },
-        { status: 400 },
-      )
+    const data = JSON.parse(requestBody)
+    console.log("API save-page: Dados parseados com sucesso")
+
+    // Verificar se temos as credenciais do Supabase
+    const supabaseUrl = process.env.SUPABASE_URL
+    const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseKey) {
+      console.error("API save-page: Credenciais do Supabase não encontradas")
+      return NextResponse.json({ error: "Credenciais do Supabase não configuradas" }, { status: 500 })
     }
 
-    console.log("=== API SAVE-PAGE: INICIANDO SALVAMENTO ===")
-    console.log("ID da página:", pageData.page_id)
-    console.log("Email:", pageData.email)
-    console.log("Nome do casal:", pageData.couple_names)
+    // Criar cliente do Supabase
+    console.log("API save-page: Criando cliente do Supabase")
+    const supabase = createClient(supabaseUrl, supabaseKey)
 
-    // Verificar se temos os dados necessários
-    if (!pageData.page_id || !pageData.email || !pageData.couple_names) {
-      return NextResponse.json(
-        { error: "Dados incompletos", details: "ID da página, email e nome do casal são obrigatórios" },
-        { status: 400 },
-      )
+    // Garantir que temos timestamps
+    if (!data.created_at) {
+      data.created_at = new Date().toISOString()
+    }
+    if (!data.updated_at) {
+      data.updated_at = new Date().toISOString()
     }
 
-    // Gerar QR Code se não foi fornecido
-    if (!pageData.qr_code_url && pageData.page_url) {
-      try {
-        console.log("Gerando QR Code para a URL:", pageData.page_url)
-        const qrCodeDataUrl = await QRCode.toDataURL(pageData.page_url, {
-          width: 300,
-          margin: 1,
-          errorCorrectionLevel: "H",
-          color: {
-            dark: "#000000",
-            light: "#FFFFFF",
-          },
-        })
-        pageData.qr_code_url = qrCodeDataUrl
-        console.log("QR Code gerado com sucesso")
-      } catch (qrError) {
-        console.error("Erro ao gerar QR Code:", qrError)
-        // Continuar mesmo sem QR code
-      }
+    // Inserir os dados na tabela pages
+    console.log("API save-page: Inserindo dados na tabela pages")
+    const { data: insertedData, error } = await supabase.from("pages").insert([data]).select()
+
+    if (error) {
+      console.error("API save-page: Erro ao inserir dados no Supabase:", error)
+      return NextResponse.json({ error: `Erro ao salvar página: ${error.message}` }, { status: 500 })
     }
 
-    // Adicionar status de pagamento se não existir
-    if (!pageData.payment_status) {
-      pageData.payment_status = "pending"
-    }
+    console.log("API save-page: Dados inseridos com sucesso:", insertedData)
 
-    // Adicionar timestamps
-    const dataWithTimestamps = {
-      ...pageData,
-      created_at: pageData.created_at || new Date().toISOString(),
-      updated_at: pageData.updated_at || new Date().toISOString(),
-    }
-
-    // Salvar no Supabase
-    console.log("Salvando página no Supabase...")
-    const result = await savePage(dataWithTimestamps)
-    console.log("Resultado do salvamento:", result)
-
-    // Determinar URL de checkout com base no plano
+    // Construir URL de checkout com referência ao ID da página
     const checkoutUrl =
-      pageData.plan === "premium" ? "https://pay.kiwify.com.br/MN5HRnF" : "https://pay.kiwify.com.br/x7zu8ul"
+      data.plan === "premium" ? "https://pay.kiwify.com.br/MN5HRnF" : "https://pay.kiwify.com.br/x7zu8ul"
 
-    // Adicionar referência do ID da página
-    const checkoutUrlWithRef = `${checkoutUrl}?ref=${pageData.page_id}`
+    const checkoutUrlWithRef = `${checkoutUrl}?ref=${data.page_id}`
 
-    // Enviar email com status pendente
-    try {
-      console.log("Enviando email de confirmação pendente...")
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://amoremcodigo.com.br"
-
-      await fetch(`${siteUrl}/api/send-email`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: pageData.email,
-          pageUrl: pageData.page_url,
-          coupleNames: pageData.couple_names,
-          qrCodeUrl: pageData.qr_code_url,
-          isPending: true, // Pagamento pendente
-        }),
-      })
-      console.log("Email enviado com sucesso!")
-    } catch (emailError) {
-      console.error("Erro ao enviar email:", emailError)
-      // Continuar mesmo com erro no email
-    }
-
+    // Retornar sucesso com a URL de checkout
     return NextResponse.json({
       success: true,
       message: "Página salva com sucesso",
-      pageId: pageData.page_id,
+      pageId: data.page_id,
       checkoutUrl: checkoutUrlWithRef,
     })
   } catch (error) {
-    console.error("Erro ao salvar página:", error)
+    console.error("API save-page: Erro ao processar requisição:", error)
     return NextResponse.json(
-      {
-        error: "Erro ao salvar página",
-        details: error instanceof Error ? error.message : String(error),
-      },
+      { error: `Erro ao processar requisição: ${error instanceof Error ? error.message : "Erro desconhecido"}` },
       { status: 500 },
     )
   }

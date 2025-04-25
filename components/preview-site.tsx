@@ -30,20 +30,23 @@ const uploadImageToServer = async (base64Image: string): Promise<string> => {
     })
 
     if (!response.ok) {
-      throw new Error(`Erro na resposta da API: ${response.status} ${response.statusText}`)
+      const errorText = await response.text()
+      console.error("Erro na resposta da API ImgBB:", errorText)
+      throw new Error(`Erro na resposta da API ImgBB: ${response.status} ${response.statusText}`)
     }
 
     const data = await response.json()
 
     // Verificar se o upload foi bem-sucedido
     if (data.success) {
-      console.log("Imagem enviada com sucesso para o servidor:", data.data.url)
+      console.log("Imagem enviada com sucesso para o ImgBB:", data.data.url)
       return data.data.url
     } else {
+      console.error("Falha no upload para ImgBB:", data.error)
       throw new Error("Falha ao fazer upload da imagem: " + (data.error?.message || "Erro desconhecido"))
     }
   } catch (error) {
-    console.error("Erro ao fazer upload da imagem:", error)
+    console.error("Erro ao fazer upload da imagem para ImgBB:", error)
     throw error
   }
 }
@@ -84,28 +87,6 @@ const compressDataForUrl = (data: any): string => {
   }
 }
 
-// Função para salvar localmente como fallback
-const saveLocalFallback = (pageId: string, pageData: any) => {
-  try {
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(
-        `page_${pageId}`,
-        JSON.stringify({
-          ...pageData,
-          savedLocally: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }),
-      )
-      console.log("Página salva localmente com sucesso como fallback")
-      return true
-    }
-  } catch (error) {
-    console.error("Erro ao salvar localmente:", error)
-  }
-  return false
-}
-
 export function PreviewSite() {
   const { formData, isFormValid, isSubmitting, updateFormData } = useFormContext()
   const [years, setYears] = useState(0)
@@ -116,6 +97,7 @@ export function PreviewSite() {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
   const [isProcessing, setIsProcessing] = useState(false)
   const [loadingText, setLoadingText] = useState("Processando...")
+  const [uploadProgress, setUploadProgress] = useState<number[]>([0, 0, 0, 0, 0])
 
   // Usar a data do formulário ou uma data padrão
   const startDate = formData.date
@@ -241,7 +223,7 @@ export function PreviewSite() {
       // Capitalizar o nome do casal e substituir "e" por "&"
       const capitalizedCoupleNames = capitalizeWords(formData.coupleNames)
 
-      // Atualizar o formData com o nome capitalizado e-mail normalizado
+      // Atualizar o formData com o nome capitalizado e e-mail normalizado
       updateFormData({
         coupleNames: capitalizedCoupleNames,
         email: normalizedEmail,
@@ -251,46 +233,55 @@ export function PreviewSite() {
       const pageId = Math.random().toString(36).substring(2, 8)
       console.log("ID da página gerado:", pageId)
 
-      // Salvar localmente como fallback primeiro
-      try {
-        localStorage.setItem(
-          `page_${pageId}`,
-          JSON.stringify({
-            coupleNames: capitalizedCoupleNames,
-            email: normalizedEmail,
-            date: formData.date,
-            time: formData.time || "",
-            message: formData.message,
-            youtubeLink: formData.youtubeLink || "",
-            photoUrls: formData.photoUrls.filter((url) => url),
-            photos: formData.photos.filter((photo) => photo),
-            plan: formData.plan || "basic",
-            savedLocally: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          }),
-        )
-        console.log("Dados salvos localmente como fallback")
-      } catch (localError) {
-        console.error("Erro ao salvar localmente:", localError)
-      }
-
       setLoadingText("Enviando fotos...")
       // Fazer upload das fotos para o servidor
       const photoUrls = [...formData.photoUrls]
-      let uploadSuccess = true
+      let uploadedCount = 0
+      const totalPhotos = formData.photos.filter((photo) => photo && photo.startsWith("data:image")).length
 
       for (let i = 0; i < formData.photos.length; i++) {
         if (formData.photos[i] && formData.photos[i].startsWith("data:image")) {
           try {
-            console.log(`Iniciando upload da foto ${i + 1}...`)
+            console.log(`Iniciando upload da foto ${i + 1}/${totalPhotos}...`)
+            setLoadingText(`Enviando foto ${uploadedCount + 1}/${totalPhotos}...`)
+
+            // Atualizar progresso
+            const newProgress = [...uploadProgress]
+            newProgress[i] = 10 // Iniciando upload
+            setUploadProgress(newProgress)
+
             photoUrls[i] = await uploadImageToServer(formData.photos[i])
-            console.log(`Foto ${i + 1} enviada para o servidor, URL:`, photoUrls[i])
+
+            // Atualizar progresso
+            newProgress[i] = 100 // Upload completo
+            setUploadProgress(newProgress)
+
+            console.log(`Foto ${i + 1} enviada para o ImgBB com sucesso, URL:`, photoUrls[i])
+            uploadedCount++
           } catch (error) {
-            console.error(`Erro ao enviar foto ${i + 1} para o servidor:`, error)
-            uploadSuccess = false
-            // Continuar mesmo com erro na foto
-            console.log("Continuando mesmo com erro na foto...")
+            console.error(`Erro ao enviar foto ${i + 1} para o ImgBB:`, error)
+
+            // Atualizar progresso com erro
+            const newProgress = [...uploadProgress]
+            newProgress[i] = -1 // Erro no upload
+            setUploadProgress(newProgress)
+
+            // Tentar novamente uma vez
+            try {
+              console.log(`Tentando novamente o upload da foto ${i + 1}...`)
+              photoUrls[i] = await uploadImageToServer(formData.photos[i])
+
+              // Atualizar progresso se sucesso na segunda tentativa
+              newProgress[i] = 100
+              setUploadProgress(newProgress)
+
+              console.log(`Foto ${i + 1} enviada para o ImgBB na segunda tentativa, URL:`, photoUrls[i])
+              uploadedCount++
+            } catch (retryError) {
+              console.error(`Falha na segunda tentativa de upload da foto ${i + 1}:`, retryError)
+              // Continuar mesmo com erro na foto
+              console.log("Continuando mesmo com erro na foto...")
+            }
           }
         }
       }
@@ -349,72 +340,57 @@ export function PreviewSite() {
         page_url: pageUrl,
         qr_code_url: qrCodeUrl || "",
         payment_status: "pending",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       }
 
       setLoadingText("Salvando página...")
       // Salvar os dados usando a API
       try {
-        console.log("Salvando dados via API...")
+        console.log("Salvando dados via API...", pageData)
         const response = await fetch("/api/save-page", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify(pageData),
+          cache: "no-store",
         })
 
         if (!response.ok) {
           const errorText = await response.text()
           console.error("Resposta de erro da API:", errorText)
-
-          let errorData
-          try {
-            errorData = JSON.parse(errorText)
-          } catch (e) {
-            errorData = { error: "Erro desconhecido" }
-          }
-
-          throw new Error(`Erro ao salvar página: ${errorData.error || response.statusText}`)
+          throw new Error(`Erro ao salvar página: ${response.status} ${response.statusText}`)
         }
 
         const result = await response.json()
         console.log("Resposta da API:", result)
 
-        // Salvar o pageId no localStorage para verificação posterior
-        localStorage.setItem("lastPageId", pageId)
-
         setLoadingText("Redirecionando para pagamento...")
         // Redirecionar para o checkout
         if (result.checkoutUrl) {
           console.log("Redirecionando para:", result.checkoutUrl)
-
-          // Usar setTimeout para garantir que o console.log seja exibido antes do redirecionamento
-          setTimeout(() => {
-            window.location.href = result.checkoutUrl
-          }, 500)
+          window.location.href = result.checkoutUrl
         } else {
           // Fallback para URL de checkout padrão
           const checkoutUrl =
             formData.plan === "premium" ? "https://pay.kiwify.com.br/MN5HRnF" : "https://pay.kiwify.com.br/x7zu8ul"
           const checkoutUrlWithRef = `${checkoutUrl}?ref=${pageId}`
           console.log("Redirecionando para URL fallback:", checkoutUrlWithRef)
-
-          // Usar setTimeout para garantir que o console.log seja exibido antes do redirecionamento
-          setTimeout(() => {
-            window.location.href = checkoutUrlWithRef
-          }, 500)
+          window.location.href = checkoutUrlWithRef
         }
       } catch (apiError) {
         console.error("Erro na API de salvamento:", apiError)
-        alert(`Ocorreu um erro ao salvar sua página: ${apiError.message}. Por favor, tente novamente.`)
+        alert("Ocorreu um erro ao salvar sua página. Por favor, tente novamente.")
         setIsProcessing(false)
       }
     } catch (error) {
       console.error("Erro durante o processamento:", error)
-      alert(`Ocorreu um erro ao processar sua solicitação: ${error.message}. Por favor, tente novamente.`)
+      alert("Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.")
       setIsProcessing(false)
     }
   }
+
   return (
     <section className="w-full py-16 md:py-20 bg-black/30" id="preview">
       <div className="container px-4 md:px-6">

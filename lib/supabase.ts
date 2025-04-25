@@ -17,7 +17,9 @@ export const supabase = createClient(supabaseUrl || "", supabaseAnonKey || "")
 // Criar um cliente com a chave de serviço para operações administrativas
 export const supabaseAdmin = supabaseServiceKey ? createClient(supabaseUrl || "", supabaseServiceKey) : supabase
 
-// Função para salvar uma página no Supabase com retry e logs detalhados
+// Modificar a função savePage para garantir que os dados sejam salvos corretamente no Supabase
+// Remover qualquer referência a armazenamento local
+
 export async function savePage(pageData: {
   page_id: string
   email: string
@@ -30,16 +32,17 @@ export async function savePage(pageData: {
   plan: string
   page_url: string
   qr_code_url?: string
+  payment_status?: string
 }) {
-  const maxRetries = 3
+  const maxRetries = 5
   let retryCount = 0
   let lastError = null
 
   // Adicionar timestamps se não existirem
   const dataWithTimestamps = {
     ...pageData,
-    created_at: pageData.created_at || new Date().toISOString(),
-    updated_at: pageData.updated_at || new Date().toISOString(),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
     payment_status: pageData.payment_status || "pending",
   }
 
@@ -52,32 +55,8 @@ export async function savePage(pageData: {
   console.log("Supabase URL:", supabaseUrl ? "Configurado" : "NÃO CONFIGURADO")
   console.log("Supabase Anon Key:", supabaseAnonKey ? "Configurado" : "NÃO CONFIGURADO")
 
-  // Salvar localmente primeiro como fallback
-  try {
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(
-        `page_${pageData.page_id}`,
-        JSON.stringify({
-          ...dataWithTimestamps,
-          savedLocally: true,
-          saveTimestamp: new Date().toISOString(),
-        }),
-      )
-      console.log("Página salva localmente como fallback")
-    }
-  } catch (localError) {
-    console.error("Erro ao salvar localmente:", localError)
-  }
-
-  // Se não temos as credenciais do Supabase, retornar um objeto simulado
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn("AVISO: Credenciais do Supabase não configuradas. Usando apenas armazenamento local.")
-    return {
-      success: true,
-      message: "Dados salvos apenas localmente (Supabase não configurado)",
-      data: [dataWithTimestamps],
-      savedLocally: true,
-    }
+    throw new Error("Credenciais do Supabase não configuradas. Impossível salvar dados.")
   }
 
   while (retryCount < maxRetries) {
@@ -85,7 +64,7 @@ export async function savePage(pageData: {
       console.log(`Tentativa ${retryCount + 1} de salvar página no Supabase. ID: ${pageData.page_id}`)
 
       // Tentar primeiro com o cliente admin (se disponível)
-      if (supabaseAdmin !== supabase) {
+      if (supabaseServiceKey && supabaseAdmin !== supabase) {
         console.log("Usando cliente admin para salvar página")
         const { data, error } = await supabaseAdmin.from("pages").insert([dataWithTimestamps]).select()
 
@@ -100,7 +79,8 @@ export async function savePage(pageData: {
             console.error(`Erro com cliente normal na tentativa ${retryCount + 1}:`, normalResult.error)
             lastError = normalResult.error
             retryCount++
-            await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, retryCount)))
+            // Aumentar o tempo de espera entre tentativas
+            await new Promise((resolve) => setTimeout(resolve, 2000 * Math.pow(2, retryCount)))
             continue
           }
 
@@ -119,7 +99,8 @@ export async function savePage(pageData: {
           console.error(`Erro na tentativa ${retryCount + 1} ao salvar página no Supabase:`, error)
           lastError = error
           retryCount++
-          await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, retryCount)))
+          // Aumentar o tempo de espera entre tentativas
+          await new Promise((resolve) => setTimeout(resolve, 2000 * Math.pow(2, retryCount)))
           continue
         }
 
@@ -130,19 +111,15 @@ export async function savePage(pageData: {
       console.error(`Exceção na tentativa ${retryCount + 1} ao salvar página:`, error)
       lastError = error
       retryCount++
-      await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, retryCount)))
+      // Aumentar o tempo de espera entre tentativas
+      await new Promise((resolve) => setTimeout(resolve, 2000 * Math.pow(2, retryCount)))
     }
   }
 
   console.error(`FALHA CRÍTICA: Não foi possível salvar a página após ${maxRetries} tentativas:`, lastError)
-
-  // Retornar um objeto que indica que salvamos apenas localmente
-  return {
-    success: false,
-    message: "Dados salvos apenas localmente após falhas no Supabase",
-    error: lastError ? String(lastError) : "Erro desconhecido",
-    savedLocally: true,
-  }
+  throw new Error(
+    `Falha ao salvar no Supabase após ${maxRetries} tentativas: ${lastError ? JSON.stringify(lastError) : "Erro desconhecido"}`,
+  )
 }
 
 // Função para buscar uma página pelo page_id com retry

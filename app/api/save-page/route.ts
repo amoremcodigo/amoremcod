@@ -8,7 +8,16 @@ export async function POST(request: Request) {
     const pageData = await request.json()
 
     console.log("=== API SAVE-PAGE: INICIANDO SALVAMENTO ===")
-    console.log("Dados recebidos:", JSON.stringify(pageData, null, 2))
+    console.log(
+      "Dados recebidos:",
+      JSON.stringify({
+        page_id: pageData.page_id,
+        email: pageData.email,
+        couple_names: pageData.couple_names,
+        plan: pageData.plan,
+        photo_urls_count: pageData.photo_urls?.length || 0,
+      }),
+    )
 
     // Verificar se temos os dados necessários
     if (!pageData.page_id || !pageData.email || !pageData.couple_names) {

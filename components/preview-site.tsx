@@ -46,7 +46,7 @@ const uploadImageToServer = async (base64Image: string): Promise<string> => {
       throw new Error("Falha ao fazer upload da imagem: " + (data.error?.message || "Erro desconhecido"))
     }
   } catch (error) {
-    console.error("Erro ao fazer upload da imagem para ImgBB:", error)
+    console.error("Erro ao fazer upload da imagem para o ImgBB:", error)
     throw error
   }
 }
@@ -236,16 +236,32 @@ export function PreviewSite() {
       setLoadingText("Enviando fotos...")
       // Fazer upload das fotos para o servidor
       const photoUrls = [...formData.photoUrls]
+      let uploadedCount = 0
+      const totalPhotos = formData.photos.filter((photo) => photo && photo.startsWith("data:image")).length
+
       for (let i = 0; i < formData.photos.length; i++) {
         if (formData.photos[i] && formData.photos[i].startsWith("data:image")) {
           try {
-            console.log(`Iniciando upload da foto ${i + 1}...`)
+            console.log(`Iniciando upload da foto ${i + 1}/${totalPhotos}...`)
+            setLoadingText(`Enviando foto ${uploadedCount + 1}/${totalPhotos}...`)
+
             photoUrls[i] = await uploadImageToServer(formData.photos[i])
-            console.log(`Foto ${i + 1} enviada para o servidor, URL:`, photoUrls[i])
+            console.log(`Foto ${i + 1} enviada para o ImgBB com sucesso, URL:`, photoUrls[i])
+            uploadedCount++
           } catch (error) {
-            console.error(`Erro ao enviar foto ${i + 1} para o servidor:`, error)
-            // Continuar mesmo com erro na foto
-            console.log("Continuando mesmo com erro na foto...")
+            console.error(`Erro ao enviar foto ${i + 1} para o ImgBB:`, error)
+
+            // Tentar novamente uma vez
+            try {
+              console.log(`Tentando novamente o upload da foto ${i + 1}...`)
+              photoUrls[i] = await uploadImageToServer(formData.photos[i])
+              console.log(`Foto ${i + 1} enviada para o ImgBB na segunda tentativa, URL:`, photoUrls[i])
+              uploadedCount++
+            } catch (retryError) {
+              console.error(`Falha na segunda tentativa de upload da foto ${i + 1}:`, retryError)
+              // Continuar mesmo com erro na foto
+              console.log("Continuando mesmo com erro na foto...")
+            }
           }
         }
       }
@@ -304,8 +320,6 @@ export function PreviewSite() {
         page_url: pageUrl,
         qr_code_url: qrCodeUrl || "",
         payment_status: "pending",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       }
 
       setLoadingText("Salvando página...")
@@ -324,7 +338,7 @@ export function PreviewSite() {
         if (!response.ok) {
           const errorText = await response.text()
           console.error("Resposta de erro da API:", errorText)
-          throw new Error(`Erro ao salvar página: ${response.status} ${response.statusText}`)
+          throw new Error(`Erro ao salvar página: ${errorText}`)
         }
 
         const result = await response.json()
@@ -345,12 +359,16 @@ export function PreviewSite() {
         }
       } catch (apiError) {
         console.error("Erro na API de salvamento:", apiError)
-        alert("Ocorreu um erro ao salvar sua página. Por favor, tente novamente.")
+        alert(
+          `Ocorreu um erro ao salvar sua página: ${apiError instanceof Error ? apiError.message : String(apiError)}. Por favor, tente novamente.`,
+        )
         setIsProcessing(false)
       }
     } catch (error) {
       console.error("Erro durante o processamento:", error)
-      alert("Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.")
+      alert(
+        `Ocorreu um erro ao processar sua solicitação: ${error instanceof Error ? error.message : String(error)}. Por favor, tente novamente.`,
+      )
       setIsProcessing(false)
     }
   }

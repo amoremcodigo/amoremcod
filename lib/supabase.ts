@@ -38,14 +38,6 @@ export async function savePage(pageData: {
   let retryCount = 0
   let lastError = null
 
-  // Adicionar timestamps se não existirem
-  const dataWithTimestamps = {
-    ...pageData,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    payment_status: pageData.payment_status || "pending",
-  }
-
   console.log("=== INICIANDO SALVAMENTO DE PÁGINA NO SUPABASE ===")
   console.log("ID da página:", pageData.page_id)
   console.log("Email:", pageData.email)
@@ -59,6 +51,22 @@ export async function savePage(pageData: {
     throw new Error("Credenciais do Supabase não configuradas. Impossível salvar dados.")
   }
 
+  // Remover campos que possam não existir na tabela
+  const cleanedData = {
+    page_id: pageData.page_id,
+    email: pageData.email,
+    couple_names: pageData.couple_names,
+    date: pageData.date,
+    time: pageData.time || "",
+    message: pageData.message,
+    youtube_link: pageData.youtube_link || "",
+    photo_urls: pageData.photo_urls,
+    plan: pageData.plan,
+    page_url: pageData.page_url,
+    qr_code_url: pageData.qr_code_url || "",
+    payment_status: pageData.payment_status || "pending",
+  }
+
   while (retryCount < maxRetries) {
     try {
       console.log(`Tentativa ${retryCount + 1} de salvar página no Supabase. ID: ${pageData.page_id}`)
@@ -66,14 +74,14 @@ export async function savePage(pageData: {
       // Tentar primeiro com o cliente admin (se disponível)
       if (supabaseServiceKey && supabaseAdmin !== supabase) {
         console.log("Usando cliente admin para salvar página")
-        const { data, error } = await supabaseAdmin.from("pages").insert([dataWithTimestamps]).select()
+        const { data, error } = await supabaseAdmin.from("pages").insert([cleanedData]).select()
 
         if (error) {
           console.error(`Erro com cliente admin na tentativa ${retryCount + 1}:`, error)
           console.log("Tentando com cliente normal...")
 
           // Se falhar com admin, tentar com cliente normal
-          const normalResult = await supabase.from("pages").insert([dataWithTimestamps]).select()
+          const normalResult = await supabase.from("pages").insert([cleanedData]).select()
 
           if (normalResult.error) {
             console.error(`Erro com cliente normal na tentativa ${retryCount + 1}:`, normalResult.error)
@@ -93,7 +101,7 @@ export async function savePage(pageData: {
       } else {
         // Se não temos cliente admin, usar o cliente normal
         console.log("Usando cliente normal para salvar página")
-        const { data, error } = await supabase.from("pages").insert([dataWithTimestamps]).select()
+        const { data, error } = await supabase.from("pages").insert([cleanedData]).select()
 
         if (error) {
           console.error(`Erro na tentativa ${retryCount + 1} ao salvar página no Supabase:`, error)

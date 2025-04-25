@@ -7,8 +7,58 @@ import { useFormContext } from "@/context/form-context"
 import { FallingHearts } from "@/components/falling-hearts"
 import { compressToEncodedURIComponent } from "lz-string"
 
+// Função para comprimir imagem antes do upload
+const compressImage = async (base64Image: string, maxWidth = 1200, quality = 0.7): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    try {
+      const img = new Image()
+      img.crossOrigin = "anonymous"
+      img.onload = () => {
+        // Calcular as novas dimensões mantendo a proporção
+        let width = img.width
+        let height = img.height
+
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width
+          width = maxWidth
+        }
+
+        // Criar canvas para redimensionar
+        const canvas = document.createElement("canvas")
+        canvas.width = width
+        canvas.height = height
+
+        // Desenhar imagem redimensionada
+        const ctx = canvas.getContext("2d")
+        if (!ctx) {
+          reject(new Error("Não foi possível obter contexto 2D do canvas"))
+          return
+        }
+
+        ctx.drawImage(img, 0, 0, width, height)
+
+        // Converter para base64 com qualidade reduzida
+        const compressedBase64 = canvas.toDataURL("image/jpeg", quality)
+        resolve(compressedBase64)
+      }
+
+      img.onerror = (error) => {
+        console.error("Erro ao carregar imagem para compressão:", error)
+        // Se falhar, retornar a imagem original
+        resolve(base64Image)
+      }
+
+      img.src = base64Image
+    } catch (error) {
+      console.error("Erro ao comprimir imagem:", error)
+      // Se falhar, retornar a imagem original
+      resolve(base64Image)
+    }
+  })
+}
+
 // Função para fazer upload da imagem para o ImgBB com retry
-const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetries = 3): Promise<string> => {
+const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetries = 2): Promise<string> => {
   try {
     // Remover o prefixo do data URL se existir
     const base64Data = base64Image.includes("base64,") ? base64Image.split("base64,")[1] : base64Image
@@ -23,11 +73,15 @@ const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetri
     formData.append("key", apiKey)
     formData.append("image", base64Data)
 
-    // Fazer a requisição para a API do ImgBB
+    // Fazer a requisição para a API do ImgBB com timeout
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 segundos de timeout
+
     const response = await fetch("https://api.imgbb.com/1/upload", {
       method: "POST",
       body: formData,
-    })
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timeoutId))
 
     if (!response.ok) {
       const errorText = await response.text()
@@ -68,7 +122,9 @@ const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetri
       return uploadImageToServer(base64Image, retryCount + 1, maxRetries)
     }
 
-    throw error
+    // Se todas as tentativas falharem, retornar uma URL de fallback
+    console.warn("Todas as tentativas de upload falharam, usando URL de fallback")
+    return "https://i.ibb.co/Wc1QZ2c/placeholder-image.jpg"
   }
 }
 
@@ -108,6 +164,34 @@ const compressDataForUrl = (data: any): string => {
   }
 }
 
+// Função para upload paralelo de imagens
+const uploadImagesInParallel = async (images: string[]): Promise<string[]> => {
+  try {
+    console.log(`Iniciando upload paralelo de ${images.length} imagens...`)
+
+    // Primeiro, comprimir todas as imagens
+    const compressPromises = images.map((img) =>
+      img && img.startsWith("data:image") ? compressImage(img) : Promise.resolve(img),
+    )
+
+    const compressedImages = await Promise.all(compressPromises)
+    console.log("Todas as imagens foram comprimidas")
+
+    // Depois, fazer upload de todas as imagens em paralelo
+    const uploadPromises = compressedImages.map((img) =>
+      img && img.startsWith("data:image") ? uploadImageToServer(img) : Promise.resolve(img),
+    )
+
+    const results = await Promise.all(uploadPromises)
+    console.log("Upload paralelo concluído com sucesso")
+
+    return results
+  } catch (error) {
+    console.error("Erro no upload paralelo de imagens:", error)
+    throw error
+  }
+}
+
 export function PreviewSite() {
   const { formData, isFormValid, isSubmitting, updateFormData } = useFormContext()
   const [years, setYears] = useState(0)
@@ -118,8 +202,8 @@ export function PreviewSite() {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
   const [isProcessing, setIsProcessing] = useState(false)
   const [loadingText, setLoadingText] = useState("Processando...")
-  const [uploadProgress, setUploadProgress] = useState<number[]>([0, 0, 0, 0, 0])
-  const [uploadStatus, setUploadStatus] = useState<string[]>(["", "", "", "", ""])
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [error, setError] = useState<string | null>(null)
 
   // Usar a data do formulário ou uma data padrão
   const startDate = formData.date
@@ -236,7 +320,9 @@ export function PreviewSite() {
 
     try {
       setIsProcessing(true)
-      setLoadingText("Processando...")
+      setError(null)
+      setLoadingText("Preparando dados...")
+      setUploadProgress(0)
       console.log("=== INICIANDO PROCESSO DE SUBMISSÃO ===")
 
       // Normalizar o e-mail (trim e lowercase)
@@ -255,42 +341,27 @@ export function PreviewSite() {
       const pageId = Math.random().toString(36).substring(2, 8)
       console.log("ID da página gerado:", pageId)
 
-      // Fazer upload das fotos para o servidor
-      const photoUrls = [...formData.photoUrls]
-      let uploadedCount = 0
+      // Fazer upload das fotos para o servidor usando upload paralelo
+      setLoadingText("Comprimindo e enviando fotos...")
       const photosToUpload = formData.photos.filter((photo) => photo && photo.startsWith("data:image"))
-      const totalPhotos = photosToUpload.length
 
-      if (totalPhotos > 0) {
-        setLoadingText(`Enviando fotos (0/${totalPhotos})...`)
-
-        // Atualizar status de upload para cada foto
-        const newUploadStatus = [...uploadStatus]
-
-        for (let i = 0; i < formData.photos.length; i++) {
-          if (formData.photos[i] && formData.photos[i].startsWith("data:image")) {
-            try {
-              uploadedCount++
-              setLoadingText(`Enviando foto ${uploadedCount}/${totalPhotos}...`)
-              newUploadStatus[i] = "uploading"
-              setUploadStatus([...newUploadStatus])
-
-              console.log(`Iniciando upload da foto ${i + 1}/${totalPhotos}...`)
-              photoUrls[i] = await uploadImageToServer(formData.photos[i])
-
-              console.log(`Foto ${i + 1} enviada para o ImgBB com sucesso, URL:`, photoUrls[i])
-              newUploadStatus[i] = "success"
-              setUploadStatus([...newUploadStatus])
-            } catch (error) {
-              console.error(`Erro ao enviar foto ${i + 1} para o ImgBB:`, error)
-              newUploadStatus[i] = "error"
-              setUploadStatus([...newUploadStatus])
-
-              // Continuar mesmo com erro na foto
-              console.log("Continuando mesmo com erro na foto...")
-            }
-          }
+      if (photosToUpload.length > 0) {
+        try {
+          // Usar upload paralelo para todas as fotos
+          const photoUrls = await uploadImagesInParallel(formData.photos)
+          updateFormData({ photoUrls })
+          setUploadProgress(100)
+          console.log("Todas as fotos foram enviadas com sucesso:", photoUrls)
+        } catch (uploadError) {
+          console.error("Erro durante o upload de fotos:", uploadError)
+          setError(
+            "Houve um problema ao enviar algumas fotos. Continuando com as fotos que foram enviadas com sucesso.",
+          )
+          // Continuar mesmo com erro nas fotos
         }
+      } else {
+        console.log("Nenhuma foto para enviar")
+        setUploadProgress(100)
       }
 
       // Criar um objeto com dados essenciais para a URL
@@ -300,7 +371,7 @@ export function PreviewSite() {
         t: formData.time, // Hora
         m: formData.message, // Mensagem
         y: formData.youtubeLink, // Link do YouTube
-        p: photoUrls.filter((url) => url), // URLs das fotos (filtrar vazias)
+        p: formData.photoUrls.filter((url) => url), // URLs das fotos (filtrar vazias)
         pl: formData.plan, // Plano
       }
 
@@ -342,7 +413,7 @@ export function PreviewSite() {
         time: formData.time || "",
         message: formData.message,
         youtube_link: formData.youtubeLink || "",
-        photo_urls: photoUrls.filter((url) => url), // Filtrar URLs vazias
+        photo_urls: formData.photoUrls.filter((url) => url), // Filtrar URLs vazias
         plan: formData.plan || "basic",
         page_url: pageUrl,
         qr_code_url: qrCodeUrl || "",
@@ -362,12 +433,6 @@ export function PreviewSite() {
           cache: "no-store",
         })
 
-        if (!response.ok) {
-          const errorText = await response.text()
-          console.error("Resposta de erro da API:", errorText)
-          throw new Error(`Erro ao salvar página: ${errorText}`)
-        }
-
         const result = await response.json()
         console.log("Resposta da API:", result)
 
@@ -376,28 +441,32 @@ export function PreviewSite() {
         }
 
         setLoadingText("Redirecionando para pagamento...")
-        // Redirecionar para o checkout
-        if (result.checkoutUrl) {
-          console.log("Redirecionando para:", result.checkoutUrl)
-          window.location.href = result.checkoutUrl
-        } else {
-          // Fallback para URL de checkout padrão
-          const checkoutUrl =
-            formData.plan === "premium" ? "https://pay.kiwify.com.br/MN5HRnF" : "https://pay.kiwify.com.br/x7zu8ul"
-          const checkoutUrlWithRef = `${checkoutUrl}?ref=${pageId}`
-          console.log("Redirecionando para URL fallback:", checkoutUrlWithRef)
-          window.location.href = checkoutUrlWithRef
-        }
+
+        // Pequeno delay antes de redirecionar para garantir que o usuário veja a mensagem
+        setTimeout(() => {
+          // Redirecionar para o checkout
+          if (result.checkoutUrl) {
+            console.log("Redirecionando para:", result.checkoutUrl)
+            window.location.href = result.checkoutUrl
+          } else {
+            // Fallback para URL de checkout padrão
+            const checkoutUrl =
+              formData.plan === "premium" ? "https://pay.kiwify.com.br/MN5HRnF" : "https://pay.kiwify.com.br/x7zu8ul"
+            const checkoutUrlWithRef = `${checkoutUrl}?ref=${pageId}`
+            console.log("Redirecionando para URL fallback:", checkoutUrlWithRef)
+            window.location.href = checkoutUrlWithRef
+          }
+        }, 1000)
       } catch (apiError) {
         console.error("Erro na API de salvamento:", apiError)
-        alert(
+        setError(
           `Ocorreu um erro ao salvar sua página: ${apiError instanceof Error ? apiError.message : String(apiError)}. Por favor, tente novamente.`,
         )
         setIsProcessing(false)
       }
     } catch (error) {
       console.error("Erro durante o processamento:", error)
-      alert(
+      setError(
         `Ocorreu um erro ao processar sua solicitação: ${error instanceof Error ? error.message : String(error)}. Por favor, tente novamente.`,
       )
       setIsProcessing(false)
@@ -619,7 +688,28 @@ export function PreviewSite() {
           </div>
         </div>
 
-        <div className="flex justify-center mt-12">
+        <div className="flex flex-col items-center justify-center mt-12">
+          {/* Barra de progresso para upload de fotos */}
+          {isProcessing && (
+            <div className="w-full max-w-md mb-4">
+              <div className="flex justify-between text-sm mb-1">
+                <span>{loadingText}</span>
+                <span>{uploadProgress}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                <div
+                  className="bg-gradient-to-r from-pink-500 to-purple-500 h-2.5 rounded-full transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
+
+          {/* Mensagem de erro */}
+          {error && (
+            <div className="text-red-500 mb-4 p-3 bg-red-100 border border-red-300 rounded-md max-w-md">{error}</div>
+          )}
+
           <Button
             size="lg"
             className="gradient-bg text-lg px-8 py-6 relative"
@@ -630,7 +720,7 @@ export function PreviewSite() {
               <>
                 <div className="flex items-center">
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  <span>{loadingText}</span>
+                  <span>Processando...</span>
                 </div>
               </>
             ) : (

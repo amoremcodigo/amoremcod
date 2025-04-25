@@ -58,10 +58,32 @@ export async function POST(request: Request) {
       pageData.payment_status = "pending"
     }
 
-    // Salvar no Supabase
+    // Salvar no Supabase com timeout
     console.log("Salvando página no Supabase...")
+
+    // Criar uma promise com timeout para o salvamento
+    const saveWithTimeout = async (timeout = 10000) => {
+      let timeoutId: NodeJS.Timeout
+
+      const timeoutPromise = new Promise((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error(`Timeout de ${timeout}ms excedido ao salvar no Supabase`))
+        }, timeout)
+      })
+
+      try {
+        const savePromise = savePage(pageData)
+        const result = await Promise.race([savePromise, timeoutPromise])
+        clearTimeout(timeoutId)
+        return result
+      } catch (error) {
+        clearTimeout(timeoutId)
+        throw error
+      }
+    }
+
     try {
-      const result = await savePage(pageData)
+      const result = await saveWithTimeout()
       console.log("Resultado do salvamento:", result)
 
       if (!result || !result.success) {
@@ -69,13 +91,27 @@ export async function POST(request: Request) {
       }
     } catch (saveError) {
       console.error("Erro ao salvar no Supabase:", saveError)
-      return NextResponse.json(
-        {
-          error: "Erro ao salvar no Supabase",
-          details: saveError instanceof Error ? saveError.message : String(saveError),
-        },
-        { status: 500 },
-      )
+
+      // Tentar novamente uma vez antes de falhar
+      try {
+        console.log("Tentando salvar novamente...")
+        const retryResult = await saveWithTimeout(15000) // Timeout maior na segunda tentativa
+
+        if (!retryResult || !retryResult.success) {
+          throw new Error("Falha ao salvar no Supabase na segunda tentativa")
+        }
+
+        console.log("Salvamento bem-sucedido na segunda tentativa")
+      } catch (retryError) {
+        console.error("Erro na segunda tentativa de salvamento:", retryError)
+        return NextResponse.json(
+          {
+            error: "Erro ao salvar no Supabase",
+            details: retryError instanceof Error ? retryError.message : String(retryError),
+          },
+          { status: 500 },
+        )
+      }
     }
 
     // Determinar URL de checkout com base no plano
@@ -85,30 +121,32 @@ export async function POST(request: Request) {
     // Adicionar referência do ID da página
     const checkoutUrlWithRef = `${checkoutUrl}?ref=${pageData.page_id}`
 
-    // Enviar email com status pendente
-    try {
-      console.log("Enviando email de confirmação pendente...")
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://amoremcodigo.com.br"
+    // Enviar email com status pendente em background para não atrasar a resposta
+    setTimeout(async () => {
+      try {
+        console.log("Enviando email de confirmação pendente...")
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://amoremcodigo.com.br"
 
-      await fetch(`${siteUrl}/api/send-email`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: pageData.email,
-          pageUrl: pageData.page_url,
-          coupleNames: pageData.couple_names,
-          qrCodeUrl: pageData.qr_code_url,
-          isPending: true, // Pagamento pendente
-        }),
-        cache: "no-store",
-      })
-      console.log("Email enviado com sucesso!")
-    } catch (emailError) {
-      console.error("Erro ao enviar email:", emailError)
-      // Continuar mesmo com erro no email
-    }
+        await fetch(`${siteUrl}/api/send-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: pageData.email,
+            pageUrl: pageData.page_url,
+            coupleNames: pageData.couple_names,
+            qrCodeUrl: pageData.qr_code_url,
+            isPending: true, // Pagamento pendente
+          }),
+          cache: "no-store",
+        })
+        console.log("Email enviado com sucesso!")
+      } catch (emailError) {
+        console.error("Erro ao enviar email:", emailError)
+        // Continuar mesmo com erro no email
+      }
+    }, 0)
 
     return NextResponse.json({
       success: true,

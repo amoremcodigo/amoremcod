@@ -12,10 +12,26 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Criar o cliente do Supabase
-export const supabase = createClient(supabaseUrl || "", supabaseAnonKey || "")
+export const supabase = createClient(supabaseUrl || "", supabaseAnonKey || "", {
+  auth: {
+    persistSession: false, // Não persistir a sessão para evitar problemas de cache
+  },
+  db: {
+    schema: "public",
+  },
+})
 
 // Criar um cliente com a chave de serviço para operações administrativas
-export const supabaseAdmin = supabaseServiceKey ? createClient(supabaseUrl || "", supabaseServiceKey) : supabase
+export const supabaseAdmin = supabaseServiceKey
+  ? createClient(supabaseUrl || "", supabaseServiceKey, {
+      auth: {
+        persistSession: false, // Não persistir a sessão para evitar problemas de cache
+      },
+      db: {
+        schema: "public",
+      },
+    })
+  : supabase
 
 // Função para salvar uma página no Supabase
 export async function savePage(pageData: {
@@ -32,7 +48,7 @@ export async function savePage(pageData: {
   qr_code_url?: string
   payment_status?: string
 }) {
-  const maxRetries = 5
+  const maxRetries = 3
   let retryCount = 0
   let lastError = null
 
@@ -50,6 +66,7 @@ export async function savePage(pageData: {
   }
 
   // Preparar os dados para inserção, incluindo os timestamps
+  const now = new Date().toISOString()
   const dataToInsert = {
     page_id: pageData.page_id,
     email: pageData.email,
@@ -63,8 +80,8 @@ export async function savePage(pageData: {
     page_url: pageData.page_url,
     qr_code_url: pageData.qr_code_url || "",
     payment_status: pageData.payment_status || "pending",
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    created_at: now,
+    updated_at: now,
   }
 
   while (retryCount < maxRetries) {
@@ -74,21 +91,21 @@ export async function savePage(pageData: {
       // Tentar primeiro com o cliente admin (se disponível)
       if (supabaseServiceKey && supabaseAdmin !== supabase) {
         console.log("Usando cliente admin para salvar página")
-        const { data, error } = await supabaseAdmin.from("pages").insert([dataToInsert])
+        const { error } = await supabaseAdmin.from("pages").insert([dataToInsert])
 
         if (error) {
           console.error(`Erro com cliente admin na tentativa ${retryCount + 1}:`, error)
           console.log("Tentando com cliente normal...")
 
           // Se falhar com admin, tentar com cliente normal
-          const normalResult = await supabase.from("pages").insert([dataToInsert])
+          const { error: normalError } = await supabase.from("pages").insert([dataToInsert])
 
-          if (normalResult.error) {
-            console.error(`Erro com cliente normal na tentativa ${retryCount + 1}:`, normalResult.error)
-            lastError = normalResult.error
+          if (normalError) {
+            console.error(`Erro com cliente normal na tentativa ${retryCount + 1}:`, normalError)
+            lastError = normalError
             retryCount++
             // Aumentar o tempo de espera entre tentativas
-            await new Promise((resolve) => setTimeout(resolve, 2000 * Math.pow(2, retryCount)))
+            await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, retryCount)))
             continue
           }
 
@@ -101,14 +118,14 @@ export async function savePage(pageData: {
       } else {
         // Se não temos cliente admin, usar o cliente normal
         console.log("Usando cliente normal para salvar página")
-        const { data, error } = await supabase.from("pages").insert([dataToInsert])
+        const { error } = await supabase.from("pages").insert([dataToInsert])
 
         if (error) {
           console.error(`Erro na tentativa ${retryCount + 1} ao salvar página no Supabase:`, error)
           lastError = error
           retryCount++
           // Aumentar o tempo de espera entre tentativas
-          await new Promise((resolve) => setTimeout(resolve, 2000 * Math.pow(2, retryCount)))
+          await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, retryCount)))
           continue
         }
 
@@ -120,7 +137,7 @@ export async function savePage(pageData: {
       lastError = error
       retryCount++
       // Aumentar o tempo de espera entre tentativas
-      await new Promise((resolve) => setTimeout(resolve, 2000 * Math.pow(2, retryCount)))
+      await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, retryCount)))
     }
   }
 
@@ -153,23 +170,27 @@ export async function getPageById(pageId: string) {
           console.log("Tentando com cliente normal...")
 
           // Se falhar com admin, tentar com cliente normal
-          const normalResult = await supabase.from("pages").select("*").eq("page_id", pageId).single()
+          const { data: normalData, error: normalError } = await supabase
+            .from("pages")
+            .select("*")
+            .eq("page_id", pageId)
+            .single()
 
-          if (normalResult.error) {
-            console.error(`Erro com cliente normal na tentativa ${retryCount + 1}:`, normalResult.error)
-            lastError = normalResult.error
+          if (normalError) {
+            console.error(`Erro com cliente normal na tentativa ${retryCount + 1}:`, normalError)
+            lastError = normalError
             retryCount++
             await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, retryCount)))
             continue
           }
 
-          if (!normalResult.data) {
+          if (!normalData) {
             console.log(`Página com ID "${pageId}" não encontrada na tentativa ${retryCount + 1} (cliente normal)`)
           } else {
             console.log(`Página com ID "${pageId}" encontrada na tentativa ${retryCount + 1} (cliente normal)`)
           }
 
-          return normalResult.data
+          return normalData
         }
 
         if (!data) {
@@ -238,14 +259,14 @@ export async function updatePaymentStatus(pageId: string, status: string) {
           console.log("Tentando com cliente normal...")
 
           // Se falhar com admin, tentar com cliente normal
-          const normalResult = await supabase
+          const { data: normalData, error: normalError } = await supabase
             .from("pages")
             .update({ payment_status: status, updated_at: new Date().toISOString() })
             .eq("page_id", pageId)
 
-          if (normalResult.error) {
-            console.error(`Erro com cliente normal na tentativa ${retryCount + 1}:`, normalResult.error)
-            lastError = normalResult.error
+          if (normalError) {
+            console.error(`Erro com cliente normal na tentativa ${retryCount + 1}:`, normalError)
+            lastError = normalError
             retryCount++
             await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, retryCount)))
             continue
@@ -307,19 +328,19 @@ export async function listAllPages(limit = 100) {
         console.log("Tentando com cliente normal...")
 
         // Se falhar com admin, tentar com cliente normal
-        const normalResult = await supabase
+        const { data: normalData, error: normalError } = await supabase
           .from("pages")
           .select("*")
           .order("created_at", { ascending: false })
           .limit(limit)
 
-        if (normalResult.error) {
-          console.error("Erro ao listar páginas com cliente normal:", normalResult.error)
+        if (normalError) {
+          console.error("Erro ao listar páginas com cliente normal:", normalError)
           return null
         }
 
-        console.log(`${normalResult.data.length} páginas encontradas com cliente normal`)
-        return normalResult.data
+        console.log(`${normalData.length} páginas encontradas com cliente normal`)
+        return normalData
       }
 
       console.log(`${data.length} páginas encontradas com cliente admin`)
@@ -407,22 +428,20 @@ export async function getPagesByEmail(email: string, limit = 5) {
         console.log("Tentando com cliente normal...")
 
         // Se falhar com admin, tentar com cliente normal
-        const normalResult = await supabase
+        const { data: normalData, error: normalError } = await supabase
           .from("pages")
           .select("*")
           .eq("email", normalizedEmail)
           .order("created_at", { ascending: false })
           .limit(limit)
 
-        if (normalResult.error) {
-          console.error("Erro ao buscar páginas por e-mail com cliente normal:", normalResult.error)
+        if (normalError) {
+          console.error("Erro ao buscar páginas por e-mail com cliente normal:", normalError)
           return null
         }
 
-        console.log(
-          `${normalResult.data.length} páginas encontradas para o e-mail ${normalizedEmail} com cliente normal`,
-        )
-        return normalResult.data
+        console.log(`${normalData.length} páginas encontradas para o e-mail ${normalizedEmail} com cliente normal`)
+        return normalData
       }
 
       console.log(`${data.length} páginas encontradas para o e-mail ${normalizedEmail} com cliente admin`)

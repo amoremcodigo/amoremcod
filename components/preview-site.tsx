@@ -241,7 +241,7 @@ export function PreviewSite() {
       // Capitalizar o nome do casal e substituir "e" por "&"
       const capitalizedCoupleNames = capitalizeWords(formData.coupleNames)
 
-      // Atualizar o formData com o nome capitalizado e e-mail normalizado
+      // Atualizar o formData com o nome capitalizado e-mail normalizado
       updateFormData({
         coupleNames: capitalizedCoupleNames,
         email: normalizedEmail,
@@ -251,9 +251,35 @@ export function PreviewSite() {
       const pageId = Math.random().toString(36).substring(2, 8)
       console.log("ID da página gerado:", pageId)
 
+      // Salvar localmente como fallback primeiro
+      try {
+        localStorage.setItem(
+          `page_${pageId}`,
+          JSON.stringify({
+            coupleNames: capitalizedCoupleNames,
+            email: normalizedEmail,
+            date: formData.date,
+            time: formData.time || "",
+            message: formData.message,
+            youtubeLink: formData.youtubeLink || "",
+            photoUrls: formData.photoUrls.filter((url) => url),
+            photos: formData.photos.filter((photo) => photo),
+            plan: formData.plan || "basic",
+            savedLocally: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }),
+        )
+        console.log("Dados salvos localmente como fallback")
+      } catch (localError) {
+        console.error("Erro ao salvar localmente:", localError)
+      }
+
       setLoadingText("Enviando fotos...")
       // Fazer upload das fotos para o servidor
       const photoUrls = [...formData.photoUrls]
+      let uploadSuccess = true
+
       for (let i = 0; i < formData.photos.length; i++) {
         if (formData.photos[i] && formData.photos[i].startsWith("data:image")) {
           try {
@@ -262,6 +288,7 @@ export function PreviewSite() {
             console.log(`Foto ${i + 1} enviada para o servidor, URL:`, photoUrls[i])
           } catch (error) {
             console.error(`Erro ao enviar foto ${i + 1} para o servidor:`, error)
+            uploadSuccess = false
             // Continuar mesmo com erro na foto
             console.log("Continuando mesmo com erro na foto...")
           }
@@ -324,9 +351,6 @@ export function PreviewSite() {
         payment_status: "pending",
       }
 
-      // Salvar localmente primeiro como backup
-      saveLocalFallback(pageId, pageData)
-
       setLoadingText("Salvando página...")
       // Salvar os dados usando a API
       try {
@@ -340,7 +364,16 @@ export function PreviewSite() {
         })
 
         if (!response.ok) {
-          const errorData = await response.json()
+          const errorText = await response.text()
+          console.error("Resposta de erro da API:", errorText)
+
+          let errorData
+          try {
+            errorData = JSON.parse(errorText)
+          } catch (e) {
+            errorData = { error: "Erro desconhecido" }
+          }
+
           throw new Error(`Erro ao salvar página: ${errorData.error || response.statusText}`)
         }
 
@@ -354,27 +387,34 @@ export function PreviewSite() {
         // Redirecionar para o checkout
         if (result.checkoutUrl) {
           console.log("Redirecionando para:", result.checkoutUrl)
-          window.location.href = result.checkoutUrl
+
+          // Usar setTimeout para garantir que o console.log seja exibido antes do redirecionamento
+          setTimeout(() => {
+            window.location.href = result.checkoutUrl
+          }, 500)
         } else {
           // Fallback para URL de checkout padrão
           const checkoutUrl =
             formData.plan === "premium" ? "https://pay.kiwify.com.br/MN5HRnF" : "https://pay.kiwify.com.br/x7zu8ul"
           const checkoutUrlWithRef = `${checkoutUrl}?ref=${pageId}`
           console.log("Redirecionando para URL fallback:", checkoutUrlWithRef)
-          window.location.href = checkoutUrlWithRef
+
+          // Usar setTimeout para garantir que o console.log seja exibido antes do redirecionamento
+          setTimeout(() => {
+            window.location.href = checkoutUrlWithRef
+          }, 500)
         }
       } catch (apiError) {
         console.error("Erro na API de salvamento:", apiError)
-        alert("Ocorreu um erro ao salvar sua página. Por favor, tente novamente.")
+        alert(`Ocorreu um erro ao salvar sua página: ${apiError.message}. Por favor, tente novamente.`)
         setIsProcessing(false)
       }
     } catch (error) {
       console.error("Erro durante o processamento:", error)
-      alert("Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.")
+      alert(`Ocorreu um erro ao processar sua solicitação: ${error.message}. Por favor, tente novamente.`)
       setIsProcessing(false)
     }
   }
-
   return (
     <section className="w-full py-16 md:py-20 bg-black/30" id="preview">
       <div className="container px-4 md:px-6">

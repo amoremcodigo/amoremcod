@@ -5,10 +5,25 @@ import QRCode from "qrcode"
 export async function POST(request: Request) {
   try {
     // Obter os dados do corpo da requisição
-    const pageData = await request.json()
+    const rawBody = await request.text()
+    console.log("=== API SAVE-PAGE: CORPO BRUTO DA REQUISIÇÃO ===")
+    console.log(rawBody.substring(0, 200) + "...") // Log apenas do início para não sobrecarregar
+
+    let pageData
+    try {
+      pageData = JSON.parse(rawBody)
+    } catch (parseError) {
+      console.error("Erro ao analisar JSON:", parseError)
+      return NextResponse.json(
+        { error: "Formato de dados inválido", details: "O corpo da requisição não é um JSON válido" },
+        { status: 400 },
+      )
+    }
 
     console.log("=== API SAVE-PAGE: INICIANDO SALVAMENTO ===")
-    console.log("Dados recebidos:", JSON.stringify(pageData, null, 2))
+    console.log("ID da página:", pageData.page_id)
+    console.log("Email:", pageData.email)
+    console.log("Nome do casal:", pageData.couple_names)
 
     // Verificar se temos os dados necessários
     if (!pageData.page_id || !pageData.email || !pageData.couple_names) {
@@ -47,8 +62,8 @@ export async function POST(request: Request) {
     // Adicionar timestamps
     const dataWithTimestamps = {
       ...pageData,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      created_at: pageData.created_at || new Date().toISOString(),
+      updated_at: pageData.updated_at || new Date().toISOString(),
     }
 
     // Salvar no Supabase

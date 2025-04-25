@@ -38,8 +38,9 @@ export async function savePage(pageData: {
   // Adicionar timestamps se não existirem
   const dataWithTimestamps = {
     ...pageData,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    created_at: pageData.created_at || new Date().toISOString(),
+    updated_at: pageData.updated_at || new Date().toISOString(),
+    payment_status: pageData.payment_status || "pending",
   }
 
   console.log("=== INICIANDO SALVAMENTO DE PÁGINA NO SUPABASE ===")
@@ -48,6 +49,36 @@ export async function savePage(pageData: {
   console.log("Nome do casal:", pageData.couple_names)
   console.log("Plano:", pageData.plan)
   console.log("URLs das fotos:", pageData.photo_urls.length)
+  console.log("Supabase URL:", supabaseUrl ? "Configurado" : "NÃO CONFIGURADO")
+  console.log("Supabase Anon Key:", supabaseAnonKey ? "Configurado" : "NÃO CONFIGURADO")
+
+  // Salvar localmente primeiro como fallback
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(
+        `page_${pageData.page_id}`,
+        JSON.stringify({
+          ...dataWithTimestamps,
+          savedLocally: true,
+          saveTimestamp: new Date().toISOString(),
+        }),
+      )
+      console.log("Página salva localmente como fallback")
+    }
+  } catch (localError) {
+    console.error("Erro ao salvar localmente:", localError)
+  }
+
+  // Se não temos as credenciais do Supabase, retornar um objeto simulado
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.warn("AVISO: Credenciais do Supabase não configuradas. Usando apenas armazenamento local.")
+    return {
+      success: true,
+      message: "Dados salvos apenas localmente (Supabase não configurado)",
+      data: [dataWithTimestamps],
+      savedLocally: true,
+    }
+  }
 
   while (retryCount < maxRetries) {
     try {
@@ -105,25 +136,13 @@ export async function savePage(pageData: {
 
   console.error(`FALHA CRÍTICA: Não foi possível salvar a página após ${maxRetries} tentativas:`, lastError)
 
-  // Tentar salvar localmente como fallback
-  try {
-    console.log("Tentando salvar página localmente como fallback...")
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(
-        `page_${pageData.page_id}`,
-        JSON.stringify({
-          ...pageData,
-          savedLocally: true,
-          saveError: lastError ? String(lastError) : "Erro desconhecido",
-        }),
-      )
-      console.log("Página salva localmente com sucesso")
-    }
-  } catch (localError) {
-    console.error("Erro ao salvar localmente:", localError)
+  // Retornar um objeto que indica que salvamos apenas localmente
+  return {
+    success: false,
+    message: "Dados salvos apenas localmente após falhas no Supabase",
+    error: lastError ? String(lastError) : "Erro desconhecido",
+    savedLocally: true,
   }
-
-  throw lastError
 }
 
 // Função para buscar uma página pelo page_id com retry

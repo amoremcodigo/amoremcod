@@ -201,8 +201,6 @@ export function PreviewSite() {
   const [seconds, setSeconds] = useState(0)
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [loadingText, setLoadingText] = useState("Processando...")
-  const [uploadProgress, setUploadProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
   // Usar a data do formulário ou uma data padrão
@@ -321,8 +319,6 @@ export function PreviewSite() {
     try {
       setIsProcessing(true)
       setError(null)
-      setLoadingText("Preparando dados...")
-      setUploadProgress(0)
       console.log("=== INICIANDO PROCESSO DE SUBMISSÃO ===")
 
       // Normalizar o e-mail (trim e lowercase)
@@ -342,7 +338,6 @@ export function PreviewSite() {
       console.log("ID da página gerado:", pageId)
 
       // Fazer upload das fotos para o servidor usando upload paralelo
-      setLoadingText("Comprimindo e enviando fotos...")
       const photosToUpload = formData.photos.filter((photo) => photo && photo.startsWith("data:image"))
 
       if (photosToUpload.length > 0) {
@@ -350,7 +345,6 @@ export function PreviewSite() {
           // Usar upload paralelo para todas as fotos
           const photoUrls = await uploadImagesInParallel(formData.photos)
           updateFormData({ photoUrls })
-          setUploadProgress(100)
           console.log("Todas as fotos foram enviadas com sucesso:", photoUrls)
         } catch (uploadError) {
           console.error("Erro durante o upload de fotos:", uploadError)
@@ -358,11 +352,9 @@ export function PreviewSite() {
             "Houve um problema ao enviar algumas fotos. Continuando com as fotos que foram enviadas com sucesso.",
           )
           // Continuar mesmo com erro nas fotos
-          setUploadProgress(100)
         }
       } else {
         console.log("Nenhuma foto para enviar")
-        setUploadProgress(100)
       }
 
       // Criar um objeto com dados essenciais para a URL
@@ -384,7 +376,6 @@ export function PreviewSite() {
       const pageUrl = `${siteUrl}/pagina/${pageId}?d=${compressedData}`
       console.log("URL da página gerada:", pageUrl)
 
-      setLoadingText("Gerando QR Code...")
       // Gerar QR Code para o email
       let qrCodeUrl = null
       try {
@@ -411,7 +402,6 @@ export function PreviewSite() {
         email: normalizedEmail,
         couple_names: capitalizedCoupleNames,
         date: formData.date,
-        time: formData.time || "",
         message: formData.message,
         youtube_link: formData.youtubeLink || "",
         photo_urls: formData.photoUrls.filter((url) => url), // Filtrar URLs vazias
@@ -419,11 +409,9 @@ export function PreviewSite() {
         page_url: pageUrl,
         qr_code_url: qrCodeUrl || "",
         payment_status: "pending",
-        // Remover created_at
         updated_at: new Date().toISOString(),
       }
 
-      setLoadingText("Salvando página...")
       // Salvar os dados usando a API
       try {
         console.log("Salvando dados via API...")
@@ -442,8 +430,6 @@ export function PreviewSite() {
         if (!result.success) {
           throw new Error(result.error || "Erro desconhecido ao salvar a página")
         }
-
-        setLoadingText("Redirecionando para pagamento...")
 
         // Pequeno delay antes de redirecionar para garantir que o usuário veja a mensagem
         setTimeout(() => {
@@ -692,22 +678,6 @@ export function PreviewSite() {
         </div>
 
         <div className="flex flex-col items-center justify-center mt-12">
-          {/* Barra de progresso para upload de fotos */}
-          {isProcessing && (
-            <div className="w-full max-w-md mb-4">
-              <div className="flex justify-between text-sm mb-1">
-                <span>{loadingText}</span>
-                <span>{uploadProgress}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                <div
-                  className="bg-gradient-to-r from-pink-500 to-purple-500 h-2.5 rounded-full transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
-                ></div>
-              </div>
-            </div>
-          )}
-
           {/* Mensagem de erro */}
           {error && (
             <div className="text-red-500 mb-4 p-3 bg-red-100 border border-red-300 rounded-md max-w-md">{error}</div>
@@ -721,13 +691,11 @@ export function PreviewSite() {
           >
             {isProcessing ? (
               <>
-                <div className="flex items-center">
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  <span>Processando...</span>
-                </div>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin inline" />
+                <span>Criando página...</span>
               </>
             ) : (
-              "Finalizar Meu Site"
+              "Finalizar e criar minha página"
             )}
           </Button>
         </div>

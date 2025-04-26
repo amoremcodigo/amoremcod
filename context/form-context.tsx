@@ -80,80 +80,67 @@ const compressDataForUrl = (data: any): string => {
   }
 }
 
-// Função para fazer upload da imagem para o ImgBB com retry e fallback
-const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetries = 3): Promise<string> => {
+// Otimizar a função uploadImageToServer para ser mais rápida
+const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetries = 2): Promise<string> => {
   try {
     // Verificar se a imagem já é uma URL (não base64)
     if (base64Image.startsWith("http")) {
-      console.log("Imagem já é uma URL, retornando diretamente:", base64Image)
       return base64Image
     }
 
     // Remover o prefixo do data URL se existir
     const base64Data = base64Image.includes("base64,") ? base64Image.split("base64,")[1] : base64Image
 
-    // Chave da API do ImgBB
-    const apiKey = "b0aebf5fbd0f7f940e0184c796125175"
+    // Cliente ID do Imgur (anônimo)
+    const clientId = "546c25a59c58ad7"
 
-    console.log(`Iniciando upload para ImgBB (tentativa ${retryCount + 1}/${maxRetries + 1})...`)
-
-    // Preparar os dados para o upload
-    const formData = new FormData()
-    formData.append("key", apiKey)
-    formData.append("image", base64Data)
-
-    // Fazer a requisição para a API do ImgBB com timeout
+    // Reduzir o timeout para 15 segundos
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 segundos de timeout
+    const timeoutId = setTimeout(() => controller.abort(), 15000)
 
-    const response = await fetch("https://api.imgbb.com/1/upload", {
+    const response = await fetch("https://api.imgur.com/3/image", {
       method: "POST",
-      body: formData,
+      headers: {
+        Authorization: `Client-ID ${clientId}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        image: base64Data,
+        type: "base64",
+      }),
       signal: controller.signal,
     }).finally(() => clearTimeout(timeoutId))
 
     if (!response.ok) {
-      const errorText = await response.text()
-      console.error(`Erro na resposta da API ImgBB (tentativa ${retryCount + 1}):`, errorText)
-
       if (retryCount < maxRetries) {
-        console.log(`Tentando novamente em ${(retryCount + 1) * 2} segundos...`)
-        await new Promise((resolve) => setTimeout(resolve, (retryCount + 1) * 2000))
+        // Reduzir o tempo de espera entre tentativas
+        await new Promise((resolve) => setTimeout(resolve, 1000))
         return uploadImageToServer(base64Image, retryCount + 1, maxRetries)
       }
-
-      // Se todas as tentativas falharem, usar um placeholder
+      // Se falhar, usar um placeholder
       return `/placeholder.svg?height=800&width=600&query=couple photo`
     }
 
     const data = await response.json()
 
-    // Verificar se o upload foi bem-sucedido
     if (data.success) {
-      console.log(`Imagem enviada com sucesso para o ImgBB (tentativa ${retryCount + 1}):`, data.data.url)
-      return data.data.url
+      return data.data.link
     } else {
-      console.error(`Falha no upload para ImgBB (tentativa ${retryCount + 1}):`, data.error)
-
       if (retryCount < maxRetries) {
-        console.log(`Tentando novamente em ${(retryCount + 1) * 2} segundos...`)
-        await new Promise((resolve) => setTimeout(resolve, (retryCount + 1) * 2000))
+        // Reduzir o tempo de espera entre tentativas
+        await new Promise((resolve) => setTimeout(resolve, 1000))
         return uploadImageToServer(base64Image, retryCount + 1, maxRetries)
       }
-
-      // Se todas as tentativas falharem, usar um placeholder
+      // Se falhar, usar um placeholder
       return `/placeholder.svg?height=800&width=600&query=couple photo`
     }
   } catch (error) {
-    console.error(`Erro ao fazer upload da imagem para o ImgBB (tentativa ${retryCount + 1}):`, error)
-
     if (retryCount < maxRetries) {
-      console.log(`Tentando novamente em ${(retryCount + 1) * 2} segundos...`)
-      await new Promise((resolve) => setTimeout(resolve, (retryCount + 1) * 2000))
+      // Reduzir o tempo de espera entre tentativas
+      await new Promise((resolve) => setTimeout(resolve, 1000))
       return uploadImageToServer(base64Image, retryCount + 1, maxRetries)
     }
-
-    // Se todas as tentativas falharem, usar um placeholder
+    // Se falhar, usar um placeholder
     return `/placeholder.svg?height=800&width=600&query=couple photo`
   }
 }
@@ -239,12 +226,11 @@ export function FormProvider({ children }: { children: ReactNode }) {
     })
   }
 
-  // Modificar a função submitForm para garantir que os dados sejam salvos de qualquer forma
+  // Otimizar a função submitForm para redirecionar mais rapidamente
   const submitForm = async () => {
     if (isFormValid()) {
       try {
         setIsSubmitting(true)
-        console.log("Iniciando processo de submissão do formulário...")
 
         // Normalizar o e-mail (trim e lowercase)
         const normalizedEmail = formData.email.trim().toLowerCase()
@@ -260,37 +246,13 @@ export function FormProvider({ children }: { children: ReactNode }) {
 
         // Generate a unique ID for the page
         const pageId = Math.random().toString(36).substring(2, 8)
-        console.log("ID da página gerado:", pageId)
-
-        // Fazer upload das fotos para o servidor com retry
-        const photoUrls = [...formData.photoUrls]
-        for (let i = 0; i < formData.photos.length; i++) {
-          if (formData.photos[i] && formData.photos[i].startsWith("data:image")) {
-            try {
-              console.log(`Iniciando upload da foto ${i + 1}...`)
-              // Usar a função de upload com retry
-              photoUrls[i] = await uploadImageToServer(formData.photos[i])
-              console.log(`Foto ${i + 1} enviada para o servidor, URL:`, photoUrls[i])
-            } catch (error) {
-              console.error(`Erro ao enviar foto ${i + 1} para o servidor:`, error)
-              // Se falhar, usar um placeholder
-              photoUrls[i] = `/placeholder.svg?height=800&width=600&query=couple photo ${i + 1}`
-              console.log(`Usando placeholder para foto ${i + 1}`)
-            }
-          }
-        }
-
-        // Atualizar o formData com as URLs das fotos
-        updateFormData({ photoUrls })
 
         // Criar um objeto com dados essenciais para a URL (versão compacta)
         const essentialData = {
           n: capitalizedCoupleNames, // Nome do casal
           d: formData.date, // Data
-          t: formData.time, // Hora
           m: formData.message, // Mensagem
           y: formData.youtubeLink, // Link do YouTube
-          p: photoUrls, // URLs das fotos
           pl: formData.plan, // Plano
         }
 
@@ -300,55 +262,6 @@ export function FormProvider({ children }: { children: ReactNode }) {
         // Construir a URL completa da página
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
         const pageUrl = `${siteUrl}/pagina/${pageId}?d=${compressedData}`
-        console.log("URL da página gerada:", pageUrl)
-
-        // Gerar QR Code para o email
-        let qrCodeUrl = null
-        try {
-          console.log("Gerando QR Code...")
-          // Importar a biblioteca QRCode.js dinamicamente
-          const QRCode = await import("qrcode")
-
-          // Gerar o QR code como uma URL de dados
-          qrCodeUrl = await QRCode.toDataURL(pageUrl, {
-            width: 300,
-            margin: 1,
-            errorCorrectionLevel: "H",
-            color: {
-              dark: "#000000",
-              light: "#FFFFFF",
-            },
-          })
-          console.log("QR Code gerado com sucesso")
-        } catch (qrError) {
-          console.error("Erro ao gerar QR Code para email:", qrError)
-          // Continuar mesmo se falhar a geração do QR Code
-        }
-
-        // Salvar os dados no Supabase
-        try {
-          console.log("Salvando dados no Supabase...")
-
-          const pageData = {
-            page_id: pageId,
-            email: normalizedEmail,
-            couple_names: capitalizedCoupleNames,
-            date: formData.date,
-            message: formData.message,
-            youtube_link: formData.youtubeLink || "",
-            photo_urls: photoUrls.filter((url) => url), // Filtrar URLs vazias
-            plan: formData.plan || "basic",
-            page_url: pageUrl,
-            qr_code_url: qrCodeUrl || "",
-          }
-
-          await savePage(pageData)
-          console.log("Dados salvos com sucesso no Supabase!")
-        } catch (dbError) {
-          console.error("Erro ao salvar dados no Supabase:", dbError)
-          console.log("Continuando o fluxo mesmo com erro no Supabase")
-          // Continuar mesmo com erro no Supabase
-        }
 
         // Usar links da Kiwify
         const checkoutUrl = formData.plan === "premium" ? KIWIFY_CHECKOUT_LINKS.premium : KIWIFY_CHECKOUT_LINKS.basic
@@ -356,17 +269,52 @@ export function FormProvider({ children }: { children: ReactNode }) {
         // Adicionar parâmetros de query para identificar o pedido
         const checkoutUrlWithParams = `${checkoutUrl}?ref=${pageId}`
 
-        console.log("Redirecionando para checkout:", checkoutUrlWithParams)
+        // Iniciar o processamento de imagens em segundo plano
+        setTimeout(async () => {
+          try {
+            // Fazer upload das fotos para o servidor com retry
+            const photoUrls = [...formData.photoUrls]
+            for (let i = 0; i < formData.photos.length; i++) {
+              if (formData.photos[i] && formData.photos[i].startsWith("data:image")) {
+                try {
+                  photoUrls[i] = await uploadImageToServer(formData.photos[i])
+                } catch (error) {
+                  photoUrls[i] = `/placeholder.svg?height=800&width=600&query=couple photo ${i + 1}`
+                }
+              }
+            }
 
-        // Redirecionar para o checkout da Kiwify
+            // Salvar os dados no Supabase
+            try {
+              const pageData = {
+                page_id: pageId,
+                email: normalizedEmail,
+                couple_names: capitalizedCoupleNames,
+                date: formData.date,
+                message: formData.message,
+                youtube_link: formData.youtubeLink || "",
+                photo_urls: photoUrls.filter((url) => url), // Filtrar URLs vazias
+                plan: formData.plan || "basic",
+                page_url: pageUrl,
+                qr_code_url: "",
+              }
+
+              await savePage(pageData)
+            } catch (dbError) {
+              console.error("Erro ao salvar dados no Supabase:", dbError)
+            }
+          } catch (error) {
+            console.error("Erro durante o processamento em segundo plano:", error)
+          }
+        }, 0)
+
+        // Redirecionar para o checkout da Kiwify imediatamente
         window.location.href = checkoutUrlWithParams
       } catch (error) {
         console.error("Erro durante o envio do formulário:", error)
         alert(
           "Ocorreu um erro, mas estamos tentando continuar. Por favor, verifique se sua página foi criada corretamente.",
         )
-        setIsSubmitting(false)
-      } finally {
         setIsSubmitting(false)
       }
     } else {

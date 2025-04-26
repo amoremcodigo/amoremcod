@@ -228,15 +228,19 @@ export function FormProvider({ children }: { children: ReactNode }) {
 
   // Otimizar a função submitForm para redirecionar mais rapidamente
   const submitForm = async () => {
+    console.log("Iniciando submitForm, verificando formulário...")
     if (isFormValid()) {
       try {
+        console.log("Formulário válido, iniciando processo de envio...")
         setIsSubmitting(true)
 
         // Normalizar o e-mail (trim e lowercase)
         const normalizedEmail = formData.email.trim().toLowerCase()
+        console.log("Email normalizado:", normalizedEmail)
 
         // Capitalizar o nome do casal e substituir "e" por "&"
         const capitalizedCoupleNames = capitalizeWords(formData.coupleNames)
+        console.log("Nome capitalizado:", capitalizedCoupleNames)
 
         // Atualizar o formData com o nome capitalizado e e-mail normalizado
         updateFormData({
@@ -246,6 +250,7 @@ export function FormProvider({ children }: { children: ReactNode }) {
 
         // Generate a unique ID for the page
         const pageId = Math.random().toString(36).substring(2, 8)
+        console.log("ID da página gerado:", pageId)
 
         // Criar um objeto com dados essenciais para a URL (versão compacta)
         const essentialData = {
@@ -262,23 +267,53 @@ export function FormProvider({ children }: { children: ReactNode }) {
         // Construir a URL completa da página
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
         const pageUrl = `${siteUrl}/pagina/${pageId}?d=${compressedData}`
+        console.log("URL da página:", pageUrl)
 
         // Usar links da Kiwify
         const checkoutUrl = formData.plan === "premium" ? KIWIFY_CHECKOUT_LINKS.premium : KIWIFY_CHECKOUT_LINKS.basic
+        console.log("URL de checkout base:", checkoutUrl)
 
         // Adicionar parâmetros de query para identificar o pedido
         const checkoutUrlWithParams = `${checkoutUrl}?ref=${pageId}`
+        console.log("URL de checkout completa:", checkoutUrlWithParams)
+
+        // Salvar os dados no localStorage para backup
+        try {
+          localStorage.setItem(
+            `page_${pageId}`,
+            JSON.stringify({
+              email: normalizedEmail,
+              coupleNames: capitalizedCoupleNames,
+              date: formData.date,
+              time: formData.time,
+              message: formData.message,
+              youtubeLink: formData.youtubeLink,
+              photos: formData.photos,
+              plan: formData.plan,
+              createdAt: new Date().toISOString(),
+            }),
+          )
+          console.log("Dados salvos no localStorage")
+
+          // Salvar o ID da página mais recente para recuperação na página de obrigado
+          localStorage.setItem("lastPageId", pageId)
+        } catch (localStorageError) {
+          console.error("Erro ao salvar no localStorage:", localStorageError)
+        }
 
         // Iniciar o processamento de imagens em segundo plano
         setTimeout(async () => {
           try {
+            console.log("Iniciando processamento em segundo plano...")
             // Fazer upload das fotos para o servidor com retry
             const photoUrls = [...formData.photoUrls]
             for (let i = 0; i < formData.photos.length; i++) {
               if (formData.photos[i] && formData.photos[i].startsWith("data:image")) {
                 try {
                   photoUrls[i] = await uploadImageToServer(formData.photos[i])
+                  console.log(`Foto ${i + 1} enviada com sucesso:`, photoUrls[i].substring(0, 30) + "...")
                 } catch (error) {
+                  console.error(`Erro ao enviar foto ${i + 1}:`, error)
                   photoUrls[i] = `/placeholder.svg?height=800&width=600&query=couple photo ${i + 1}`
                 }
               }
@@ -286,6 +321,7 @@ export function FormProvider({ children }: { children: ReactNode }) {
 
             // Salvar os dados no Supabase
             try {
+              console.log("Preparando dados para o Supabase...")
               const pageData = {
                 page_id: pageId,
                 email: normalizedEmail,
@@ -299,7 +335,9 @@ export function FormProvider({ children }: { children: ReactNode }) {
                 qr_code_url: "",
               }
 
-              await savePage(pageData)
+              console.log("Enviando dados para o Supabase...")
+              const result = await savePage(pageData)
+              console.log("Resultado do salvamento no Supabase:", result)
             } catch (dbError) {
               console.error("Erro ao salvar dados no Supabase:", dbError)
             }
@@ -309,6 +347,7 @@ export function FormProvider({ children }: { children: ReactNode }) {
         }, 0)
 
         // Redirecionar para o checkout da Kiwify imediatamente
+        console.log("Redirecionando para o checkout...")
         window.location.href = checkoutUrlWithParams
       } catch (error) {
         console.error("Erro durante o envio do formulário:", error)
@@ -318,6 +357,7 @@ export function FormProvider({ children }: { children: ReactNode }) {
         setIsSubmitting(false)
       }
     } else {
+      console.error("Formulário inválido!")
       alert("Por favor, preencha todos os campos obrigatórios e escolha um plano.")
       throw new Error("Formulário inválido")
     }

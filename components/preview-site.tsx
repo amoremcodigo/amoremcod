@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { useFormContext } from "@/context/form-context"
 import { FallingHearts } from "@/components/falling-hearts"
 import { compressToEncodedURIComponent } from "lz-string"
-import { toast } from "@/components/ui/use-toast"
 
 // Modificar a função de compressão de imagem para ser mais rápida (reduzir qualidade)
 const compressImage = async (base64Image: string, maxWidth = 800, quality = 0.6): Promise<string> => {
@@ -235,177 +234,8 @@ const compressDataForUrl = (data: any): string => {
   }
 }
 
-// Modificar a função processForm para otimizar o fluxo
-const processForm = async () => {
-  const { updateFormData } = useFormContext()
-  if (!isFormValid() || isProcessing) return
-
-  try {
-    setIsProcessing(true)
-    setError(null)
-
-    // Normalizar o e-mail (trim e lowercase)
-    const normalizedEmail = formData.email.trim().toLowerCase()
-
-    // Capitalizar o nome do casal e substituir "e" por "&"
-    const capitalizedCoupleNames = capitalizeWords(formData.coupleNames)
-
-    // Atualizar o formData com o nome capitalizado e e-mail normalizado
-    updateFormData({
-      coupleNames: capitalizedCoupleNames,
-      email: normalizedEmail,
-    })
-
-    // Generate a unique ID for the page
-    const pageId = Math.random().toString(36).substring(2, 8)
-
-    // Comprimir as imagens em paralelo antes do upload
-    const compressPromises = formData.photos.map((photo) =>
-      photo && photo.startsWith("data:image") ? compressImage(photo) : Promise.resolve(photo),
-    )
-
-    const compressedPhotos = await Promise.all(compressPromises)
-
-    // Iniciar uploads em paralelo
-    const uploadPromises = compressedPhotos.map((photo) =>
-      photo && photo.startsWith("data:image") ? uploadImageToServer(photo) : Promise.resolve(photo),
-    )
-
-    // Criar um objeto com dados essenciais para a URL
-    const essentialData = {
-      n: capitalizedCoupleNames, // Nome do casal
-      d: formData.date, // Data
-      m: formData.message, // Mensagem
-      y: formData.youtubeLink, // Link do YouTube
-      pl: formData.plan, // Plano
-    }
-
-    // Comprimir os dados para a URL
-    const compressedData = compressDataForUrl(essentialData)
-
-    // Construir a URL completa da página
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
-    const pageUrl = `${siteUrl}/pagina/${pageId}?d=${compressedData}`
-
-    // Determinar URL de checkout com base no plano
-    const checkoutUrl =
-      formData.plan === "premium" ? "https://pay.kiwify.com.br/MN5HRnF" : "https://pay.kiwify.com.br/x7zu8ul"
-    const checkoutUrlWithRef = `${checkoutUrl}?ref=${pageId}`
-
-    // Iniciar o redirecionamento enquanto os uploads continuam em segundo plano
-    window.location.href = checkoutUrlWithRef
-
-    // Continuar o processamento em segundo plano
-    Promise.all(uploadPromises)
-      .then((photoUrls) => {
-        // Atualizar o formData com as URLs das fotos
-        updateFormData({ photoUrls })
-
-        // Preparar os dados da página
-        const pageData = {
-          page_id: pageId,
-          email: normalizedEmail,
-          couple_names: capitalizedCoupleNames,
-          date: formData.date,
-          message: formData.message,
-          youtube_link: formData.youtubeLink || "",
-          photo_urls: photoUrls.filter((url) => url), // Filtrar URLs vazias
-          plan: formData.plan || "basic",
-          page_url: pageUrl,
-          qr_code_url: "", // Gerar QR code no servidor
-          payment_status: "pending",
-        }
-
-        // Salvar os dados usando a API em segundo plano
-        fetch("/api/save-page", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(pageData),
-          cache: "no-store",
-        }).catch((error) => {
-          console.error("Erro na API de salvamento:", error)
-        })
-      })
-      .catch((error) => {
-        console.error("Erro durante o upload de fotos:", error)
-      })
-  } catch (error) {
-    console.error("Erro durante o processamento:", error)
-    setError(`Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.`)
-    setIsProcessing(false)
-  }
-}
-
-// Certifique-se de que a função handleFinish esteja enviando para o checkout da Kiwify
-// Substitua a função handleFinish existente com esta implementação corrigida:
-
-const handleFinish = async () => {
-  setIsSubmitting(true)
-
-  try {
-    // Verificar se todos os campos obrigatórios estão preenchidos
-    if (!formData.coupleNames || !formData.message || !formData.date || !formData.plan) {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Por favor, preencha todos os campos obrigatórios antes de finalizar.",
-        variant: "destructive",
-      })
-      setIsSubmitting(false)
-      return
-    }
-
-    // Salvar a página no Supabase
-    const response = await fetch("/api/save-page", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(formData),
-    })
-
-    if (!response.ok) {
-      throw new Error("Erro ao salvar a página")
-    }
-
-    const data = await response.json()
-    console.log("Página salva com sucesso:", data)
-
-    // Salvar o ID da página no localStorage para referência futura
-    if (data.pageId) {
-      localStorage.setItem("lastPageId", data.pageId)
-    }
-
-    // Redirecionar para o checkout da Kiwify com base no plano selecionado
-    let checkoutUrl
-
-    if (formData.plan === "premium") {
-      checkoutUrl = "https://pay.kiwify.com.br/8jJbIbA" // URL do checkout do plano premium
-    } else {
-      checkoutUrl = "https://pay.kiwify.com.br/NXJvVlm" // URL do checkout do plano básico
-    }
-
-    // Adicionar o ID da página como referência na URL do checkout
-    if (data.pageId) {
-      checkoutUrl += `?reference=${data.pageId}`
-    }
-
-    // Redirecionar para o checkout
-    window.location.href = checkoutUrl
-  } catch (error) {
-    console.error("Erro ao finalizar:", error)
-    toast({
-      title: "Erro",
-      description: "Ocorreu um erro ao finalizar. Por favor, tente novamente.",
-      variant: "destructive",
-    })
-    setIsSubmitting(false)
-  }
-}
-
 export function PreviewSite() {
-  const { formData, isFormValid, isSubmitting, updateFormData } = useFormContext()
+  const { formData, isFormValid, isSubmitting, updateFormData, submitForm } = useFormContext()
   const [years, setYears] = useState(0)
   const [days, setDays] = useState(0)
   const [hours, setHours] = useState(0)
@@ -522,6 +352,22 @@ export function PreviewSite() {
   // Função para navegar para a próxima foto
   const nextPhoto = () => {
     setCurrentPhotoIndex((prevIndex) => (prevIndex + 1) % validPhotos.length)
+  }
+
+  const processForm = async () => {
+    if (!isFormValid() || isProcessing) return
+
+    try {
+      setIsProcessing(true)
+      setError(null)
+
+      // Usar a função submitForm do contexto do formulário
+      await submitForm()
+    } catch (error) {
+      console.error("Erro durante o processamento:", error)
+      setError(`Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.`)
+      setIsProcessing(false)
+    }
   }
 
   return (
@@ -749,7 +595,7 @@ export function PreviewSite() {
             size="lg"
             className="gradient-bg text-lg px-8 py-6 relative"
             disabled={!isFormValid() || isProcessing}
-            onClick={handleFinish}
+            onClick={processForm}
           >
             {isProcessing ? (
               <>

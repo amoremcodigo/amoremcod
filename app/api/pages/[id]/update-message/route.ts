@@ -24,15 +24,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: "Mensagem não fornecida" }, { status: 400 })
     }
 
-    console.log(`Atualizando mensagem para página ${pageId}`)
-    console.log(`Nova mensagem: ${message.substring(0, 50)}...`)
-
     // Atualizar a mensagem no Supabase
     let result
 
     // Tentar primeiro com o cliente admin (se disponível)
     if (supabaseAdmin !== supabase) {
-      console.log("Tentando atualizar com cliente admin")
       const { data, error } = await supabaseAdmin
         .from("pages")
         .update({ message, updated_at: new Date().toISOString() })
@@ -43,7 +39,6 @@ export async function POST(request: Request, { params }: { params: { id: string 
         console.error("Erro ao atualizar mensagem com cliente admin:", error)
 
         // Se falhar com admin, tentar com cliente normal
-        console.log("Tentando atualizar com cliente normal")
         const normalResult = await supabase
           .from("pages")
           .update({ message, updated_at: new Date().toISOString() })
@@ -51,19 +46,15 @@ export async function POST(request: Request, { params }: { params: { id: string 
           .select()
 
         if (normalResult.error) {
-          console.error("Erro ao atualizar mensagem com cliente normal:", normalResult.error)
           return NextResponse.json({ error: normalResult.error.message }, { status: 500 })
         }
 
         result = normalResult.data
-        console.log("Mensagem atualizada com sucesso usando cliente normal")
       } else {
         result = data
-        console.log("Mensagem atualizada com sucesso usando cliente admin")
       }
     } else {
       // Se não temos cliente admin, usar o cliente normal
-      console.log("Usando apenas cliente normal para atualizar")
       const { data, error } = await supabase
         .from("pages")
         .update({ message, updated_at: new Date().toISOString() })
@@ -71,12 +62,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
         .select()
 
       if (error) {
-        console.error("Erro ao atualizar mensagem:", error)
         return NextResponse.json({ error: error.message }, { status: 500 })
       }
 
       result = data
-      console.log("Mensagem atualizada com sucesso")
     }
 
     return NextResponse.json({

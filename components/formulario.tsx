@@ -171,6 +171,15 @@ export function Formulario() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Verificar se pelo menos uma foto foi adicionada
+    const hasPhoto = formData.photos.some((photo) => photo !== "")
+
+    if (!hasPhoto) {
+      alert("Por favor, adicione pelo menos uma foto.")
+      return
+    }
+
     document.getElementById("planos")?.scrollIntoView({ behavior: "smooth" })
   }
 

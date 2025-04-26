@@ -329,10 +329,25 @@ export function PreviewSite() {
       // Capitalizar o nome do casal e substituir "e" por "&"
       const capitalizedCoupleNames = capitalizeWords(formData.coupleNames)
 
-      // Atualizar o formData com o nome capitalizado e e-mail normalizado
+      // Formatar o time corretamente se existir
+      let formattedTime = formData.time || ""
+      if (formattedTime && formattedTime.includes("T")) {
+        try {
+          // Extrair apenas a parte da hora (HH:MM:SS) do timestamp
+          const date = new Date(formattedTime)
+          formattedTime = date.toTimeString().split(" ")[0]
+          console.log("Time formatado:", formattedTime)
+        } catch (e) {
+          console.error("Erro ao formatar time:", e)
+          formattedTime = "" // Em caso de erro, usar string vazia
+        }
+      }
+
+      // Atualizar o formData com o nome capitalizado, e-mail normalizado e time formatado
       updateFormData({
         coupleNames: capitalizedCoupleNames,
         email: normalizedEmail,
+        time: formattedTime,
       })
 
       // Generate a unique ID for the page

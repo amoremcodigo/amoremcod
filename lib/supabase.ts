@@ -33,7 +33,7 @@ export const supabaseAdmin = supabaseServiceKey
     })
   : supabase
 
-// Função para salvar uma página no Supabase
+// Modificar a função savePage para formatar corretamente o campo time
 export async function savePage(pageData: {
   page_id: string
   email: string
@@ -67,6 +67,20 @@ export async function savePage(pageData: {
     }
   }
 
+  // Formatar o campo time corretamente se for um timestamp ISO
+  let formattedTime = pageData.time || ""
+  if (formattedTime && formattedTime.includes("T")) {
+    try {
+      // Extrair apenas a parte da hora (HH:MM:SS) do timestamp ISO
+      const date = new Date(formattedTime)
+      formattedTime = date.toTimeString().split(" ")[0]
+      console.log("Time formatado:", formattedTime)
+    } catch (e) {
+      console.error("Erro ao formatar time:", e)
+      formattedTime = "" // Em caso de erro, usar string vazia
+    }
+  }
+
   // Preparar os dados para inserção, incluindo os timestamps
   const now = new Date().toISOString()
   const dataToInsert = {
@@ -74,7 +88,7 @@ export async function savePage(pageData: {
     email: pageData.email,
     couple_names: pageData.couple_names,
     date: pageData.date,
-    time: pageData.time || "",
+    time: formattedTime, // Usar o time formatado
     message: pageData.message,
     youtube_link: pageData.youtube_link || "",
     photo_urls: pageData.photo_urls,

@@ -39,7 +39,7 @@ export async function savePage(pageData: {
   email: string
   couple_names: string
   date: string
-  time?: string
+  time?: string // Mantido na interface, mas não será usado
   message: string
   youtube_link?: string
   photo_urls: string[]
@@ -65,24 +65,19 @@ export async function savePage(pageData: {
     throw new Error("Credenciais do Supabase não configuradas. Impossível salvar dados.")
   }
 
-  // Preparar os dados para inserção, removendo a referência a created_at
+  // Preparar os dados para inserção, removendo campos problemáticos
   const now = new Date().toISOString()
+
+  // Criar uma cópia dos dados sem o campo time
+  const { time, created_at, ...dataWithoutTime } = pageData
+
   const dataToInsert = {
-    page_id: pageData.page_id,
-    email: pageData.email,
-    couple_names: pageData.couple_names,
-    date: pageData.date,
-    time: pageData.time || "",
-    message: pageData.message,
-    youtube_link: pageData.youtube_link || "",
-    photo_urls: pageData.photo_urls,
-    plan: pageData.plan,
-    page_url: pageData.page_url,
-    qr_code_url: pageData.qr_code_url || "",
-    payment_status: pageData.payment_status || "pending",
+    ...dataWithoutTime,
     updated_at: now,
-    // Removida a referência a created_at
+    // Removido o campo time e created_at
   }
+
+  console.log("Dados preparados para inserção (sem campo time):", Object.keys(dataToInsert).join(", "))
 
   while (retryCount < maxRetries) {
     try {
@@ -377,7 +372,7 @@ export async function createTestPage() {
       email: "teste@exemplo.com",
       couple_names: "Teste & Debug",
       date: new Date().toISOString().split("T")[0],
-      time: "12:00:00",
+      // Removido o campo time
       message: "Esta é uma página de teste para debug",
       youtube_link: "",
       photo_urls: ["https://picsum.photos/200/300"],
@@ -386,7 +381,6 @@ export async function createTestPage() {
       qr_code_url: "",
       payment_status: "pending",
       updated_at: new Date().toISOString(),
-      // Removida a referência a created_at
     }
 
     // Tentar inserir a página de teste

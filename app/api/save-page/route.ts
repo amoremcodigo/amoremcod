@@ -32,6 +32,12 @@ export async function POST(request: Request) {
       )
     }
 
+    // Remover explicitamente o campo time se estiver presente
+    if (pageData.time) {
+      delete pageData.time
+      console.log("Campo 'time' removido dos dados")
+    }
+
     // Gerar QR Code se não foi fornecido
     if (!pageData.qr_code_url && pageData.page_url) {
       try {

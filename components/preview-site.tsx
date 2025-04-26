@@ -57,9 +57,17 @@ const compressImage = async (base64Image: string, maxWidth = 1200, quality = 0.7
   })
 }
 
-// Função melhorada para upload de imagem para o ImgBB com retry
+// Substituir a função uploadImageToServer por uma versão mais robusta
+// Localizar a função atual e substituir por esta versão:
+
 const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetries = 3): Promise<string> => {
   try {
+    // Verificar se a imagem já é uma URL (não base64)
+    if (base64Image.startsWith("http")) {
+      console.log("Imagem já é uma URL, retornando diretamente:", base64Image)
+      return base64Image
+    }
+
     // Remover o prefixo do data URL se existir
     const base64Data = base64Image.includes("base64,") ? base64Image.split("base64,")[1] : base64Image
 
@@ -93,7 +101,8 @@ const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetri
         return uploadImageToServer(base64Image, retryCount + 1, maxRetries)
       }
 
-      throw new Error(`Erro na resposta da API ImgBB: ${response.status} ${response.statusText}`)
+      // Se todas as tentativas falharem, usar um método alternativo
+      return uploadImageViaPostimages(base64Image)
     }
 
     const data = await response.json()
@@ -111,7 +120,8 @@ const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetri
         return uploadImageToServer(base64Image, retryCount + 1, maxRetries)
       }
 
-      throw new Error("Falha ao fazer upload da imagem: " + (data.error?.message || "Erro desconhecido"))
+      // Se todas as tentativas falharem, usar um método alternativo
+      return uploadImageViaPostimages(base64Image)
     }
   } catch (error) {
     console.error(`Erro ao fazer upload da imagem para o ImgBB (tentativa ${retryCount + 1}):`, error)
@@ -123,7 +133,58 @@ const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetri
     }
 
     // Se todas as tentativas falharem, usar um método alternativo
-    return uploadImageViaAPI(base64Image)
+    return uploadImageViaPostimages(base64Image)
+  }
+}
+
+// Adicionar esta nova função após a função uploadImageToServer
+const uploadImageViaPostimages = async (base64Image: string): Promise<string> => {
+  try {
+    console.log("Tentando upload via método alternativo (Postimages)...")
+
+    // Converter base64 para Blob
+    const byteString = atob(base64Image.split(",")[1])
+    const mimeString = base64Image.split(",")[0].split(":")[1].split(";")[0]
+    const ab = new ArrayBuffer(byteString.length)
+    const ia = new Uint8Array(ab)
+
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i)
+    }
+
+    const blob = new Blob([ab], { type: mimeString })
+
+    // Criar FormData para upload
+    const formData = new FormData()
+    formData.append("file", blob, "image.jpg")
+
+    // Usar nossa própria API como fallback
+    const response = await fetch("/api/upload-image", {
+      method: "POST",
+      body: JSON.stringify({ image: base64Image }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`Erro na API de upload: ${response.status}`)
+    }
+
+    const data = await response.json()
+
+    if (data.success && data.url) {
+      console.log("Imagem enviada com sucesso via método alternativo:", data.url)
+      return data.url
+    } else {
+      throw new Error("API de upload retornou erro: " + (data.error || "Erro desconhecido"))
+    }
+  } catch (error) {
+    console.error("Erro no upload via método alternativo:", error)
+
+    // Se tudo falhar, retornar a imagem base64 original
+    console.warn("Usando a imagem base64 original como último recurso")
+    return base64Image
   }
 }
 

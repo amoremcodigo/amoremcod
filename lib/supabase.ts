@@ -56,6 +56,19 @@ export async function savePage(pageData: {
   console.log("Plano:", pageData.plan)
   console.log("URLs das fotos:", pageData.photo_urls.length)
 
+  // Verificar e limpar as URLs das fotos
+  const cleanedPhotoUrls = pageData.photo_urls.map((url) => {
+    // Se a URL for base64, substituir por uma URL de placeholder
+    if (url && url.startsWith("data:image")) {
+      console.log("Detectada imagem base64, substituindo por placeholder")
+      return `/placeholder.svg?height=800&width=600&query=couple photo`
+    }
+    return url
+  })
+
+  // Atualizar as URLs das fotos no objeto pageData
+  pageData.photo_urls = cleanedPhotoUrls
+
   if (!supabaseUrl || !supabaseAnonKey) {
     console.error("Credenciais do Supabase não configuradas. Tentando salvar mesmo assim.")
   }

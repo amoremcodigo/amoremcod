@@ -68,9 +68,27 @@ const initialFormData: FormData = {
 
 const FormContext = createContext<FormContextType | undefined>(undefined)
 
-// Função para fazer upload da imagem para o ImgBB com retry
+// Função para comprimir os dados para a URL
+const compressDataForUrl = (data: any): string => {
+  try {
+    // Converter para JSON e comprimir
+    const jsonString = JSON.stringify(data)
+    return compressToEncodedURIComponent(jsonString)
+  } catch (error) {
+    console.error("Erro ao comprimir dados:", error)
+    return ""
+  }
+}
+
+// Função para fazer upload da imagem para o ImgBB com retry e fallback
 const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetries = 3): Promise<string> => {
   try {
+    // Verificar se a imagem já é uma URL (não base64)
+    if (base64Image.startsWith("http")) {
+      console.log("Imagem já é uma URL, retornando diretamente:", base64Image)
+      return base64Image
+    }
+
     // Remover o prefixo do data URL se existir
     const base64Data = base64Image.includes("base64,") ? base64Image.split("base64,")[1] : base64Image
 
@@ -104,9 +122,8 @@ const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetri
         return uploadImageToServer(base64Image, retryCount + 1, maxRetries)
       }
 
-      // Se todas as tentativas falharem, retornar a imagem base64 original
-      console.warn("Todas as tentativas de upload falharam, usando a imagem base64 original")
-      return base64Image
+      // Se todas as tentativas falharem, usar um placeholder
+      return `/placeholder.svg?height=800&width=600&query=couple photo`
     }
 
     const data = await response.json()
@@ -124,9 +141,8 @@ const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetri
         return uploadImageToServer(base64Image, retryCount + 1, maxRetries)
       }
 
-      // Se todas as tentativas falharem, retornar a imagem base64 original
-      console.warn("Todas as tentativas de upload falharam, usando a imagem base64 original")
-      return base64Image
+      // Se todas as tentativas falharem, usar um placeholder
+      return `/placeholder.svg?height=800&width=600&query=couple photo`
     }
   } catch (error) {
     console.error(`Erro ao fazer upload da imagem para o ImgBB (tentativa ${retryCount + 1}):`, error)
@@ -137,21 +153,8 @@ const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetri
       return uploadImageToServer(base64Image, retryCount + 1, maxRetries)
     }
 
-    // Se todas as tentativas falharem, retornar a imagem base64 original
-    console.warn("Todas as tentativas de upload falharam, usando a imagem base64 original")
-    return base64Image
-  }
-}
-
-// Função para comprimir os dados para a URL
-const compressDataForUrl = (data: any): string => {
-  try {
-    // Converter para JSON e comprimir
-    const jsonString = JSON.stringify(data)
-    return compressToEncodedURIComponent(jsonString)
-  } catch (error) {
-    console.error("Erro ao comprimir dados:", error)
-    return ""
+    // Se todas as tentativas falharem, usar um placeholder
+    return `/placeholder.svg?height=800&width=600&query=couple photo`
   }
 }
 
@@ -270,9 +273,9 @@ export function FormProvider({ children }: { children: ReactNode }) {
               console.log(`Foto ${i + 1} enviada para o servidor, URL:`, photoUrls[i])
             } catch (error) {
               console.error(`Erro ao enviar foto ${i + 1} para o servidor:`, error)
-              // Continuar mesmo com erro, usando a foto base64 original
-              photoUrls[i] = formData.photos[i]
-              console.log(`Usando foto ${i + 1} em formato base64 original`)
+              // Se falhar, usar um placeholder
+              photoUrls[i] = `/placeholder.svg?height=800&width=600&query=couple photo ${i + 1}`
+              console.log(`Usando placeholder para foto ${i + 1}`)
             }
           }
         }

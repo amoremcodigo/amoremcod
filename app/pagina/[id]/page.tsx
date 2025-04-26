@@ -553,6 +553,12 @@ export default function PaginaDetalhes() {
                           src={url || "/placeholder.svg"}
                           alt={`Foto ${index + 1}`}
                           className="w-full h-full object-cover"
+                          onError={(e) => {
+                            // Fallback para placeholder se a imagem falhar
+                            console.error(`Erro ao carregar imagem ${index}:`, url)
+                            ;(e.target as HTMLImageElement).src =
+                              `/placeholder.svg?height=800&width=600&query=couple photo ${index + 1}`
+                          }}
                         />
                       </div>
                     ))}

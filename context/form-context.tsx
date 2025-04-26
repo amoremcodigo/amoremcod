@@ -322,7 +322,7 @@ export function FormProvider({ children }: { children: ReactNode }) {
           console.log("Redirecionando para checkout:", checkoutUrlWithParams)
 
           // Redirecionar para o checkout da Kiwify
-          window.location.href = checkoutUrlWithParams
+          window.location.replace(checkoutUrlWithParams)
         } catch (dbError) {
           console.error("Erro ao salvar dados no Supabase:", dbError)
           alert("Ocorreu um erro ao salvar seus dados. Por favor, tente novamente.")

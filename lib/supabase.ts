@@ -12,12 +12,28 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Criar o cliente do Supabase
-export const supabase = createClient(supabaseUrl || "", supabaseAnonKey || "")
+export const supabase = createClient(supabaseUrl || "", supabaseAnonKey || "", {
+  auth: {
+    persistSession: false, // Não persistir a sessão para evitar problemas de cache
+  },
+  db: {
+    schema: "public",
+  },
+})
 
 // Criar um cliente com a chave de serviço para operações administrativas
-export const supabaseAdmin = supabaseServiceKey ? createClient(supabaseUrl || "", supabaseServiceKey) : supabase
+export const supabaseAdmin = supabaseServiceKey
+  ? createClient(supabaseUrl || "", supabaseServiceKey, {
+      auth: {
+        persistSession: false, // Não persistir a sessão para evitar problemas de cache
+      },
+      db: {
+        schema: "public",
+      },
+    })
+  : supabase
 
-// Função para salvar uma página no Supabase com retry e logs detalhados
+// Modificar a função savePage para incluir mais logs e melhor tratamento de erros
 export async function savePage(pageData: {
   page_id: string
   email: string
@@ -30,17 +46,11 @@ export async function savePage(pageData: {
   plan: string
   page_url: string
   qr_code_url?: string
+  payment_status?: string
 }) {
   const maxRetries = 3
   let retryCount = 0
   let lastError = null
-
-  // Adicionar timestamps se não existirem
-  const dataWithTimestamps = {
-    ...pageData,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  }
 
   console.log("=== INICIANDO SALVAMENTO DE PÁGINA NO SUPABASE ===")
   console.log("ID da página:", pageData.page_id)
@@ -48,82 +58,96 @@ export async function savePage(pageData: {
   console.log("Nome do casal:", pageData.couple_names)
   console.log("Plano:", pageData.plan)
   console.log("URLs das fotos:", pageData.photo_urls.length)
+  console.log("Status de pagamento:", pageData.payment_status || "pending")
+  console.log("Supabase URL:", supabaseUrl ? "Configurado" : "NÃO CONFIGURADO")
+  console.log("Supabase Anon Key:", supabaseAnonKey ? "Configurado" : "NÃO CONFIGURADO")
+  console.log("Supabase Service Key:", supabaseServiceKey ? "Configurado" : "NÃO CONFIGURADO")
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error("ERRO CRÍTICO: Credenciais do Supabase não configuradas")
+    throw new Error("Credenciais do Supabase não configuradas. Impossível salvar dados.")
+  }
+
+  // Preparar os dados para inserção, incluindo os timestamps
+  const now = new Date().toISOString()
+  const dataToInsert = {
+    page_id: pageData.page_id,
+    email: pageData.email,
+    couple_names: pageData.couple_names,
+    date: pageData.date,
+    time: pageData.time || "",
+    message: pageData.message,
+    youtube_link: pageData.youtube_link || "",
+    photo_urls: pageData.photo_urls,
+    plan: pageData.plan,
+    page_url: pageData.page_url,
+    qr_code_url: pageData.qr_code_url || "",
+    payment_status: pageData.payment_status || "pending",
+    created_at: now,
+    updated_at: now,
+  }
 
   while (retryCount < maxRetries) {
     try {
       console.log(`Tentativa ${retryCount + 1} de salvar página no Supabase. ID: ${pageData.page_id}`)
 
       // Tentar primeiro com o cliente admin (se disponível)
-      if (supabaseAdmin !== supabase) {
+      if (supabaseServiceKey && supabaseAdmin !== supabase) {
         console.log("Usando cliente admin para salvar página")
-        const { data, error } = await supabaseAdmin.from("pages").insert([dataWithTimestamps]).select()
+        const { error } = await supabaseAdmin.from("pages").insert([dataToInsert])
 
         if (error) {
           console.error(`Erro com cliente admin na tentativa ${retryCount + 1}:`, error)
           console.log("Tentando com cliente normal...")
 
           // Se falhar com admin, tentar com cliente normal
-          const normalResult = await supabase.from("pages").insert([dataWithTimestamps]).select()
+          const { error: normalError } = await supabase.from("pages").insert([dataToInsert])
 
-          if (normalResult.error) {
-            console.error(`Erro com cliente normal na tentativa ${retryCount + 1}:`, normalResult.error)
-            lastError = normalResult.error
+          if (normalError) {
+            console.error(`Erro com cliente normal na tentativa ${retryCount + 1}:`, normalError)
+            lastError = normalError
             retryCount++
+            // Aumentar o tempo de espera entre tentativas
             await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, retryCount)))
             continue
           }
 
           console.log(`Página salva com sucesso usando cliente normal após ${retryCount + 1} tentativa(s)`)
-          return normalResult.data
+          return { success: true, message: "Página salva com sucesso" }
         }
 
         console.log(`Página salva com sucesso usando cliente admin após ${retryCount + 1} tentativa(s)`)
-        return data
+        return { success: true, message: "Página salva com sucesso" }
       } else {
         // Se não temos cliente admin, usar o cliente normal
         console.log("Usando cliente normal para salvar página")
-        const { data, error } = await supabase.from("pages").insert([dataWithTimestamps]).select()
+        const { error } = await supabase.from("pages").insert([dataToInsert])
 
         if (error) {
           console.error(`Erro na tentativa ${retryCount + 1} ao salvar página no Supabase:`, error)
           lastError = error
           retryCount++
+          // Aumentar o tempo de espera entre tentativas
           await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, retryCount)))
           continue
         }
 
         console.log(`Página salva com sucesso após ${retryCount + 1} tentativa(s). ID: ${pageData.page_id}`)
-        return data
+        return { success: true, message: "Página salva com sucesso" }
       }
     } catch (error) {
       console.error(`Exceção na tentativa ${retryCount + 1} ao salvar página:`, error)
       lastError = error
       retryCount++
+      // Aumentar o tempo de espera entre tentativas
       await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, retryCount)))
     }
   }
 
   console.error(`FALHA CRÍTICA: Não foi possível salvar a página após ${maxRetries} tentativas:`, lastError)
-
-  // Tentar salvar localmente como fallback
-  try {
-    console.log("Tentando salvar página localmente como fallback...")
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(
-        `page_${pageData.page_id}`,
-        JSON.stringify({
-          ...pageData,
-          savedLocally: true,
-          saveError: lastError ? String(lastError) : "Erro desconhecido",
-        }),
-      )
-      console.log("Página salva localmente com sucesso")
-    }
-  } catch (localError) {
-    console.error("Erro ao salvar localmente:", localError)
-  }
-
-  throw lastError
+  throw new Error(
+    `Falha ao salvar no Supabase após ${maxRetries} tentativas: ${lastError ? JSON.stringify(lastError) : "Erro desconhecido"}`,
+  )
 }
 
 // Função para buscar uma página pelo page_id com retry
@@ -134,19 +158,6 @@ export async function getPageById(pageId: string) {
 
   console.log(`=== INICIANDO BUSCA DE PÁGINA NO SUPABASE ===`)
   console.log(`ID da página: "${pageId}"`)
-
-  // Verificar primeiro no localStorage como fallback
-  try {
-    if (typeof localStorage !== "undefined") {
-      const localData = localStorage.getItem(`page_${pageId}`)
-      if (localData) {
-        console.log("Página encontrada no armazenamento local")
-        return JSON.parse(localData)
-      }
-    }
-  } catch (localError) {
-    console.error("Erro ao buscar do armazenamento local:", localError)
-  }
 
   while (retryCount < maxRetries) {
     try {
@@ -162,23 +173,27 @@ export async function getPageById(pageId: string) {
           console.log("Tentando com cliente normal...")
 
           // Se falhar com admin, tentar com cliente normal
-          const normalResult = await supabase.from("pages").select("*").eq("page_id", pageId).single()
+          const { data: normalData, error: normalError } = await supabase
+            .from("pages")
+            .select("*")
+            .eq("page_id", pageId)
+            .single()
 
-          if (normalResult.error) {
-            console.error(`Erro com cliente normal na tentativa ${retryCount + 1}:`, normalResult.error)
-            lastError = normalResult.error
+          if (normalError) {
+            console.error(`Erro com cliente normal na tentativa ${retryCount + 1}:`, normalError)
+            lastError = normalError
             retryCount++
             await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, retryCount)))
             continue
           }
 
-          if (!normalResult.data) {
+          if (!normalData) {
             console.log(`Página com ID "${pageId}" não encontrada na tentativa ${retryCount + 1} (cliente normal)`)
           } else {
             console.log(`Página com ID "${pageId}" encontrada na tentativa ${retryCount + 1} (cliente normal)`)
           }
 
-          return normalResult.data
+          return normalData
         }
 
         if (!data) {
@@ -241,67 +256,31 @@ export async function updatePaymentStatus(pageId: string, status: string) {
           .from("pages")
           .update({ payment_status: status, updated_at: new Date().toISOString() })
           .eq("page_id", pageId)
-          .select()
 
         if (error) {
           console.error(`Erro com cliente admin na tentativa ${retryCount + 1}:`, error)
           console.log("Tentando com cliente normal...")
 
           // Se falhar com admin, tentar com cliente normal
-          const normalResult = await supabase
+          const { data: normalData, error: normalError } = await supabase
             .from("pages")
             .update({ payment_status: status, updated_at: new Date().toISOString() })
             .eq("page_id", pageId)
-            .select()
 
-          if (normalResult.error) {
-            console.error(`Erro com cliente normal na tentativa ${retryCount + 1}:`, normalResult.error)
-            lastError = normalResult.error
+          if (normalError) {
+            console.error(`Erro com cliente normal na tentativa ${retryCount + 1}:`, normalError)
+            lastError = normalError
             retryCount++
             await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, retryCount)))
             continue
           }
 
           console.log(`Status atualizado com sucesso usando cliente normal após ${retryCount + 1} tentativa(s)`)
-
-          // Atualizar também no localStorage se existir
-          try {
-            if (typeof localStorage !== "undefined") {
-              const localData = localStorage.getItem(`page_${pageId}`)
-              if (localData) {
-                const parsedData = JSON.parse(localData)
-                parsedData.payment_status = status
-                parsedData.updated_at = new Date().toISOString()
-                localStorage.setItem(`page_${pageId}`, JSON.stringify(parsedData))
-                console.log("Status atualizado no armazenamento local")
-              }
-            }
-          } catch (localError) {
-            console.error("Erro ao atualizar no armazenamento local:", localError)
-          }
-
-          return normalResult.data
+          return { success: true, message: "Status atualizado com sucesso" }
         }
 
         console.log(`Status atualizado com sucesso usando cliente admin após ${retryCount + 1} tentativa(s)`)
-
-        // Atualizar também no localStorage se existir
-        try {
-          if (typeof localStorage !== "undefined") {
-            const localData = localStorage.getItem(`page_${pageId}`)
-            if (localData) {
-              const parsedData = JSON.parse(localData)
-              parsedData.payment_status = status
-              parsedData.updated_at = new Date().toISOString()
-              localStorage.setItem(`page_${pageId}`, JSON.stringify(parsedData))
-              console.log("Status atualizado no armazenamento local")
-            }
-          }
-        } catch (localError) {
-          console.error("Erro ao atualizar no armazenamento local:", localError)
-        }
-
-        return data
+        return { success: true, message: "Status atualizado com sucesso" }
       } else {
         // Se não temos cliente admin, usar o cliente normal
         console.log("Usando cliente normal para atualizar status")
@@ -309,7 +288,6 @@ export async function updatePaymentStatus(pageId: string, status: string) {
           .from("pages")
           .update({ payment_status: status, updated_at: new Date().toISOString() })
           .eq("page_id", pageId)
-          .select()
 
         if (error) {
           console.error(`Erro na tentativa ${retryCount + 1} ao atualizar status de pagamento:`, error)
@@ -320,24 +298,7 @@ export async function updatePaymentStatus(pageId: string, status: string) {
         }
 
         console.log(`Status de pagamento atualizado com sucesso após ${retryCount + 1} tentativa(s)`)
-
-        // Atualizar também no localStorage se existir
-        try {
-          if (typeof localStorage !== "undefined") {
-            const localData = localStorage.getItem(`page_${pageId}`)
-            if (localData) {
-              const parsedData = JSON.parse(localData)
-              parsedData.payment_status = status
-              parsedData.updated_at = new Date().toISOString()
-              localStorage.setItem(`page_${pageId}`, JSON.stringify(parsedData))
-              console.log("Status atualizado no armazenamento local")
-            }
-          }
-        } catch (localError) {
-          console.error("Erro ao atualizar no armazenamento local:", localError)
-        }
-
-        return data
+        return { success: true, message: "Status atualizado com sucesso" }
       }
     } catch (error) {
       console.error(`Exceção na tentativa ${retryCount + 1} ao atualizar status:`, error)
@@ -370,19 +331,19 @@ export async function listAllPages(limit = 100) {
         console.log("Tentando com cliente normal...")
 
         // Se falhar com admin, tentar com cliente normal
-        const normalResult = await supabase
+        const { data: normalData, error: normalError } = await supabase
           .from("pages")
           .select("*")
           .order("created_at", { ascending: false })
           .limit(limit)
 
-        if (normalResult.error) {
-          console.error("Erro ao listar páginas com cliente normal:", normalResult.error)
+        if (normalError) {
+          console.error("Erro ao listar páginas com cliente normal:", normalError)
           return null
         }
 
-        console.log(`${normalResult.data.length} páginas encontradas com cliente normal`)
-        return normalResult.data
+        console.log(`${normalData.length} páginas encontradas com cliente normal`)
+        return normalData
       }
 
       console.log(`${data.length} páginas encontradas com cliente admin`)
@@ -432,7 +393,7 @@ export async function createTestPage() {
     }
 
     // Tentar inserir a página de teste
-    const { data, error } = await supabase.from("pages").insert([testPage]).select()
+    const { data, error } = await supabase.from("pages").insert([testPage])
 
     if (error) {
       console.error("Erro ao criar página de teste:", error)
@@ -440,7 +401,7 @@ export async function createTestPage() {
     }
 
     console.log("Página de teste criada com sucesso")
-    return { success: true, data: data }
+    return { success: true, message: "Página de teste criada com sucesso" }
   } catch (error) {
     console.error("Exceção ao criar página de teste:", error)
     return { success: false, error: error instanceof Error ? error.message : String(error) }
@@ -470,22 +431,20 @@ export async function getPagesByEmail(email: string, limit = 5) {
         console.log("Tentando com cliente normal...")
 
         // Se falhar com admin, tentar com cliente normal
-        const normalResult = await supabase
+        const { data: normalData, error: normalError } = await supabase
           .from("pages")
           .select("*")
           .eq("email", normalizedEmail)
           .order("created_at", { ascending: false })
           .limit(limit)
 
-        if (normalResult.error) {
-          console.error("Erro ao buscar páginas por e-mail com cliente normal:", normalResult.error)
+        if (normalError) {
+          console.error("Erro ao buscar páginas por e-mail com cliente normal:", normalError)
           return null
         }
 
-        console.log(
-          `${normalResult.data.length} páginas encontradas para o e-mail ${normalizedEmail} com cliente normal`,
-        )
-        return normalResult.data
+        console.log(`${normalData.length} páginas encontradas para o e-mail ${normalizedEmail} com cliente normal`)
+        return normalData
       }
 
       console.log(`${data.length} páginas encontradas para o e-mail ${normalizedEmail} com cliente admin`)

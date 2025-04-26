@@ -125,6 +125,7 @@ export default function PaginaDetalhes() {
 
         setPageData(combinedData)
         setNewMessage(combinedData.message || "")
+        console.log("Mensagem carregada:", combinedData.message)
       } catch (error) {
         console.error("Erro ao buscar dados da página:", error)
       } finally {
@@ -333,6 +334,7 @@ export default function PaginaDetalhes() {
           const localData = JSON.parse(storedData)
           localData.message = newMessage
           localStorage.setItem(`page_${pageId}`, JSON.stringify(localData))
+          console.log("Mensagem atualizada no localStorage:", newMessage)
         }
       } catch (error) {
         console.error("Erro ao atualizar mensagem no localStorage:", error)
@@ -348,8 +350,13 @@ export default function PaginaDetalhes() {
       })
 
       if (!response.ok) {
+        const errorData = await response.json()
+        console.error("Erro na resposta da API:", errorData)
         throw new Error("Erro ao atualizar mensagem")
       }
+
+      const responseData = await response.json()
+      console.log("Resposta da API:", responseData)
 
       // Atualizar o estado local
       setPageData({

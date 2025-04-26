@@ -238,30 +238,8 @@ export function FormProvider({ children }: { children: ReactNode }) {
         // Capitalizar o nome do casal e substituir "e" por "&"
         const capitalizedCoupleNames = capitalizeWords(formData.coupleNames)
 
-        // Atualizar o formData com o nome capitalizado e e-mail normalizado
-        updateFormData({
-          coupleNames: capitalizedCoupleNames,
-          email: normalizedEmail,
-        })
-
         // Generate a unique ID for the page
         const pageId = Math.random().toString(36).substring(2, 8)
-
-        // Criar um objeto com dados essenciais para a URL (versão compacta)
-        const essentialData = {
-          n: capitalizedCoupleNames, // Nome do casal
-          d: formData.date, // Data
-          m: formData.message, // Mensagem
-          y: formData.youtubeLink, // Link do YouTube
-          pl: formData.plan, // Plano
-        }
-
-        // Comprimir os dados para a URL
-        const compressedData = compressDataForUrl(essentialData)
-
-        // Construir a URL completa da página
-        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
-        const pageUrl = `${siteUrl}/pagina/${pageId}?d=${compressedData}`
 
         // Usar links da Kiwify
         const checkoutUrl = formData.plan === "premium" ? KIWIFY_CHECKOUT_LINKS.premium : KIWIFY_CHECKOUT_LINKS.basic
@@ -269,9 +247,35 @@ export function FormProvider({ children }: { children: ReactNode }) {
         // Adicionar parâmetros de query para identificar o pedido
         const checkoutUrlWithParams = `${checkoutUrl}?ref=${pageId}`
 
-        // Iniciar o processamento de imagens em segundo plano
+        // OTIMIZAÇÃO: Redirecionar para o checkout IMEDIATAMENTE
+        window.location.href = checkoutUrlWithParams
+
+        // Processar o resto em segundo plano após o redirecionamento
+        // Isso não afetará o redirecionamento pois o navegador já iniciou a navegação
         setTimeout(async () => {
           try {
+            // Atualizar o formData com o nome capitalizado e e-mail normalizado
+            updateFormData({
+              coupleNames: capitalizedCoupleNames,
+              email: normalizedEmail,
+            })
+
+            // Criar um objeto com dados essenciais para a URL (versão compacta)
+            const essentialData = {
+              n: capitalizedCoupleNames, // Nome do casal
+              d: formData.date, // Data
+              m: formData.message, // Mensagem
+              y: formData.youtubeLink, // Link do YouTube
+              pl: formData.plan, // Plano
+            }
+
+            // Comprimir os dados para a URL
+            const compressedData = compressDataForUrl(essentialData)
+
+            // Construir a URL completa da página
+            const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
+            const pageUrl = `${siteUrl}/pagina/${pageId}?d=${compressedData}`
+
             // Fazer upload das fotos para o servidor com retry
             const photoUrls = [...formData.photoUrls]
             for (let i = 0; i < formData.photos.length; i++) {
@@ -307,9 +311,6 @@ export function FormProvider({ children }: { children: ReactNode }) {
             console.error("Erro durante o processamento em segundo plano:", error)
           }
         }, 0)
-
-        // Redirecionar para o checkout da Kiwify imediatamente
-        window.location.href = checkoutUrlWithParams
       } catch (error) {
         console.error("Erro durante o envio do formulário:", error)
         alert(

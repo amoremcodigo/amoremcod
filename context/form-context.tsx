@@ -205,6 +205,7 @@ export function FormProvider({ children }: { children: ReactNode }) {
     })
   }
 
+  // Modificar a função submitForm para garantir que o campo time seja tratado corretamente
   const submitForm = async () => {
     if (isFormValid()) {
       try {
@@ -300,7 +301,8 @@ export function FormProvider({ children }: { children: ReactNode }) {
             email: normalizedEmail,
             couple_names: capitalizedCoupleNames,
             date: formData.date,
-            time: formData.time || "",
+            // Não incluir o campo time para evitar problemas com o tipo de dados
+            // time: formData.time || "",
             message: formData.message,
             youtube_link: formData.youtubeLink || "",
             photo_urls: photoUrls.filter((url) => url), // Filtrar URLs vazias

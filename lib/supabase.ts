@@ -33,13 +33,16 @@ export const supabaseAdmin = supabaseServiceKey
     })
   : supabase
 
-// Função para salvar uma página no Supabase - adaptada para usar timestamptz
+// Na função savePage, vamos remover completamente o campo time dos dados enviados ao Supabase
+// e garantir que o created_at seja tratado corretamente
+
+// Modificar a função savePage para remover explicitamente o campo time
 export async function savePage(pageData: {
   page_id: string
   email: string
   couple_names: string
   date: string
-  time?: string // Mantido na interface, mas não será usado
+  time?: string // Mantido na interface, mas será removido antes de enviar ao Supabase
   message: string
   youtube_link?: string
   photo_urls: string[]

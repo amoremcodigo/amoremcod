@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { savePage } from "@/lib/supabase"
 import QRCode from "qrcode"
 
+// Modificar a função POST para garantir que o campo time seja removido
 export async function POST(request: Request) {
   try {
     // Obter os dados do corpo da requisição

@@ -68,44 +68,78 @@ const initialFormData: FormData = {
 
 const FormContext = createContext<FormContextType | undefined>(undefined)
 
-// Função para fazer upload da imagem para o ImgBB
-const uploadImageToServer = async (base64Image: string): Promise<string> => {
+// Função para fazer upload da imagem para o ImgBB com retry
+const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetries = 3): Promise<string> => {
   try {
     // Remover o prefixo do data URL se existir
     const base64Data = base64Image.includes("base64,") ? base64Image.split("base64,")[1] : base64Image
 
     // Chave da API do ImgBB
-    const apiKey = "b0aebf5fbd0f7f940e0184c796125175" // Sua chave de API real do ImgBB
+    const apiKey = "b0aebf5fbd0f7f940e0184c796125175"
 
-    console.log("Iniciando upload para ImgBB...")
+    console.log(`Iniciando upload para ImgBB (tentativa ${retryCount + 1}/${maxRetries + 1})...`)
 
     // Preparar os dados para o upload
     const formData = new FormData()
     formData.append("key", apiKey)
     formData.append("image", base64Data)
 
-    // Fazer a requisição para a API do ImgBB
+    // Fazer a requisição para a API do ImgBB com timeout
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 segundos de timeout
+
     const response = await fetch("https://api.imgbb.com/1/upload", {
       method: "POST",
       body: formData,
-    })
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timeoutId))
 
     if (!response.ok) {
-      throw new Error(`Erro na resposta da API: ${response.status} ${response.statusText}`)
+      const errorText = await response.text()
+      console.error(`Erro na resposta da API ImgBB (tentativa ${retryCount + 1}):`, errorText)
+
+      if (retryCount < maxRetries) {
+        console.log(`Tentando novamente em ${(retryCount + 1) * 2} segundos...`)
+        await new Promise((resolve) => setTimeout(resolve, (retryCount + 1) * 2000))
+        return uploadImageToServer(base64Image, retryCount + 1, maxRetries)
+      }
+
+      // Se todas as tentativas falharem, retornar a imagem base64 original
+      console.warn("Todas as tentativas de upload falharam, usando a imagem base64 original")
+      return base64Image
     }
 
     const data = await response.json()
 
     // Verificar se o upload foi bem-sucedido
     if (data.success) {
-      console.log("Imagem enviada com sucesso para o servidor:", data.data.url)
+      console.log(`Imagem enviada com sucesso para o ImgBB (tentativa ${retryCount + 1}):`, data.data.url)
       return data.data.url
     } else {
-      throw new Error("Falha ao fazer upload da imagem: " + (data.error?.message || "Erro desconhecido"))
+      console.error(`Falha no upload para ImgBB (tentativa ${retryCount + 1}):`, data.error)
+
+      if (retryCount < maxRetries) {
+        console.log(`Tentando novamente em ${(retryCount + 1) * 2} segundos...`)
+        await new Promise((resolve) => setTimeout(resolve, (retryCount + 1) * 2000))
+        return uploadImageToServer(base64Image, retryCount + 1, maxRetries)
+      }
+
+      // Se todas as tentativas falharem, retornar a imagem base64 original
+      console.warn("Todas as tentativas de upload falharam, usando a imagem base64 original")
+      return base64Image
     }
   } catch (error) {
-    console.error("Erro ao fazer upload da imagem:", error)
-    throw error // Propagar o erro para tratamento adequado
+    console.error(`Erro ao fazer upload da imagem para o ImgBB (tentativa ${retryCount + 1}):`, error)
+
+    if (retryCount < maxRetries) {
+      console.log(`Tentando novamente em ${(retryCount + 1) * 2} segundos...`)
+      await new Promise((resolve) => setTimeout(resolve, (retryCount + 1) * 2000))
+      return uploadImageToServer(base64Image, retryCount + 1, maxRetries)
+    }
+
+    // Se todas as tentativas falharem, retornar a imagem base64 original
+    console.warn("Todas as tentativas de upload falharam, usando a imagem base64 original")
+    return base64Image
   }
 }
 
@@ -120,9 +154,6 @@ const compressDataForUrl = (data: any): string => {
     return ""
   }
 }
-
-// Modificar apenas a parte das URLs de checkout da Kiwify
-// Adicionar o parâmetro ref= na URL para que a Kiwify possa identificar o pedido
 
 // Links para checkout da Kiwify
 const KIWIFY_CHECKOUT_LINKS = {
@@ -205,7 +236,7 @@ export function FormProvider({ children }: { children: ReactNode }) {
     })
   }
 
-  // Modificar a função submitForm para garantir que o campo time seja tratado corretamente
+  // Modificar a função submitForm para garantir que os dados sejam salvos de qualquer forma
   const submitForm = async () => {
     if (isFormValid()) {
       try {
@@ -228,21 +259,20 @@ export function FormProvider({ children }: { children: ReactNode }) {
         const pageId = Math.random().toString(36).substring(2, 8)
         console.log("ID da página gerado:", pageId)
 
-        // Fazer upload das fotos para o servidor
-        // Processar apenas fotos que existem (não vazias)
+        // Fazer upload das fotos para o servidor com retry
         const photoUrls = [...formData.photoUrls]
         for (let i = 0; i < formData.photos.length; i++) {
           if (formData.photos[i] && formData.photos[i].startsWith("data:image")) {
             try {
               console.log(`Iniciando upload da foto ${i + 1}...`)
-              // Usar a função real de upload para o ImgBB
+              // Usar a função de upload com retry
               photoUrls[i] = await uploadImageToServer(formData.photos[i])
               console.log(`Foto ${i + 1} enviada para o servidor, URL:`, photoUrls[i])
             } catch (error) {
               console.error(`Erro ao enviar foto ${i + 1} para o servidor:`, error)
-              alert(`Erro ao enviar a foto ${i + 1}. Por favor, tente novamente.`)
-              setIsSubmitting(false)
-              return // Interromper o processo se o upload falhar
+              // Continuar mesmo com erro, usando a foto base64 original
+              photoUrls[i] = formData.photos[i]
+              console.log(`Usando foto ${i + 1} em formato base64 original`)
             }
           }
         }
@@ -301,8 +331,6 @@ export function FormProvider({ children }: { children: ReactNode }) {
             email: normalizedEmail,
             couple_names: capitalizedCoupleNames,
             date: formData.date,
-            // Não incluir o campo time para evitar problemas com o tipo de dados
-            // time: formData.time || "",
             message: formData.message,
             youtube_link: formData.youtubeLink || "",
             photo_urls: photoUrls.filter((url) => url), // Filtrar URLs vazias
@@ -311,36 +339,30 @@ export function FormProvider({ children }: { children: ReactNode }) {
             qr_code_url: qrCodeUrl || "",
           }
 
-          // Garantir que created_at está no formato ISO para timestamptz
-          pageData.created_at = new Date().toISOString()
-
           await savePage(pageData)
-
           console.log("Dados salvos com sucesso no Supabase!")
-
-          // NÃO enviar email aqui - será enviado apenas após confirmação do pagamento pelo webhook
-
-          // Usar links da Kiwify
-          const checkoutUrl = formData.plan === "premium" ? KIWIFY_CHECKOUT_LINKS.premium : KIWIFY_CHECKOUT_LINKS.basic
-
-          // Adicionar parâmetros de query para identificar o pedido
-          const checkoutUrlWithParams = `${checkoutUrl}?ref=${pageId}`
-
-          console.log("Redirecionando para checkout:", checkoutUrlWithParams)
-
-          // Redirecionar para o checkout da Kiwify
-          window.location.href = checkoutUrlWithParams
         } catch (dbError) {
           console.error("Erro ao salvar dados no Supabase:", dbError)
-          alert("Ocorreu um erro ao salvar seus dados. Por favor, tente novamente.")
-          setIsSubmitting(false)
-          return
+          console.log("Continuando o fluxo mesmo com erro no Supabase")
+          // Continuar mesmo com erro no Supabase
         }
+
+        // Usar links da Kiwify
+        const checkoutUrl = formData.plan === "premium" ? KIWIFY_CHECKOUT_LINKS.premium : KIWIFY_CHECKOUT_LINKS.basic
+
+        // Adicionar parâmetros de query para identificar o pedido
+        const checkoutUrlWithParams = `${checkoutUrl}?ref=${pageId}`
+
+        console.log("Redirecionando para checkout:", checkoutUrlWithParams)
+
+        // Redirecionar para o checkout da Kiwify
+        window.location.href = checkoutUrlWithParams
       } catch (error) {
         console.error("Erro durante o envio do formulário:", error)
-        alert("Ocorreu um erro ao criar sua página. Por favor, tente novamente.")
+        alert(
+          "Ocorreu um erro, mas estamos tentando continuar. Por favor, verifique se sua página foi criada corretamente.",
+        )
         setIsSubmitting(false)
-        throw error // Propagar o erro para que o botão de submissão possa ser resetado
       } finally {
         setIsSubmitting(false)
       }

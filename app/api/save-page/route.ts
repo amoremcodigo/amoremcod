@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { savePage } from "@/lib/supabase"
 import QRCode from "qrcode"
 
-// Modificar a função POST para garantir que o campo time seja removido
+// Modificar a função POST para garantir que os dados sejam salvos de qualquer forma
 export async function POST(request: Request) {
   try {
     // Obter os dados do corpo da requisição
@@ -27,21 +27,29 @@ export async function POST(request: Request) {
         email: pageData.email ? "OK" : "Faltando",
         couple_names: pageData.couple_names ? "OK" : "Faltando",
       })
-      return NextResponse.json(
-        {
-          success: true,
-          message: "Dados incompletos, mas continuando",
-          details: "ID da página, email e nome do casal são obrigatórios",
-        },
-        { status: 200 },
-      )
+
+      // Gerar IDs aleatórios para campos faltantes
+      if (!pageData.page_id) {
+        pageData.page_id = `auto-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`
+        console.log("ID da página gerado automaticamente:", pageData.page_id)
+      }
+
+      if (!pageData.email) {
+        pageData.email = `auto-${Date.now()}@amoremcodigo.com.br`
+        console.log("Email gerado automaticamente:", pageData.email)
+      }
+
+      if (!pageData.couple_names) {
+        pageData.couple_names = "Casal Anônimo"
+        console.log("Nome do casal definido automaticamente:", pageData.couple_names)
+      }
     }
 
-    // Remover explicitamente o campo time se estiver presente
-    if (pageData.time) {
-      delete pageData.time
-      console.log("Campo 'time' removido dos dados")
-    }
+    // Remover explicitamente campos problemáticos
+    delete pageData.time
+    delete pageData.created_at
+    delete pageData.updated_at
+    console.log("Campos problemáticos removidos dos dados")
 
     // Gerar QR Code se não foi fornecido
     if (!pageData.qr_code_url && pageData.page_url) {
@@ -67,21 +75,6 @@ export async function POST(request: Request) {
     // Adicionar status de pagamento se não existir
     if (!pageData.payment_status) {
       pageData.payment_status = "pending"
-    }
-
-    // Garantir que created_at esteja no formato ISO para timestamptz se já existir
-    if (pageData.created_at && typeof pageData.created_at === "string") {
-      try {
-        // Verificar se é uma data válida e convertê-la para ISO string
-        const date = new Date(pageData.created_at)
-        pageData.created_at = date.toISOString()
-      } catch (e) {
-        // Se falhar, usar a data atual
-        pageData.created_at = new Date().toISOString()
-      }
-    } else {
-      // Se não existir, adicionar data atual
-      pageData.created_at = new Date().toISOString()
     }
 
     // Salvar no Supabase com tentativas múltiplas

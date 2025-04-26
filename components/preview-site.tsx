@@ -429,7 +429,6 @@ export function PreviewSite() {
         page_id: pageId,
         email: normalizedEmail,
         couple_names: capitalizedCoupleNames,
-        date: formattedDate,
         // Remover o campo time para evitar erros
         message: formData.message,
         youtube_link: formData.youtubeLink || "",

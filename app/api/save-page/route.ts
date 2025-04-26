@@ -42,9 +42,10 @@ export async function POST(request: Request) {
       console.log("Data formatada na API:", pageData.date)
     }
 
-    // Remover o campo time para evitar erros
+    // Remover os campos date e time para evitar erros
+    delete pageData.date
     delete pageData.time
-    console.log("Campo time removido para evitar erros")
+    console.log("Campos date e time removidos para evitar erros")
 
     // Gerar QR Code se não foi fornecido
     if (!pageData.qr_code_url && pageData.page_url) {

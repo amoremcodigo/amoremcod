@@ -100,9 +100,7 @@ export async function savePage(pageData: {
     page_id: pageData.page_id,
     email: pageData.email,
     couple_names: pageData.couple_names,
-    date: formattedDate, // Usar a data formatada
-    // Remover o campo time completamente para evitar erros
-    // time: undefined,
+    // Remover os campos date e time completamente
     message: pageData.message,
     youtube_link: pageData.youtube_link || "",
     photo_urls: pageData.photo_urls,
@@ -114,7 +112,8 @@ export async function savePage(pageData: {
     updated_at: now,
   }
 
-  // Remover explicitamente o campo time do objeto
+  // Remover explicitamente os campos date e time do objeto
+  delete (dataToInsert as any).date
   delete (dataToInsert as any).time
 
   try {

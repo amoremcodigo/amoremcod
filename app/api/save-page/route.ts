@@ -36,6 +36,16 @@ export async function POST(request: Request) {
       )
     }
 
+    // Formatar a data corretamente para o formato YYYY-MM-DD
+    if (pageData.date && pageData.date.includes("T")) {
+      pageData.date = pageData.date.split("T")[0]
+      console.log("Data formatada na API:", pageData.date)
+    }
+
+    // Remover o campo time para evitar erros
+    delete pageData.time
+    console.log("Campo time removido para evitar erros")
+
     // Gerar QR Code se não foi fornecido
     if (!pageData.qr_code_url && pageData.page_url) {
       try {

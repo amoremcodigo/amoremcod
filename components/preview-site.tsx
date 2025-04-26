@@ -192,6 +192,28 @@ const uploadImagesInParallel = async (images: string[]): Promise<string[]> => {
   }
 }
 
+// Função para formatar a data corretamente para o formato YYYY-MM-DD
+const formatDateString = (dateStr: string): string => {
+  if (!dateStr) return ""
+
+  try {
+    // Se for um timestamp ISO completo (contém "T"), extrair apenas a parte da data
+    if (dateStr.includes("T")) {
+      return dateStr.split("T")[0] // Retorna apenas YYYY-MM-DD
+    }
+
+    // Se já for uma data no formato YYYY-MM-DD, retornar como está
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return dateStr
+    }
+
+    return ""
+  } catch (e) {
+    console.error("Erro ao formatar string de data:", e)
+    return ""
+  }
+}
+
 export function PreviewSite() {
   const { formData, isFormValid, isSubmitting, updateFormData } = useFormContext()
   const [years, setYears] = useState(0)
@@ -329,25 +351,16 @@ export function PreviewSite() {
       // Capitalizar o nome do casal e substituir "e" por "&"
       const capitalizedCoupleNames = capitalizeWords(formData.coupleNames)
 
-      // Formatar o time corretamente se existir
-      let formattedTime = formData.time || ""
-      if (formattedTime && formattedTime.includes("T")) {
-        try {
-          // Extrair apenas a parte da hora (HH:MM:SS) do timestamp
-          const date = new Date(formattedTime)
-          formattedTime = date.toTimeString().split(" ")[0]
-          console.log("Time formatado:", formattedTime)
-        } catch (e) {
-          console.error("Erro ao formatar time:", e)
-          formattedTime = "" // Em caso de erro, usar string vazia
-        }
-      }
+      // Formatar a data corretamente para o formato YYYY-MM-DD
+      const formattedDate = formatDateString(formData.date || "")
+      console.log("Data original:", formData.date)
+      console.log("Data formatada:", formattedDate)
 
-      // Atualizar o formData com o nome capitalizado, e-mail normalizado e time formatado
+      // Atualizar o formData com o nome capitalizado, e-mail normalizado e data formatada
       updateFormData({
         coupleNames: capitalizedCoupleNames,
         email: normalizedEmail,
-        time: formattedTime,
+        date: formattedDate,
       })
 
       // Generate a unique ID for the page
@@ -376,8 +389,7 @@ export function PreviewSite() {
       // Criar um objeto com dados essenciais para a URL
       const essentialData = {
         n: capitalizedCoupleNames, // Nome do casal
-        d: formData.date, // Data
-        t: formData.time, // Hora
+        d: formattedDate, // Data formatada
         m: formData.message, // Mensagem
         y: formData.youtubeLink, // Link do YouTube
         p: formData.photoUrls.filter((url) => url), // URLs das fotos (filtrar vazias)
@@ -417,8 +429,8 @@ export function PreviewSite() {
         page_id: pageId,
         email: normalizedEmail,
         couple_names: capitalizedCoupleNames,
-        date: formData.date,
-        time: formData.time || "",
+        date: formattedDate,
+        // Remover o campo time para evitar erros
         message: formData.message,
         youtube_link: formData.youtubeLink || "",
         photo_urls: formData.photoUrls.filter((url) => url), // Filtrar URLs vazias

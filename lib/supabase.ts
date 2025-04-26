@@ -33,7 +33,29 @@ export const supabaseAdmin = supabaseServiceKey
     })
   : supabase
 
-// Modificar a função savePage para formatar corretamente o campo time
+// Função para formatar a data para o formato YYYY-MM-DD
+const formatDateString = (dateStr: string): string => {
+  if (!dateStr) return ""
+
+  try {
+    // Se for um timestamp ISO completo (contém "T"), extrair apenas a parte da data
+    if (dateStr.includes("T")) {
+      return dateStr.split("T")[0] // Retorna apenas YYYY-MM-DD
+    }
+
+    // Se já for uma data no formato YYYY-MM-DD, retornar como está
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return dateStr
+    }
+
+    return ""
+  } catch (e) {
+    console.error("Erro ao formatar string de data:", e)
+    return ""
+  }
+}
+
+// Função para salvar uma página no Supabase
 export async function savePage(pageData: {
   page_id: string
   email: string
@@ -67,19 +89,10 @@ export async function savePage(pageData: {
     }
   }
 
-  // Formatar o campo time corretamente se for um timestamp ISO
-  let formattedTime = pageData.time || ""
-  if (formattedTime && formattedTime.includes("T")) {
-    try {
-      // Extrair apenas a parte da hora (HH:MM:SS) do timestamp ISO
-      const date = new Date(formattedTime)
-      formattedTime = date.toTimeString().split(" ")[0]
-      console.log("Time formatado:", formattedTime)
-    } catch (e) {
-      console.error("Erro ao formatar time:", e)
-      formattedTime = "" // Em caso de erro, usar string vazia
-    }
-  }
+  // Formatar a data corretamente para o formato YYYY-MM-DD
+  const formattedDate = formatDateString(pageData.date || "")
+  console.log("Data original:", pageData.date)
+  console.log("Data formatada para Supabase:", formattedDate)
 
   // Preparar os dados para inserção, incluindo os timestamps
   const now = new Date().toISOString()
@@ -87,8 +100,9 @@ export async function savePage(pageData: {
     page_id: pageData.page_id,
     email: pageData.email,
     couple_names: pageData.couple_names,
-    date: pageData.date,
-    time: formattedTime, // Usar o time formatado
+    date: formattedDate, // Usar a data formatada
+    // Remover o campo time completamente para evitar erros
+    // time: undefined,
     message: pageData.message,
     youtube_link: pageData.youtube_link || "",
     photo_urls: pageData.photo_urls,
@@ -99,6 +113,9 @@ export async function savePage(pageData: {
     created_at: now,
     updated_at: now,
   }
+
+  // Remover explicitamente o campo time do objeto
+  delete (dataToInsert as any).time
 
   try {
     // Tentar primeiro com o cliente admin (se disponível)
@@ -161,7 +178,7 @@ export async function createTestPage() {
       email: "teste@exemplo.com",
       couple_names: "Teste & Debug",
       date: new Date().toISOString().split("T")[0],
-      time: "12:00:00",
+      // Remover o campo time
       message: "Esta é uma página de teste para debug",
       youtube_link: "",
       photo_urls: ["https://picsum.photos/200/300"],

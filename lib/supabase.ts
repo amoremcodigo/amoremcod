@@ -68,13 +68,11 @@ export async function savePage(pageData: {
   // Preparar os dados para inserção, incluindo os timestamps
   const now = new Date().toISOString()
 
-  // Use valores explicitamente NULL para as colunas date e time
+  // Remover completamente qualquer referência às colunas date e time
   const dataToInsert = {
     page_id: pageData.page_id,
     email: pageData.email,
     couple_names: pageData.couple_names,
-    date: null, // Definir explicitamente como NULL
-    time: null, // Definir explicitamente como NULL
     message: pageData.message,
     youtube_link: pageData.youtube_link || "",
     photo_urls: pageData.photo_urls,
@@ -87,92 +85,53 @@ export async function savePage(pageData: {
   }
 
   try {
-    // Usar uma abordagem de tratamento de erros com retry e fallback
-    console.log("Tentando salvar com cliente admin...")
-    let result: any = null
-    let error: any = null
+    // Tentar primeiro com o cliente admin (se disponível)
+    if (supabaseServiceKey && supabaseAdmin !== supabase) {
+      console.log("Tentando salvar com cliente admin...")
+      const { data, error } = await supabaseAdmin.from("pages").insert([dataToInsert]).select()
 
-    try {
-      if (supabaseServiceKey && supabaseAdmin !== supabase) {
-        const { data, error: adminError } = await supabaseAdmin.from("pages").insert([dataToInsert])
-        if (adminError) throw adminError
-        result = data
-        console.log("Página salva com sucesso usando cliente admin")
-      }
-    } catch (adminErr) {
-      console.error("Erro ao salvar com cliente admin:", adminErr)
-      error = adminErr
-    }
+      if (error) {
+        console.error("Erro ao salvar com cliente admin:", error)
 
-    // Se falhar com admin ou não tiver client admin, tentar com cliente normal
-    if (!result) {
-      console.log("Tentando salvar com cliente normal...")
-      try {
-        // Tentativa normal com todos os campos
-        const { data, error: normalError } = await supabase.from("pages").insert([dataToInsert])
-        if (normalError) throw normalError
-        result = data
-        console.log("Página salva com sucesso usando cliente normal")
-      } catch (normalErr) {
-        console.error("Erro ao salvar com cliente normal:", normalErr)
-        error = normalErr
+        // Se falhar com admin, tentar com cliente normal
+        console.log("Tentando salvar com cliente normal...")
+        const { data: normalData, error: normalError } = await supabase.from("pages").insert([dataToInsert]).select()
 
-        // Se ainda falhar, tentar com um subset mínimo de campos
-        console.log("Tentando salvar com campos mínimos...")
-        try {
-          const minimalData = {
-            page_id: pageData.page_id,
-            email: pageData.email,
-            couple_names: pageData.couple_names,
-            message: pageData.message,
-            photo_urls: pageData.photo_urls,
-            plan: pageData.plan,
-            page_url: pageData.page_url,
-            payment_status: "pending",
-            created_at: now,
-          }
-
-          const { data: minData, error: minError } = await supabase.from("pages").insert([minimalData])
-          if (minError) throw minError
-          result = minData
-          console.log("Página salva com sucesso usando campos mínimos")
-        } catch (minErr) {
-          console.error("Erro ao salvar com campos mínimos:", minErr)
-          error = minErr
-
-          // Como último recurso, tentar inserção bruta via SQL
-          console.log("Tentando inserção via SQL bruto como último recurso...")
-          try {
-            const { data: sqlData, error: sqlError } = await supabase.rpc("insert_page_raw", {
-              p_id: pageData.page_id,
-              p_email: pageData.email,
-              p_couple: pageData.couple_names,
-            })
-
-            if (sqlError) throw sqlError
-            result = { message: "Página salva via SQL bruto" }
-            console.log("Página salva com sucesso via SQL bruto")
-          } catch (sqlErr) {
-            console.error("Falha em todas as tentativas de salvar a página:", sqlErr)
-            throw sqlErr // Repassar o último erro se todas as tentativas falharem
+        if (normalError) {
+          console.error("Erro ao salvar com cliente normal:", normalError)
+          return {
+            success: false,
+            error: `Falha ao salvar no Supabase: ${normalError.message}`,
           }
         }
-      }
-    }
 
-    return { success: true, data: result }
+        console.log("Página salva com sucesso usando cliente normal")
+        return { success: true, data: normalData }
+      }
+
+      console.log("Página salva com sucesso usando cliente admin")
+      return { success: true, data }
+    } else {
+      // Se não temos cliente admin, usar o cliente normal
+      console.log("Tentando salvar com cliente normal (admin não disponível)...")
+      const { data, error } = await supabase.from("pages").insert([dataToInsert]).select()
+
+      if (error) {
+        console.error("Erro ao salvar com cliente normal:", error)
+        return {
+          success: false,
+          error: `Falha ao salvar no Supabase: ${error.message}`,
+        }
+      }
+
+      console.log("Página salva com sucesso usando cliente normal")
+      return { success: true, data }
+    }
   } catch (error) {
     console.error("FALHA CRÍTICA: Não foi possível salvar a página:", error)
-
-    // ÚLTIMO RECURSO: Se todas as tentativas falharem, retornar sucesso falso mas permitir que o fluxo continue
-    const errorDetails = error instanceof Error ? error.message : String(error)
-    console.log("Apesar do erro no Supabase, permitindo que o fluxo continue.")
-
-    // Retornamos sucesso=true mesmo com erro para permitir que o fluxo continue
     return {
-      success: true,
-      fakeSuccess: true, // Marca que é um falso sucesso
-      error: `Falha ao salvar no Supabase, mas continuando fluxo: ${errorDetails}`,
+      success: false,
+      error: `Falha ao salvar no Supabase: ${error instanceof Error ? error.message : String(error)}`,
     }
   }
 }

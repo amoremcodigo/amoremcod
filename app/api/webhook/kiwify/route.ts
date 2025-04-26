@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 import { updatePaymentStatus, getPagesByEmail } from "@/lib/supabase"
+import { sendConfirmationEmail } from "@/lib/email"
+import { listRecentPages } from "@/lib/pages"
 
 export async function POST(request: Request) {
   console.log("=== WEBHOOK DA KIWIFY RECEBIDO ===")
@@ -24,32 +26,23 @@ export async function POST(request: Request) {
     // Baseado na estrutura exata fornecida pelo usuário
     let customerEmail = null
 
-    if (webhookData && webhookData.Customer && typeof webhookData.Customer === "object") {
-      customerEmail = webhookData.Customer.email
-      console.log("E-mail encontrado diretamente em Customer.email:", customerEmail)
-    }
+    // Verificar todos os caminhos possíveis para o e-mail
+    const possibleEmailPaths = [
+      webhookData.Customer?.email,
+      webhookData.customer?.email,
+      webhookData.Customer?.Email,
+      webhookData.customer?.Email,
+      webhookData.customer_email,
+      webhookData.email,
+      webhookData.buyer_email,
+      webhookData.user_email,
+    ]
 
-    // Se não encontrou o e-mail na estrutura esperada, tentar outras abordagens
-    if (!customerEmail) {
-      console.log("E-mail não encontrado na estrutura esperada, tentando alternativas...")
-
-      // Verificar todos os caminhos possíveis para o e-mail
-      const possiblePaths = [
-        webhookData.customer?.email,
-        webhookData.Customer?.Email,
-        webhookData.customer?.Email,
-        webhookData.customer_email,
-        webhookData.email,
-        webhookData.buyer_email,
-        webhookData.user_email,
-      ]
-
-      for (const path of possiblePaths) {
-        if (typeof path === "string" && path.includes("@")) {
-          customerEmail = path
-          console.log(`E-mail encontrado em caminho alternativo: ${customerEmail}`)
-          break
-        }
+    for (const path of possibleEmailPaths) {
+      if (typeof path === "string" && path.includes("@")) {
+        customerEmail = path
+        console.log(`E-mail encontrado em caminho: ${customerEmail}`)
+        break
       }
     }
 
@@ -112,16 +105,20 @@ export async function POST(request: Request) {
       )
     }
 
+    // Normalizar o e-mail (trim e lowercase)
+    const normalizedEmail = customerEmail.trim().toLowerCase()
+    console.log(`E-mail normalizado: ${normalizedEmail}`)
+
     // Buscar as páginas do cliente pelo e-mail
-    const pages = await getPagesByEmail(customerEmail)
+    const pages = await getPagesByEmail(normalizedEmail)
 
     // Se não encontramos nenhuma página, retornar erro
     if (!pages || pages.length === 0) {
-      console.error(`Nenhuma página encontrada para o e-mail ${customerEmail}`)
+      console.error(`Nenhuma página encontrada para o e-mail ${normalizedEmail}`)
       return NextResponse.json(
         {
-          error: `Nenhuma página encontrada para o e-mail ${customerEmail}`,
-          customerEmail,
+          error: `Nenhuma página encontrada para o e-mail ${normalizedEmail}`,
+          customerEmail: normalizedEmail,
         },
         { status: 404 },
       )
@@ -131,7 +128,7 @@ export async function POST(request: Request) {
     const pageData = pages[0]
     const pageId = pageData.page_id
 
-    console.log(`Página encontrada: ${pageId} para o e-mail ${customerEmail}`)
+    console.log(`Página encontrada: ${pageId} para o e-mail ${normalizedEmail}`)
 
     // Atualizar o status de pagamento no Supabase
     console.log(`Atualizando status de pagamento para ${pageId}: ${status}`)
@@ -147,7 +144,7 @@ export async function POST(request: Request) {
       success: true,
       message: "Webhook processado com sucesso",
       pageId,
-      customerEmail,
+      customerEmail: normalizedEmail,
       status,
     })
   } catch (error) {
@@ -159,61 +156,6 @@ export async function POST(request: Request) {
       },
       { status: 500 },
     )
-  }
-}
-
-// Função auxiliar para listar páginas recentes
-async function listRecentPages(limit = 1) {
-  try {
-    const { supabase } = await import("@/lib/supabase")
-    const { data, error } = await supabase
-      .from("pages")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(limit)
-
-    if (error) {
-      console.error("ERRO AO LISTAR PÁGINAS RECENTES:", error)
-      return null
-    }
-
-    return data
-  } catch (error) {
-    console.error("ERRO AO LISTAR PÁGINAS RECENTES:", error)
-    return null
-  }
-}
-
-// Função auxiliar para enviar e-mail de confirmação
-async function sendConfirmationEmail(pageData: any) {
-  try {
-    console.log("ENVIANDO E-MAIL DE CONFIRMAÇÃO PARA:", pageData.email)
-
-    const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || ""}/api/send-email`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: pageData.email,
-        pageUrl: pageData.page_url,
-        coupleNames: pageData.couple_names,
-        qrCodeUrl: pageData.qr_code_url,
-        isPending: false, // Pagamento confirmado
-      }),
-    })
-
-    if (!emailResponse.ok) {
-      const errorText = await emailResponse.text()
-      console.error("ERRO AO ENVIAR E-MAIL:", emailResponse.status, errorText)
-      return false
-    }
-
-    console.log("E-MAIL ENVIADO COM SUCESSO PARA:", pageData.email)
-    return true
-  } catch (error) {
-    console.error("ERRO AO ENVIAR E-MAIL:", error)
-    return false
   }
 }
 

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 import { updatePaymentStatus, getPagesByEmail } from "@/lib/supabase"
+import { sendConfirmationEmail } from "@/lib/email" // Import sendConfirmationEmail
+import { listRecentPages } from "@/lib/pages" // Import listRecentPages
 
 // Rota de webhook simplificada que aceita apenas o e-mail do cliente e o status
 export async function GET(request: Request) {
@@ -10,60 +12,6 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   console.log("=== WEBHOOK SIMPLES RECEBIDO (POST) ===")
   return handleWebhook(request)
-}
-
-// Função auxiliar para listar páginas recentes
-async function listRecentPages(limit = 1) {
-  try {
-    const { supabase } = await import("@/lib/supabase")
-    const { data, error } = await supabase
-      .from("pages")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(limit)
-
-    if (error) {
-      console.error("ERRO AO LISTAR PÁGINAS RECENTES:", error)
-      return null
-    }
-
-    return data
-  } catch (error) {
-    console.error("ERRO AO LISTAR PÁGINAS RECENTES:", error)
-    return null
-  }
-}
-
-// Função auxiliar para enviar e-mail de confirmação
-async function sendConfirmationEmail(pageData: any) {
-  try {
-    console.log("ENVIANDO E-MAIL DE CONFIRMAÇÃO PARA:", pageData.email)
-
-    const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || ""}/api/send-email`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: pageData.email,
-        pageUrl: pageData.page_url,
-        coupleNames: pageData.couple_names,
-        qrCodeUrl: pageData.qr_code_url,
-        isPending: false, // Pagamento confirmado
-      }),
-    })
-
-    if (!emailResponse.ok) {
-      console.error("ERRO AO ENVIAR E-MAIL:", emailResponse.status)
-      return false
-    }
-
-    console.log("E-MAIL ENVIADO COM SUCESSO PARA:", pageData.email)
-    return true
-  } catch (error) {
-    console.error("ERRO AO ENVIAR E-MAIL:", error)
-    return false
-  }
 }
 
 // Melhorar o log de depuração no webhook simples
@@ -165,28 +113,16 @@ async function handleWebhook(request: Request) {
       )
     }
 
-    return processWebhook(email, status, bodyData)
-  } catch (error) {
-    console.error("Erro ao processar webhook simples:", error)
-    return NextResponse.json(
-      {
-        error: "Erro interno do servidor",
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 },
-    )
-  }
-}
+    // Normalizar o e-mail (trim e lowercase)
+    const normalizedEmail = email.trim().toLowerCase()
+    console.log(`E-mail normalizado: ${normalizedEmail}`)
 
-// Função para processar o webhook com o e-mail e status
-async function processWebhook(email: string, status: string, bodyData: any) {
-  try {
     // Buscar as páginas do cliente pelo e-mail
-    const pages = await getPagesByEmail(email)
+    const pages = await getPagesByEmail(normalizedEmail)
 
     // Se não encontramos nenhuma página, retornar erro
     if (!pages || pages.length === 0) {
-      console.error(`Nenhuma página encontrada para o e-mail ${email}`)
+      console.error(`Nenhuma página encontrada para o e-mail ${normalizedEmail}`)
 
       // SOLUÇÃO DE EMERGÊNCIA: Tentar processar a página mais recente
       try {
@@ -217,8 +153,8 @@ async function processWebhook(email: string, status: string, bodyData: any) {
 
       return NextResponse.json(
         {
-          error: `Nenhuma página encontrada para o e-mail ${email}`,
-          email,
+          error: `Nenhuma página encontrada para o e-mail ${normalizedEmail}`,
+          email: normalizedEmail,
         },
         { status: 404 },
       )
@@ -228,7 +164,7 @@ async function processWebhook(email: string, status: string, bodyData: any) {
     const pageData = pages[0]
     const pageId = pageData.page_id
 
-    console.log(`Página encontrada: ${pageId} para o e-mail ${email}`)
+    console.log(`Página encontrada: ${pageId} para o e-mail ${normalizedEmail}`)
 
     // Atualizar o status de pagamento no Supabase
     await updatePaymentStatus(pageId, status)
@@ -243,7 +179,7 @@ async function processWebhook(email: string, status: string, bodyData: any) {
       success: true,
       message: "Webhook processado com sucesso",
       pageId,
-      email,
+      email: normalizedEmail,
       status,
     })
   } catch (error) {
@@ -257,3 +193,97 @@ async function processWebhook(email: string, status: string, bodyData: any) {
     )
   }
 }
+
+async function processWebhook(email: string, status: string, bodyData: any) {
+  // Normalizar o e-mail (trim e lowercase)
+  const normalizedEmail = email.trim().toLowerCase()
+  console.log(`E-mail normalizado: ${normalizedEmail}`)
+
+  // Buscar as páginas do cliente pelo e-mail
+  const pages = await getPagesByEmail(normalizedEmail)
+
+  // Se não encontramos nenhuma página, retornar erro
+  if (!pages || pages.length === 0) {
+    console.error(`Nenhuma página encontrada para o e-mail ${normalizedEmail}`)
+
+    // SOLUÇÃO DE EMERGÊNCIA: Tentar processar a página mais recente
+    try {
+      console.log("TENTANDO PROCESSAR PÁGINA MAIS RECENTE COMO FALLBACK")
+      const recentPages = await listRecentPages(1)
+
+      if (recentPages && recentPages.length > 0) {
+        const pageData = recentPages[0]
+        const pageId = pageData.page_id
+
+        // Atualizar o status para aprovado
+        await updatePaymentStatus(pageId, "paid")
+
+        // Enviar e-mail de confirmação
+        await sendConfirmationEmail(pageData)
+
+        return NextResponse.json({
+          success: true,
+          message: "Webhook processado com sucesso (fallback de emergência)",
+          pageId,
+          email: pageData.email,
+          status: "paid",
+        })
+      }
+    } catch (fallbackError) {
+      console.error("ERRO NO FALLBACK DE EMERGÊNCIA:", fallbackError)
+    }
+
+    return NextResponse.json(
+      {
+        error: `Nenhuma página encontrada para o e-mail ${normalizedEmail}`,
+        email: normalizedEmail,
+      },
+      { status: 404 },
+    )
+  }
+
+  // Pegar a página mais recente (a primeira da lista, já que ordenamos por created_at desc)
+  const pageData = pages[0]
+  const pageId = pageData.page_id
+
+  console.log(`Página encontrada: ${pageId} para o e-mail ${normalizedEmail}`)
+
+  // Atualizar o status de pagamento no Supabase
+  await updatePaymentStatus(pageId, status)
+
+  // Se o pagamento foi aprovado, enviar o email com o QR Code
+  if (status === "approved" || status === "paid") {
+    console.log(`Pagamento aprovado para página ${pageId}, enviando email...`)
+    await sendConfirmationEmail(pageData)
+  }
+
+  return NextResponse.json({
+    success: true,
+    message: "Webhook processado com sucesso",
+    pageId,
+    email: normalizedEmail,
+    status,
+  })
+}
+
+// Função auxiliar para listar páginas recentes
+// async function listRecentPages(limit = 1) {
+//   try {
+//     const { supabase } = await import("@/lib/supabase")
+//     const { data, error } = await supabase
+//       .from("pages")
+//       .select("*")
+//       .order("created_at", { ascending: false })
+//       .limit(limit)
+
+//     if (error) {
+//       console.error("ERRO AO LISTAR PÁGINAS RECENTES:", error)
+//       return null
+//     }
+
+//     return data
+//   } catch (error) {
+//     console.error("ERRO AO LISTAR PÁGINAS RECENTES:", error)
+//     return null
+//   }
+// }

@@ -1,5 +1,8 @@
 import { createClient } from "@supabase/supabase-js"
 
+// Re-exportar createClient para que outros módulos possam importá-lo daqui
+export { createClient }
+
 // Verificar se as variáveis de ambiente estão definidas
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -341,20 +344,61 @@ export async function listAllPages(limit = 100) {
 
 export async function getPagesByEmail(email: string, limit = 5) {
   try {
+    // Normalizar o e-mail para garantir consistência
     const normalizedEmail = email.trim().toLowerCase()
-    const { data, error } = await supabase
-      .from("pages")
-      .select("*")
-      .eq("email", normalizedEmail)
-      .order("created_at", { ascending: false })
-      .limit(limit)
+    console.log(`Buscando páginas para o e-mail normalizado: "${normalizedEmail}"`)
 
-    if (error) {
-      console.error("Erro ao buscar páginas por e-mail:", error)
-      return []
+    // Tentar primeiro com o cliente admin (se disponível)
+    if (supabaseAdmin !== supabase) {
+      console.log("Usando cliente admin para buscar páginas por e-mail")
+      const { data, error } = await supabaseAdmin
+        .from("pages")
+        .select("*")
+        .eq("email", normalizedEmail)
+        .order("created_at", { ascending: false })
+        .limit(limit)
+
+      if (error) {
+        console.error("Erro com cliente admin:", error)
+        console.log("Tentando com cliente normal...")
+
+        // Se falhar com admin, tentar com cliente normal
+        const { data: normalData, error: normalError } = await supabase
+          .from("pages")
+          .select("*")
+          .eq("email", normalizedEmail)
+          .order("created_at", { ascending: false })
+          .limit(limit)
+
+        if (normalError) {
+          console.error("Erro com cliente normal:", normalError)
+          return []
+        }
+
+        console.log(`Encontradas ${normalData?.length || 0} páginas com cliente normal`)
+        return normalData || []
+      }
+
+      console.log(`Encontradas ${data?.length || 0} páginas com cliente admin`)
+      return data || []
+    } else {
+      // Se não temos cliente admin, usar o cliente normal
+      console.log("Usando cliente normal para buscar páginas por e-mail")
+      const { data, error } = await supabase
+        .from("pages")
+        .select("*")
+        .eq("email", normalizedEmail)
+        .order("created_at", { ascending: false })
+        .limit(limit)
+
+      if (error) {
+        console.error("Erro ao buscar páginas por e-mail:", error)
+        return []
+      }
+
+      console.log(`Encontradas ${data?.length || 0} páginas`)
+      return data || []
     }
-
-    return data || []
   } catch (error) {
     console.error("Exceção ao buscar páginas por e-mail:", error)
     return []

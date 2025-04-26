@@ -60,29 +60,32 @@ export default function PaginaDetalhes() {
           }
         }
 
-        // Tentar buscar do localStorage
-        let localData = null
-        try {
-          const storedData = localStorage.getItem(`page_${pageId}`)
-          if (storedData) {
-            localData = JSON.parse(storedData)
-          }
-        } catch (error) {
-          console.error("Erro ao buscar dados do localStorage:", error)
-        }
-
-        // Tentar buscar do Supabase via API
+        // Tentar buscar do Supabase via API primeiro (prioridade máxima)
         let supabaseData = null
         try {
+          console.log(`Buscando dados do Supabase para página ${pageId}...`)
           const response = await fetch(`/api/pages/${pageId}`)
           if (response.ok) {
             const data = await response.json()
             if (data.success && data.page) {
+              console.log("Dados encontrados no Supabase:", data.page)
               supabaseData = data.page
             }
           }
         } catch (error) {
           console.error("Erro ao buscar dados do Supabase:", error)
+        }
+
+        // Tentar buscar do localStorage (segunda prioridade)
+        let localData = null
+        try {
+          const storedData = localStorage.getItem(`page_${pageId}`)
+          if (storedData) {
+            localData = JSON.parse(storedData)
+            console.log("Dados encontrados no localStorage:", localData)
+          }
+        } catch (error) {
+          console.error("Erro ao buscar dados do localStorage:", error)
         }
 
         // Combinar os dados, priorizando Supabase > localStorage > URL
@@ -98,7 +101,7 @@ export default function PaginaDetalhes() {
             plan: decodedData.pl || "basic",
           }),
 
-          // Dados do localStorage
+          // Dados do localStorage (prioridade média)
           ...(localData && {
             coupleNames: localData.coupleNames || localData.couple_names,
             date: localData.date,
@@ -123,9 +126,9 @@ export default function PaginaDetalhes() {
           }),
         }
 
+        console.log("Dados combinados finais:", combinedData)
         setPageData(combinedData)
         setNewMessage(combinedData.message || "")
-        console.log("Mensagem carregada:", combinedData.message)
       } catch (error) {
         console.error("Erro ao buscar dados da página:", error)
       } finally {
@@ -334,7 +337,7 @@ export default function PaginaDetalhes() {
           const localData = JSON.parse(storedData)
           localData.message = newMessage
           localStorage.setItem(`page_${pageId}`, JSON.stringify(localData))
-          console.log("Mensagem atualizada no localStorage:", newMessage)
+          console.log("Mensagem atualizada no localStorage")
         }
       } catch (error) {
         console.error("Erro ao atualizar mensagem no localStorage:", error)

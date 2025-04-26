@@ -24,14 +24,15 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: "Mensagem não fornecida" }, { status: 400 })
     }
 
-    console.log(`Atualizando mensagem para página ${pageId}:`, message.substring(0, 50) + "...")
+    console.log(`Atualizando mensagem para página ${pageId}`)
+    console.log(`Nova mensagem: ${message.substring(0, 50)}...`)
 
     // Atualizar a mensagem no Supabase
     let result
 
     // Tentar primeiro com o cliente admin (se disponível)
     if (supabaseAdmin !== supabase) {
-      console.log("Tentando atualizar com cliente admin...")
+      console.log("Tentando atualizar com cliente admin")
       const { data, error } = await supabaseAdmin
         .from("pages")
         .update({ message, updated_at: new Date().toISOString() })
@@ -42,7 +43,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
         console.error("Erro ao atualizar mensagem com cliente admin:", error)
 
         // Se falhar com admin, tentar com cliente normal
-        console.log("Tentando atualizar com cliente normal...")
+        console.log("Tentando atualizar com cliente normal")
         const normalResult = await supabase
           .from("pages")
           .update({ message, updated_at: new Date().toISOString() })
@@ -62,7 +63,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       }
     } else {
       // Se não temos cliente admin, usar o cliente normal
-      console.log("Usando apenas cliente normal para atualizar...")
+      console.log("Usando apenas cliente normal para atualizar")
       const { data, error } = await supabase
         .from("pages")
         .update({ message, updated_at: new Date().toISOString() })

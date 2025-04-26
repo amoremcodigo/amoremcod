@@ -76,25 +76,25 @@ export async function POST(request: Request) {
     try {
       saveResult = await savePage(pageData)
 
-      if (saveResult.fakeSuccess) {
-        console.warn("AVISO: Página não foi salva no Supabase, mas continuando fluxo:", saveResult.error)
-      } else if (!saveResult.success) {
-        throw new Error(saveResult.error || "Falha ao salvar no banco de dados")
-      } else {
-        console.log("Página salva com sucesso no Supabase:", saveResult)
+      // Verificar explicitamente se o salvamento foi bem-sucedido
+      if (!saveResult || !saveResult.success) {
+        throw new Error(saveResult?.error || "Falha ao salvar no banco de dados")
       }
+
+      console.log("Página salva com sucesso no Supabase:", saveResult)
     } catch (saveError) {
       console.error("ERRO CRÍTICO: Falha ao salvar no Supabase:", saveError)
-
-      // Mesmo com erro, vamos continuar o fluxo
-      console.warn("Continuando fluxo mesmo com erro no Supabase")
-      saveResult = {
-        success: true,
-        fakeSuccess: true,
-        error: saveError instanceof Error ? saveError.message : String(saveError),
-      }
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Falha ao salvar no banco de dados",
+          details: saveError instanceof Error ? saveError.message : String(saveError),
+        },
+        { status: 500 },
+      )
     }
 
+    // Só continuar se o salvamento foi bem-sucedido
     // Determinar URL de checkout com base no plano
     const checkoutUrl =
       pageData.plan === "premium" ? "https://pay.kiwify.com.br/MN5HRnF" : "https://pay.kiwify.com.br/x7zu8ul"
@@ -122,8 +122,6 @@ export async function POST(request: Request) {
             isPending: true, // Pagamento pendente
           }),
           cache: "no-store",
-        }).catch((emailError) => {
-          console.error("Erro na requisição do email:", emailError)
         })
         console.log("Email enviado com sucesso!")
       } catch (emailError) {
@@ -132,30 +130,22 @@ export async function POST(request: Request) {
       }
     }, 0)
 
-    // Sempre retornar sucesso para continuar o fluxo
     return NextResponse.json({
       success: true,
-      message: saveResult.fakeSuccess
-        ? "Não foi possível salvar a página no banco de dados, mas você pode prosseguir com o checkout"
-        : "Página salva com sucesso",
+      message: "Página salva com sucesso",
       pageId: pageData.page_id,
       checkoutUrl: checkoutUrlWithRef,
-      warning: saveResult.fakeSuccess ? "Dados não foram salvos no banco de dados" : undefined,
     })
   } catch (error) {
     console.error("Erro ao processar requisição:", error)
 
-    // Mesmo em caso de erro grave, retornar uma URL de checkout
-    const randomId = Math.random().toString(36).substring(2, 8)
-    const fallbackCheckoutUrl = `https://pay.kiwify.com.br/x7zu8ul?ref=error-${randomId}`
-
-    return NextResponse.json({
-      success: true, // Forçar sucesso para continuar o fluxo
-      fakeSuccess: true,
-      message: "Ocorreu um erro, mas você pode prosseguir com o checkout",
-      pageId: `error-${randomId}`,
-      checkoutUrl: fallbackCheckoutUrl,
-      error: error instanceof Error ? error.message : String(error),
-    })
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Erro ao processar requisição",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 },
+    )
   }
 }

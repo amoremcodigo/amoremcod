@@ -84,38 +84,21 @@ export async function savePage(pageData: {
     // Tentar primeiro com o cliente admin (se disponível)
     if (supabaseServiceKey && supabaseAdmin !== supabase) {
       console.log("Tentando salvar com cliente admin...")
-      const { data, error } = await supabaseAdmin.from("pages").insert([dataToInsert])
+      const { data, error } = await supabaseAdmin.from("pages").insert([dataToInsert]).select()
 
       if (error) {
         console.error("Erro ao salvar com cliente admin:", error)
 
         // Se falhar com admin, tentar com cliente normal
         console.log("Tentando salvar com cliente normal...")
-        const { data: normalData, error: normalError } = await supabase.from("pages").insert([dataToInsert])
+        const { data: normalData, error: normalError } = await supabase.from("pages").insert([dataToInsert]).select()
 
         if (normalError) {
           console.error("Erro ao salvar com cliente normal:", normalError)
-
-          // Tentar com um conjunto mínimo de campos
-          console.log("Tentando com conjunto mínimo de campos...")
-          const minimalData = {
-            page_id: pageData.page_id,
-            email: pageData.email,
-            couple_names: pageData.couple_names,
+          return {
+            success: false,
+            error: `Falha ao salvar no Supabase: ${normalError.message}`,
           }
-
-          const { data: minData, error: minError } = await supabase.from("pages").insert([minimalData])
-
-          if (minError) {
-            console.error("Erro ao salvar com campos mínimos:", minError)
-            return {
-              success: false,
-              error: `Falha ao salvar no Supabase: ${minError.message}`,
-            }
-          }
-
-          console.log("Página salva com sucesso usando campos mínimos")
-          return { success: true, data: minData }
         }
 
         console.log("Página salva com sucesso usando cliente normal")
@@ -127,51 +110,14 @@ export async function savePage(pageData: {
     } else {
       // Se não temos cliente admin, usar o cliente normal
       console.log("Tentando salvar com cliente normal (admin não disponível)...")
-      const { data, error } = await supabase.from("pages").insert([dataToInsert])
+      const { data, error } = await supabase.from("pages").insert([dataToInsert]).select()
 
       if (error) {
         console.error("Erro ao salvar com cliente normal:", error)
-
-        // Tentar com um conjunto mínimo de campos
-        console.log("Tentando com conjunto mínimo de campos...")
-        const minimalData = {
-          page_id: pageData.page_id,
-          email: pageData.email,
-          couple_names: pageData.couple_names,
+        return {
+          success: false,
+          error: `Falha ao salvar no Supabase: ${error.message}`,
         }
-
-        const { data: minData, error: minError } = await supabase.from("pages").insert([minimalData])
-
-        if (minError) {
-          console.error("Erro ao salvar com campos mínimos:", minError)
-
-          // Último recurso: tentar inserção via SQL bruto
-          try {
-            console.log("Tentando inserção via SQL bruto como último recurso...")
-            const { data: sqlData, error: sqlError } = await supabase.rpc("insert_page_minimal", {
-              p_id: pageData.page_id,
-              p_email: pageData.email,
-              p_couple: pageData.couple_names,
-            })
-
-            if (sqlError) throw sqlError
-            console.log("Página salva com sucesso via SQL bruto")
-            return { success: true, data: { message: "Salvo via SQL bruto" } }
-          } catch (sqlErr) {
-            console.error("Falha em todas as tentativas:", sqlErr)
-
-            // Último recurso: permitir que o fluxo continue mesmo com erro
-            console.log("Permitindo que o fluxo continue mesmo com erro")
-            return {
-              success: true,
-              fakeSuccess: true,
-              error: "Falha ao salvar no banco de dados, mas continuando fluxo",
-            }
-          }
-        }
-
-        console.log("Página salva com sucesso usando campos mínimos")
-        return { success: true, data: minData }
       }
 
       console.log("Página salva com sucesso usando cliente normal")
@@ -179,13 +125,9 @@ export async function savePage(pageData: {
     }
   } catch (error) {
     console.error("FALHA CRÍTICA: Não foi possível salvar a página:", error)
-
-    // Último recurso: permitir que o fluxo continue mesmo com erro
-    console.log("Permitindo que o fluxo continue mesmo com erro")
     return {
-      success: true,
-      fakeSuccess: true,
-      error: `Falha ao salvar no banco de dados, mas continuando fluxo: ${error instanceof Error ? error.message : String(error)}`,
+      success: false,
+      error: `Falha ao salvar no Supabase: ${error instanceof Error ? error.message : String(error)}`,
     }
   }
 }
@@ -208,7 +150,7 @@ export async function createTestPage() {
       // Removidas as colunas created_at e updated_at
     }
 
-    const { data, error } = await supabase.from("pages").insert([testPage])
+    const { data, error } = await supabase.from("pages").insert([testPage]).select()
 
     if (error) {
       console.error("Erro ao criar página de teste:", error)
@@ -252,6 +194,7 @@ export async function updatePaymentStatus(pageId: string, paymentStatus: string)
       .from("pages")
       .update({ payment_status: paymentStatus }) // Removido updated_at
       .eq("page_id", pageId)
+      .select()
 
     if (error) {
       console.error(`Erro ao atualizar status de pagamento para página ${pageId}:`, error)

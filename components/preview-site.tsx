@@ -7,8 +7,8 @@ import { useFormContext } from "@/context/form-context"
 import { FallingHearts } from "@/components/falling-hearts"
 import { compressToEncodedURIComponent } from "lz-string"
 
-// Modificar a função de compressão de imagem para ser mais rápida (reduzir qualidade)
-const compressImage = async (base64Image: string, maxWidth = 800, quality = 0.6): Promise<string> => {
+// Função para comprimir imagem antes do upload
+const compressImage = async (base64Image: string, maxWidth = 1200, quality = 0.7): Promise<string> => {
   return new Promise((resolve, reject) => {
     try {
       const img = new Image()
@@ -31,8 +31,7 @@ const compressImage = async (base64Image: string, maxWidth = 800, quality = 0.6)
         // Desenhar imagem redimensionada
         const ctx = canvas.getContext("2d")
         if (!ctx) {
-          // Se falhar, retornar a imagem original sem erro
-          resolve(base64Image)
+          reject(new Error("Não foi possível obter contexto 2D do canvas"))
           return
         }
 
@@ -43,42 +42,48 @@ const compressImage = async (base64Image: string, maxWidth = 800, quality = 0.6)
         resolve(compressedBase64)
       }
 
-      img.onerror = () => {
-        // Se falhar, retornar a imagem original sem erro
+      img.onerror = (error) => {
+        console.error("Erro ao carregar imagem para compressão:", error)
+        // Se falhar, retornar a imagem original
         resolve(base64Image)
       }
 
       img.src = base64Image
     } catch (error) {
-      // Se falhar, retornar a imagem original sem erro
+      console.error("Erro ao comprimir imagem:", error)
+      // Se falhar, retornar a imagem original
       resolve(base64Image)
     }
   })
 }
 
-// Otimizar a função de upload para o Imgur com menos retries e tempos de espera menores
-const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetries = 2): Promise<string> => {
+// Substituir a função uploadImageToServer por uma versão que usa apenas o Imgur
+const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetries = 3): Promise<string> => {
   try {
     // Verificar se a imagem já é uma URL (não base64)
     if (base64Image.startsWith("http")) {
+      console.log("Imagem já é uma URL, retornando diretamente:", base64Image)
       return base64Image
     }
 
     // Usar diretamente o método de upload para o Imgur
     return uploadImageViaImgur(base64Image, retryCount, maxRetries)
   } catch (error) {
+    console.error(`Erro ao fazer upload da imagem (tentativa ${retryCount + 1}):`, error)
+
     if (retryCount < maxRetries) {
-      // Reduzir o tempo de espera entre tentativas
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      console.log(`Tentando novamente em ${(retryCount + 1) * 2} segundos...`)
+      await new Promise((resolve) => setTimeout(resolve, (retryCount + 1) * 2000))
       return uploadImageToServer(base64Image, retryCount + 1, maxRetries)
     }
-    // Se falhar, usar nossa própria API
+
+    // Se todas as tentativas falharem, usar nossa própria API
     return uploadImageViaAPI(base64Image)
   }
 }
 
-// Otimizar a função de upload para o Imgur
-const uploadImageViaImgur = async (base64Image: string, retryCount = 0, maxRetries = 2): Promise<string> => {
+// Adicionar esta nova função para upload para o Imgur
+const uploadImageViaImgur = async (base64Image: string, retryCount = 0, maxRetries = 3): Promise<string> => {
   try {
     // Remover o prefixo do data URL se existir
     const base64Data = base64Image.includes("base64,") ? base64Image.split("base64,")[1] : base64Image
@@ -86,9 +91,11 @@ const uploadImageViaImgur = async (base64Image: string, retryCount = 0, maxRetri
     // Cliente ID do Imgur (anônimo)
     const clientId = "546c25a59c58ad7"
 
-    // Reduzir o timeout para 15 segundos
+    console.log(`Iniciando upload para Imgur (tentativa ${retryCount + 1}/${maxRetries + 1})...`)
+
+    // Fazer a requisição para a API do Imgur com timeout
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 15000)
+    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 segundos de timeout
 
     const response = await fetch("https://api.imgur.com/3/image", {
       method: "POST",
@@ -104,35 +111,47 @@ const uploadImageViaImgur = async (base64Image: string, retryCount = 0, maxRetri
     }).finally(() => clearTimeout(timeoutId))
 
     if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`Erro na resposta da API Imgur (tentativa ${retryCount + 1}):`, errorText)
+
       if (retryCount < maxRetries) {
-        // Reduzir o tempo de espera entre tentativas
-        await new Promise((resolve) => setTimeout(resolve, 1000))
+        console.log(`Tentando novamente em ${(retryCount + 1) * 2} segundos...`)
+        await new Promise((resolve) => setTimeout(resolve, (retryCount + 1) * 2000))
         return uploadImageViaImgur(base64Image, retryCount + 1, maxRetries)
       }
-      // Se falhar, usar nossa própria API
+
+      // Se todas as tentativas falharem, usar nossa própria API
       return uploadImageViaAPI(base64Image)
     }
 
     const data = await response.json()
 
+    // Verificar se o upload foi bem-sucedido
     if (data.success) {
+      console.log(`Imagem enviada com sucesso para o Imgur (tentativa ${retryCount + 1}):`, data.data.link)
       return data.data.link
     } else {
+      console.error(`Falha no upload para Imgur (tentativa ${retryCount + 1}):`, data.data.error || "Erro desconhecido")
+
       if (retryCount < maxRetries) {
-        // Reduzir o tempo de espera entre tentativas
-        await new Promise((resolve) => setTimeout(resolve, 1000))
+        console.log(`Tentando novamente em ${(retryCount + 1) * 2} segundos...`)
+        await new Promise((resolve) => setTimeout(resolve, (retryCount + 1) * 2000))
         return uploadImageViaImgur(base64Image, retryCount + 1, maxRetries)
       }
-      // Se falhar, usar nossa própria API
+
+      // Se todas as tentativas falharem, usar nossa própria API
       return uploadImageViaAPI(base64Image)
     }
   } catch (error) {
+    console.error(`Erro ao fazer upload da imagem para o Imgur (tentativa ${retryCount + 1}):`, error)
+
     if (retryCount < maxRetries) {
-      // Reduzir o tempo de espera entre tentativas
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      console.log(`Tentando novamente em ${(retryCount + 1) * 2} segundos...`)
+      await new Promise((resolve) => setTimeout(resolve, (retryCount + 1) * 2000))
       return uploadImageViaImgur(base64Image, retryCount + 1, maxRetries)
     }
-    // Se falhar, usar nossa própria API
+
+    // Se todas as tentativas falharem, usar nossa própria API
     return uploadImageViaAPI(base64Image)
   }
 }
@@ -235,7 +254,7 @@ const compressDataForUrl = (data: any): string => {
 }
 
 export function PreviewSite() {
-  const { formData, isFormValid, isSubmitting, updateFormData, submitForm } = useFormContext()
+  const { formData, isFormValid, isSubmitting, updateFormData } = useFormContext()
   const [years, setYears] = useState(0)
   const [days, setDays] = useState(0)
   const [hours, setHours] = useState(0)
@@ -354,15 +373,170 @@ export function PreviewSite() {
     setCurrentPhotoIndex((prevIndex) => (prevIndex + 1) % validPhotos.length)
   }
 
+  // Função para processar o formulário e salvar a página
   const processForm = async () => {
     if (!isFormValid() || isProcessing) return
 
     try {
       setIsProcessing(true)
       setError(null)
+      console.log("=== INICIANDO PROCESSO DE SUBMISSÃO ===")
 
-      // Usar a função submitForm do contexto do formulário
-      await submitForm()
+      // Normalizar o e-mail (trim e lowercase)
+      const normalizedEmail = formData.email.trim().toLowerCase()
+
+      // Capitalizar o nome do casal e substituir "e" por "&"
+      const capitalizedCoupleNames = capitalizeWords(formData.coupleNames)
+
+      // Atualizar o formData com o nome capitalizado e e-mail normalizado
+      updateFormData({
+        coupleNames: capitalizedCoupleNames,
+        email: normalizedEmail,
+      })
+
+      // Generate a unique ID for the page
+      const pageId = Math.random().toString(36).substring(2, 8)
+      console.log("ID da página gerado:", pageId)
+
+      // Fazer upload das fotos para o servidor usando upload paralelo
+      const photosToUpload = formData.photos.filter((photo) => photo && photo.startsWith("data:image"))
+
+      let photoUrls = [...formData.photoUrls]
+      if (photosToUpload.length > 0) {
+        try {
+          // Usar upload paralelo para todas as fotos
+          photoUrls = await uploadImagesInParallel(formData.photos)
+          updateFormData({ photoUrls })
+          console.log("Todas as fotos foram enviadas com sucesso:", photoUrls)
+        } catch (uploadError) {
+          console.error("Erro durante o upload de fotos:", uploadError)
+
+          // Tentar upload individual como fallback
+          console.log("Tentando upload individual como fallback...")
+          for (let i = 0; i < formData.photos.length; i++) {
+            if (formData.photos[i] && formData.photos[i].startsWith("data:image")) {
+              try {
+                const compressedImage = await compressImage(formData.photos[i])
+                photoUrls[i] = await uploadImageToServer(compressedImage)
+                console.log(`Foto ${i + 1} enviada com sucesso:`, photoUrls[i])
+              } catch (individualError) {
+                console.error(`Erro no upload da foto ${i + 1}:`, individualError)
+                // Manter a foto como base64 se falhar
+                photoUrls[i] = formData.photos[i]
+              }
+            }
+          }
+          updateFormData({ photoUrls })
+        }
+      } else {
+        console.log("Nenhuma foto para enviar")
+      }
+
+      // Criar um objeto com dados essenciais para a URL
+      const essentialData = {
+        n: capitalizedCoupleNames, // Nome do casal
+        d: formData.date, // Data
+        m: formData.message, // Mensagem
+        y: formData.youtubeLink, // Link do YouTube
+        p: photoUrls.filter((url) => url), // URLs das fotos (filtrar vazias)
+        pl: formData.plan, // Plano
+      }
+
+      // Comprimir os dados para a URL
+      const compressedData = compressDataForUrl(essentialData)
+
+      // Construir a URL completa da página
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
+      const pageUrl = `${siteUrl}/pagina/${pageId}?d=${compressedData}`
+      console.log("URL da página gerada:", pageUrl)
+
+      // Gerar QR Code para o email
+      let qrCodeUrl = null
+      try {
+        console.log("Gerando QR Code...")
+        const QRCode = await import("qrcode")
+        qrCodeUrl = await QRCode.toDataURL(pageUrl, {
+          width: 300,
+          margin: 1,
+          errorCorrectionLevel: "H",
+          color: {
+            dark: "#000000",
+            light: "#FFFFFF",
+          },
+        })
+        console.log("QR Code gerado com sucesso")
+      } catch (qrError) {
+        console.error("Erro ao gerar QR Code:", qrError)
+        // Continuar mesmo sem QR code
+      }
+
+      // Preparar os dados da página
+      const pageData = {
+        page_id: pageId,
+        email: normalizedEmail,
+        couple_names: capitalizedCoupleNames,
+        date: formData.date,
+        message: formData.message,
+        youtube_link: formData.youtubeLink || "",
+        photo_urls: photoUrls.filter((url) => url), // Filtrar URLs vazias
+        plan: formData.plan || "basic",
+        page_url: pageUrl,
+        qr_code_url: qrCodeUrl || "",
+        payment_status: "pending",
+      }
+
+      // Salvar os dados usando a API - uma única tentativa
+      try {
+        console.log("Salvando dados via API...")
+        const response = await fetch("/api/save-page", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(pageData),
+          cache: "no-store",
+        })
+
+        const result = await response.json()
+        console.log("Resposta da API:", result)
+
+        // Enviar e-mail de confirmação pendente
+        try {
+          console.log("Enviando e-mail de confirmação pendente...")
+          const emailResponse = await fetch("/api/send-email", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              email: normalizedEmail,
+              pageUrl: pageUrl,
+              coupleNames: capitalizedCoupleNames,
+              qrCodeUrl: qrCodeUrl,
+              isPending: true, // Pagamento pendente
+            }),
+          })
+
+          if (emailResponse.ok) {
+            console.log("E-mail de confirmação pendente enviado com sucesso!")
+          } else {
+            console.error("Erro ao enviar e-mail de confirmação pendente:", await emailResponse.text())
+          }
+        } catch (emailError) {
+          console.error("Erro ao enviar e-mail de confirmação pendente:", emailError)
+        }
+      } catch (apiError) {
+        console.error("Erro na API de salvamento:", apiError)
+        // Continuar mesmo com erro na API
+      }
+
+      // Determinar URL de checkout com base no plano
+      const checkoutUrl =
+        formData.plan === "premium" ? "https://pay.kiwify.com.br/MN5HRnF" : "https://pay.kiwify.com.br/x7zu8ul"
+      const checkoutUrlWithRef = `${checkoutUrl}?ref=${pageId}`
+
+      console.log("Redirecionando para:", checkoutUrlWithRef)
+      window.location.href = checkoutUrlWithRef
     } catch (error) {
       console.error("Erro durante o processamento:", error)
       setError(`Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.`)

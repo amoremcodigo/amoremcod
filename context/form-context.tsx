@@ -80,11 +80,12 @@ const compressDataForUrl = (data: any): string => {
   }
 }
 
-// Otimizar a função uploadImageToServer para ser mais rápida
-const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetries = 2): Promise<string> => {
+// Substituir a função uploadImageToServer por uma versão que usa apenas o Imgur
+const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetries = 3): Promise<string> => {
   try {
     // Verificar se a imagem já é uma URL (não base64)
     if (base64Image.startsWith("http")) {
+      console.log("Imagem já é uma URL, retornando diretamente:", base64Image)
       return base64Image
     }
 
@@ -94,9 +95,11 @@ const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetri
     // Cliente ID do Imgur (anônimo)
     const clientId = "546c25a59c58ad7"
 
-    // Reduzir o timeout para 15 segundos
+    console.log(`Iniciando upload para Imgur (tentativa ${retryCount + 1}/${maxRetries + 1})...`)
+
+    // Fazer a requisição para a API do Imgur com timeout
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 15000)
+    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 segundos de timeout
 
     const response = await fetch("https://api.imgur.com/3/image", {
       method: "POST",
@@ -112,35 +115,47 @@ const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetri
     }).finally(() => clearTimeout(timeoutId))
 
     if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`Erro na resposta da API Imgur (tentativa ${retryCount + 1}):`, errorText)
+
       if (retryCount < maxRetries) {
-        // Reduzir o tempo de espera entre tentativas
-        await new Promise((resolve) => setTimeout(resolve, 1000))
+        console.log(`Tentando novamente em ${(retryCount + 1) * 2} segundos...`)
+        await new Promise((resolve) => setTimeout(resolve, (retryCount + 1) * 2000))
         return uploadImageToServer(base64Image, retryCount + 1, maxRetries)
       }
-      // Se falhar, usar um placeholder
+
+      // Se todas as tentativas falharem, usar um placeholder
       return `/placeholder.svg?height=800&width=600&query=couple photo`
     }
 
     const data = await response.json()
 
+    // Verificar se o upload foi bem-sucedido
     if (data.success) {
+      console.log(`Imagem enviada com sucesso para o Imgur (tentativa ${retryCount + 1}):`, data.data.link)
       return data.data.link
     } else {
+      console.error(`Falha no upload para Imgur (tentativa ${retryCount + 1}):`, data.data.error || "Erro desconhecido")
+
       if (retryCount < maxRetries) {
-        // Reduzir o tempo de espera entre tentativas
-        await new Promise((resolve) => setTimeout(resolve, 1000))
+        console.log(`Tentando novamente em ${(retryCount + 1) * 2} segundos...`)
+        await new Promise((resolve) => setTimeout(resolve, (retryCount + 1) * 2000))
         return uploadImageToServer(base64Image, retryCount + 1, maxRetries)
       }
-      // Se falhar, usar um placeholder
+
+      // Se todas as tentativas falharem, usar um placeholder
       return `/placeholder.svg?height=800&width=600&query=couple photo`
     }
   } catch (error) {
+    console.error(`Erro ao fazer upload da imagem para o Imgur (tentativa ${retryCount + 1}):`, error)
+
     if (retryCount < maxRetries) {
-      // Reduzir o tempo de espera entre tentativas
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      console.log(`Tentando novamente em ${(retryCount + 1) * 2} segundos...`)
+      await new Promise((resolve) => setTimeout(resolve, (retryCount + 1) * 2000))
       return uploadImageToServer(base64Image, retryCount + 1, maxRetries)
     }
-    // Se falhar, usar um placeholder
+
+    // Se todas as tentativas falharem, usar um placeholder
     return `/placeholder.svg?height=800&width=600&query=couple photo`
   }
 }
@@ -226,21 +241,18 @@ export function FormProvider({ children }: { children: ReactNode }) {
     })
   }
 
-  // Otimizar a função submitForm para redirecionar mais rapidamente
+  // Modificar a função submitForm para garantir que os dados sejam salvos de qualquer forma
   const submitForm = async () => {
-    console.log("Iniciando submitForm, verificando formulário...")
     if (isFormValid()) {
       try {
-        console.log("Formulário válido, iniciando processo de envio...")
         setIsSubmitting(true)
+        console.log("Iniciando processo de submissão do formulário...")
 
         // Normalizar o e-mail (trim e lowercase)
         const normalizedEmail = formData.email.trim().toLowerCase()
-        console.log("Email normalizado:", normalizedEmail)
 
         // Capitalizar o nome do casal e substituir "e" por "&"
         const capitalizedCoupleNames = capitalizeWords(formData.coupleNames)
-        console.log("Nome capitalizado:", capitalizedCoupleNames)
 
         // Atualizar o formData com o nome capitalizado e e-mail normalizado
         updateFormData({
@@ -252,12 +264,35 @@ export function FormProvider({ children }: { children: ReactNode }) {
         const pageId = Math.random().toString(36).substring(2, 8)
         console.log("ID da página gerado:", pageId)
 
+        // Fazer upload das fotos para o servidor com retry
+        const photoUrls = [...formData.photoUrls]
+        for (let i = 0; i < formData.photos.length; i++) {
+          if (formData.photos[i] && formData.photos[i].startsWith("data:image")) {
+            try {
+              console.log(`Iniciando upload da foto ${i + 1}...`)
+              // Usar a função de upload com retry
+              photoUrls[i] = await uploadImageToServer(formData.photos[i])
+              console.log(`Foto ${i + 1} enviada para o servidor, URL:`, photoUrls[i])
+            } catch (error) {
+              console.error(`Erro ao enviar foto ${i + 1} para o servidor:`, error)
+              // Se falhar, usar um placeholder
+              photoUrls[i] = `/placeholder.svg?height=800&width=600&query=couple photo ${i + 1}`
+              console.log(`Usando placeholder para foto ${i + 1}`)
+            }
+          }
+        }
+
+        // Atualizar o formData com as URLs das fotos
+        updateFormData({ photoUrls })
+
         // Criar um objeto com dados essenciais para a URL (versão compacta)
         const essentialData = {
           n: capitalizedCoupleNames, // Nome do casal
           d: formData.date, // Data
+          t: formData.time, // Hora
           m: formData.message, // Mensagem
           y: formData.youtubeLink, // Link do YouTube
+          p: photoUrls, // URLs das fotos
           pl: formData.plan, // Plano
         }
 
@@ -267,87 +302,65 @@ export function FormProvider({ children }: { children: ReactNode }) {
         // Construir a URL completa da página
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
         const pageUrl = `${siteUrl}/pagina/${pageId}?d=${compressedData}`
-        console.log("URL da página:", pageUrl)
+        console.log("URL da página gerada:", pageUrl)
+
+        // Gerar QR Code para o email
+        let qrCodeUrl = null
+        try {
+          console.log("Gerando QR Code...")
+          // Importar a biblioteca QRCode.js dinamicamente
+          const QRCode = await import("qrcode")
+
+          // Gerar o QR code como uma URL de dados
+          qrCodeUrl = await QRCode.toDataURL(pageUrl, {
+            width: 300,
+            margin: 1,
+            errorCorrectionLevel: "H",
+            color: {
+              dark: "#000000",
+              light: "#FFFFFF",
+            },
+          })
+          console.log("QR Code gerado com sucesso")
+        } catch (qrError) {
+          console.error("Erro ao gerar QR Code para email:", qrError)
+          // Continuar mesmo se falhar a geração do QR Code
+        }
+
+        // Salvar os dados no Supabase
+        try {
+          console.log("Salvando dados no Supabase...")
+
+          const pageData = {
+            page_id: pageId,
+            email: normalizedEmail,
+            couple_names: capitalizedCoupleNames,
+            date: formData.date,
+            message: formData.message,
+            youtube_link: formData.youtubeLink || "",
+            photo_urls: photoUrls.filter((url) => url), // Filtrar URLs vazias
+            plan: formData.plan || "basic",
+            page_url: pageUrl,
+            qr_code_url: qrCodeUrl || "",
+          }
+
+          await savePage(pageData)
+          console.log("Dados salvos com sucesso no Supabase!")
+        } catch (dbError) {
+          console.error("Erro ao salvar dados no Supabase:", dbError)
+          console.log("Continuando o fluxo mesmo com erro no Supabase")
+          // Continuar mesmo com erro no Supabase
+        }
 
         // Usar links da Kiwify
         const checkoutUrl = formData.plan === "premium" ? KIWIFY_CHECKOUT_LINKS.premium : KIWIFY_CHECKOUT_LINKS.basic
-        console.log("URL de checkout base:", checkoutUrl)
 
         // Adicionar parâmetros de query para identificar o pedido
         const checkoutUrlWithParams = `${checkoutUrl}?ref=${pageId}`
-        console.log("URL de checkout completa:", checkoutUrlWithParams)
 
-        // Salvar os dados no localStorage para backup
-        try {
-          localStorage.setItem(
-            `page_${pageId}`,
-            JSON.stringify({
-              email: normalizedEmail,
-              coupleNames: capitalizedCoupleNames,
-              date: formData.date,
-              time: formData.time,
-              message: formData.message,
-              youtubeLink: formData.youtubeLink,
-              photos: formData.photos,
-              plan: formData.plan,
-              createdAt: new Date().toISOString(),
-            }),
-          )
-          console.log("Dados salvos no localStorage")
+        console.log("Redirecionando para checkout:", checkoutUrlWithParams)
 
-          // Salvar o ID da página mais recente para recuperação na página de obrigado
-          localStorage.setItem("lastPageId", pageId)
-        } catch (localStorageError) {
-          console.error("Erro ao salvar no localStorage:", localStorageError)
-        }
-
-        // Iniciar o processamento de imagens em segundo plano
-        setTimeout(async () => {
-          try {
-            console.log("Iniciando processamento em segundo plano...")
-            // Fazer upload das fotos para o servidor com retry
-            const photoUrls = [...formData.photoUrls]
-            for (let i = 0; i < formData.photos.length; i++) {
-              if (formData.photos[i] && formData.photos[i].startsWith("data:image")) {
-                try {
-                  photoUrls[i] = await uploadImageToServer(formData.photos[i])
-                  console.log(`Foto ${i + 1} enviada com sucesso:`, photoUrls[i].substring(0, 30) + "...")
-                } catch (error) {
-                  console.error(`Erro ao enviar foto ${i + 1}:`, error)
-                  photoUrls[i] = `/placeholder.svg?height=800&width=600&query=couple photo ${i + 1}`
-                }
-              }
-            }
-
-            // Salvar os dados no Supabase
-            try {
-              console.log("Preparando dados para o Supabase...")
-              const pageData = {
-                page_id: pageId,
-                email: normalizedEmail,
-                couple_names: capitalizedCoupleNames,
-                date: formData.date,
-                message: formData.message,
-                youtube_link: formData.youtubeLink || "",
-                photo_urls: photoUrls.filter((url) => url), // Filtrar URLs vazias
-                plan: formData.plan || "basic",
-                page_url: pageUrl,
-                qr_code_url: "",
-              }
-
-              console.log("Enviando dados para o Supabase...")
-              const result = await savePage(pageData)
-              console.log("Resultado do salvamento no Supabase:", result)
-            } catch (dbError) {
-              console.error("Erro ao salvar dados no Supabase:", dbError)
-            }
-          } catch (error) {
-            console.error("Erro durante o processamento em segundo plano:", error)
-          }
-        }, 0)
-
-        // Redirecionar para o checkout da Kiwify imediatamente
-        console.log("Redirecionando para o checkout...")
+        // Redirecionar para o checkout da Kiwify
         window.location.href = checkoutUrlWithParams
       } catch (error) {
         console.error("Erro durante o envio do formulário:", error)
@@ -355,9 +368,10 @@ export function FormProvider({ children }: { children: ReactNode }) {
           "Ocorreu um erro, mas estamos tentando continuar. Por favor, verifique se sua página foi criada corretamente.",
         )
         setIsSubmitting(false)
+      } finally {
+        setIsSubmitting(false)
       }
     } else {
-      console.error("Formulário inválido!")
       alert("Por favor, preencha todos os campos obrigatórios e escolha um plano.")
       throw new Error("Formulário inválido")
     }

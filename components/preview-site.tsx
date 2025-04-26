@@ -57,8 +57,8 @@ const compressImage = async (base64Image: string, maxWidth = 1200, quality = 0.7
   })
 }
 
-// Função para fazer upload da imagem para o ImgBB com retry
-const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetries = 2): Promise<string> => {
+// Função melhorada para upload de imagem para o ImgBB com retry
+const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetries = 3): Promise<string> => {
   try {
     // Remover o prefixo do data URL se existir
     const base64Data = base64Image.includes("base64,") ? base64Image.split("base64,")[1] : base64Image
@@ -122,9 +122,69 @@ const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetri
       return uploadImageToServer(base64Image, retryCount + 1, maxRetries)
     }
 
-    // Se todas as tentativas falharem, retornar uma URL de fallback
-    console.warn("Todas as tentativas de upload falharam, usando URL de fallback")
-    return "https://i.ibb.co/Wc1QZ2c/placeholder-image.jpg"
+    // Se todas as tentativas falharem, usar um método alternativo
+    return uploadImageViaAPI(base64Image)
+  }
+}
+
+// Método alternativo de upload via nossa própria API
+const uploadImageViaAPI = async (base64Image: string): Promise<string> => {
+  try {
+    console.log("Tentando upload via API própria...")
+
+    const response = await fetch("/api/upload-image", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ image: base64Image }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Erro na API de upload: ${response.status}`)
+    }
+
+    const data = await response.json()
+
+    if (data.success && data.url) {
+      console.log("Imagem enviada com sucesso via API própria:", data.url)
+      return data.url
+    } else {
+      throw new Error("API de upload retornou erro: " + (data.error || "Erro desconhecido"))
+    }
+  } catch (error) {
+    console.error("Erro no upload via API própria:", error)
+    // Se falhar, retornar a imagem base64 original
+    console.warn("Usando a imagem base64 original como fallback")
+    return base64Image
+  }
+}
+
+// Função para upload paralelo de imagens
+const uploadImagesInParallel = async (images: string[]): Promise<string[]> => {
+  try {
+    console.log(`Iniciando upload paralelo de ${images.length} imagens...`)
+
+    // Primeiro, comprimir todas as imagens
+    const compressPromises = images.map((img) =>
+      img && img.startsWith("data:image") ? compressImage(img) : Promise.resolve(img),
+    )
+
+    const compressedImages = await Promise.all(compressPromises)
+    console.log("Todas as imagens foram comprimidas")
+
+    // Depois, fazer upload de todas as imagens em paralelo
+    const uploadPromises = compressedImages.map((img) =>
+      img && img.startsWith("data:image") ? uploadImageToServer(img) : Promise.resolve(img),
+    )
+
+    const results = await Promise.all(uploadPromises)
+    console.log("Upload paralelo concluído com sucesso")
+
+    return results
+  } catch (error) {
+    console.error("Erro no upload paralelo de imagens:", error)
+    throw error
   }
 }
 
@@ -161,34 +221,6 @@ const compressDataForUrl = (data: any): string => {
   } catch (error) {
     console.error("Erro ao comprimir dados:", error)
     return ""
-  }
-}
-
-// Função para upload paralelo de imagens
-const uploadImagesInParallel = async (images: string[]): Promise<string[]> => {
-  try {
-    console.log(`Iniciando upload paralelo de ${images.length} imagens...`)
-
-    // Primeiro, comprimir todas as imagens
-    const compressPromises = images.map((img) =>
-      img && img.startsWith("data:image") ? compressImage(img) : Promise.resolve(img),
-    )
-
-    const compressedImages = await Promise.all(compressPromises)
-    console.log("Todas as imagens foram comprimidas")
-
-    // Depois, fazer upload de todas as imagens em paralelo
-    const uploadPromises = compressedImages.map((img) =>
-      img && img.startsWith("data:image") ? uploadImageToServer(img) : Promise.resolve(img),
-    )
-
-    const results = await Promise.all(uploadPromises)
-    console.log("Upload paralelo concluído com sucesso")
-
-    return results
-  } catch (error) {
-    console.error("Erro no upload paralelo de imagens:", error)
-    throw error
   }
 }
 
@@ -340,15 +372,32 @@ export function PreviewSite() {
       // Fazer upload das fotos para o servidor usando upload paralelo
       const photosToUpload = formData.photos.filter((photo) => photo && photo.startsWith("data:image"))
 
+      let photoUrls = [...formData.photoUrls]
       if (photosToUpload.length > 0) {
         try {
           // Usar upload paralelo para todas as fotos
-          const photoUrls = await uploadImagesInParallel(formData.photos)
+          photoUrls = await uploadImagesInParallel(formData.photos)
           updateFormData({ photoUrls })
           console.log("Todas as fotos foram enviadas com sucesso:", photoUrls)
         } catch (uploadError) {
           console.error("Erro durante o upload de fotos:", uploadError)
-          // Continuar mesmo com erro nas fotos
+
+          // Tentar upload individual como fallback
+          console.log("Tentando upload individual como fallback...")
+          for (let i = 0; i < formData.photos.length; i++) {
+            if (formData.photos[i] && formData.photos[i].startsWith("data:image")) {
+              try {
+                const compressedImage = await compressImage(formData.photos[i])
+                photoUrls[i] = await uploadImageToServer(compressedImage)
+                console.log(`Foto ${i + 1} enviada com sucesso:`, photoUrls[i])
+              } catch (individualError) {
+                console.error(`Erro no upload da foto ${i + 1}:`, individualError)
+                // Manter a foto como base64 se falhar
+                photoUrls[i] = formData.photos[i]
+              }
+            }
+          }
+          updateFormData({ photoUrls })
         }
       } else {
         console.log("Nenhuma foto para enviar")
@@ -360,7 +409,7 @@ export function PreviewSite() {
         d: formData.date, // Data
         m: formData.message, // Mensagem
         y: formData.youtubeLink, // Link do YouTube
-        p: formData.photoUrls.filter((url) => url), // URLs das fotos (filtrar vazias)
+        p: photoUrls.filter((url) => url), // URLs das fotos (filtrar vazias)
         pl: formData.plan, // Plano
       }
 
@@ -400,12 +449,11 @@ export function PreviewSite() {
         date: formData.date,
         message: formData.message,
         youtube_link: formData.youtubeLink || "",
-        photo_urls: formData.photoUrls.filter((url) => url), // Filtrar URLs vazias
+        photo_urls: photoUrls.filter((url) => url), // Filtrar URLs vazias
         plan: formData.plan || "basic",
         page_url: pageUrl,
         qr_code_url: qrCodeUrl || "",
         payment_status: "pending",
-        updated_at: new Date().toISOString(),
       }
 
       // Salvar os dados usando a API - uma única tentativa
@@ -422,6 +470,32 @@ export function PreviewSite() {
 
         const result = await response.json()
         console.log("Resposta da API:", result)
+
+        // Enviar e-mail de confirmação pendente
+        try {
+          console.log("Enviando e-mail de confirmação pendente...")
+          const emailResponse = await fetch("/api/send-email", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              email: normalizedEmail,
+              pageUrl: pageUrl,
+              coupleNames: capitalizedCoupleNames,
+              qrCodeUrl: qrCodeUrl,
+              isPending: true, // Pagamento pendente
+            }),
+          })
+
+          if (emailResponse.ok) {
+            console.log("E-mail de confirmação pendente enviado com sucesso!")
+          } else {
+            console.error("Erro ao enviar e-mail de confirmação pendente:", await emailResponse.text())
+          }
+        } catch (emailError) {
+          console.error("Erro ao enviar e-mail de confirmação pendente:", emailError)
+        }
       } catch (apiError) {
         console.error("Erro na API de salvamento:", apiError)
         // Continuar mesmo com erro na API

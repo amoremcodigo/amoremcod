@@ -37,17 +37,10 @@ export async function POST(request: Request) {
     const apiKey = process.env.mailersend_API_KEY
     if (!apiKey) {
       console.error("API Key do MailerSend não configurada")
-
-      // SOLUÇÃO DE EMERGÊNCIA: Retornar sucesso mesmo sem enviar o email
-      // Isso permite que o fluxo continue funcionando mesmo sem o email
-      return NextResponse.json({
-        success: true,
-        warning: "Email não enviado: API Key não configurada",
-        emailData: { email, pageUrl, coupleNames },
-      })
+      return NextResponse.json({ success: false, error: "API Key do MailerSend não configurada" }, { status: 500 })
     }
 
-    console.log("API Key do MailerSend:", apiKey.substring(0, 10) + "..." + apiKey.substring(apiKey.length - 5))
+    console.log("API Key do MailerSend:", apiKey.substring(0, 5) + "..." + apiKey.substring(apiKey.length - 5))
 
     // Configurar o corpo da requisição para a API do MailerSend
     const mailData = {
@@ -142,38 +135,34 @@ export async function POST(request: Request) {
       // Verificar se houve erro na API do MailerSend
       if (!response.ok) {
         console.error("Erro na API do MailerSend:", responseData || responseText)
-
-        // SOLUÇÃO DE EMERGÊNCIA: Retornar sucesso mesmo com erro no email
-        // Isso permite que o fluxo continue funcionando mesmo com erro no email
-        return NextResponse.json({
-          success: true,
-          warning: "Email não enviado devido a erro na API",
-          emailData: { email, pageUrl, coupleNames },
-          apiError: responseData || responseText,
-        })
+        return NextResponse.json(
+          { success: false, error: "Erro ao enviar email", details: responseData || responseText },
+          { status: response.status },
+        )
       }
 
       console.log("Email enviado com sucesso!")
       return NextResponse.json({ success: true, data: responseData })
     } catch (fetchError) {
       console.error("Erro ao fazer requisição para a API do MailerSend:", fetchError)
-
-      // SOLUÇÃO DE EMERGÊNCIA: Retornar sucesso mesmo com erro no email
-      return NextResponse.json({
-        success: true,
-        warning: "Email não enviado devido a erro na requisição",
-        emailData: { email, pageUrl, coupleNames },
-        fetchError: fetchError instanceof Error ? fetchError.message : String(fetchError),
-      })
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Erro ao fazer requisição para a API do MailerSend",
+          details: fetchError instanceof Error ? fetchError.message : String(fetchError),
+        },
+        { status: 500 },
+      )
     }
   } catch (error) {
     console.error("Erro ao enviar email:", error)
-
-    // SOLUÇÃO DE EMERGÊNCIA: Retornar sucesso mesmo com erro
-    return NextResponse.json({
-      success: true,
-      warning: "Erro ao processar solicitação de email",
-      error: error instanceof Error ? error.message : String(error),
-    })
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Erro ao processar solicitação de email",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 },
+    )
   }
 }

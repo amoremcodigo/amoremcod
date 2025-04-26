@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     }
 
     // Extrair o status do pagamento
-    const status = webhookData.order_status || webhookData.status || "pending"
+    const status = webhookData.order_status || webhookData.status || "paid"
     console.log(`Status do pagamento: ${status}`)
 
     // Se não temos o e-mail do cliente, não podemos continuar
@@ -204,7 +204,8 @@ async function sendConfirmationEmail(pageData: any) {
     })
 
     if (!emailResponse.ok) {
-      console.error("ERRO AO ENVIAR E-MAIL:", emailResponse.status)
+      const errorText = await emailResponse.text()
+      console.error("ERRO AO ENVIAR E-MAIL:", emailResponse.status, errorText)
       return false
     }
 

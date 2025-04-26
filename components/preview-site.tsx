@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { useFormContext } from "@/context/form-context"
 import { FallingHearts } from "@/components/falling-hearts"
 import { compressToEncodedURIComponent } from "lz-string"
+import { toast } from "@/components/ui/use-toast"
 
 // Modificar a função de compressão de imagem para ser mais rápida (reduzir qualidade)
 const compressImage = async (base64Image: string, maxWidth = 800, quality = 0.6): Promise<string> => {
@@ -334,6 +335,72 @@ const processForm = async () => {
     console.error("Erro durante o processamento:", error)
     setError(`Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.`)
     setIsProcessing(false)
+  }
+}
+
+// Certifique-se de que a função handleFinish esteja enviando para o checkout da Kiwify
+// Substitua a função handleFinish existente com esta implementação corrigida:
+
+const handleFinish = async () => {
+  setIsSubmitting(true)
+
+  try {
+    // Verificar se todos os campos obrigatórios estão preenchidos
+    if (!formData.coupleNames || !formData.message || !formData.date || !formData.plan) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Por favor, preencha todos os campos obrigatórios antes de finalizar.",
+        variant: "destructive",
+      })
+      setIsSubmitting(false)
+      return
+    }
+
+    // Salvar a página no Supabase
+    const response = await fetch("/api/save-page", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(formData),
+    })
+
+    if (!response.ok) {
+      throw new Error("Erro ao salvar a página")
+    }
+
+    const data = await response.json()
+    console.log("Página salva com sucesso:", data)
+
+    // Salvar o ID da página no localStorage para referência futura
+    if (data.pageId) {
+      localStorage.setItem("lastPageId", data.pageId)
+    }
+
+    // Redirecionar para o checkout da Kiwify com base no plano selecionado
+    let checkoutUrl
+
+    if (formData.plan === "premium") {
+      checkoutUrl = "https://pay.kiwify.com.br/8jJbIbA" // URL do checkout do plano premium
+    } else {
+      checkoutUrl = "https://pay.kiwify.com.br/NXJvVlm" // URL do checkout do plano básico
+    }
+
+    // Adicionar o ID da página como referência na URL do checkout
+    if (data.pageId) {
+      checkoutUrl += `?reference=${data.pageId}`
+    }
+
+    // Redirecionar para o checkout
+    window.location.href = checkoutUrl
+  } catch (error) {
+    console.error("Erro ao finalizar:", error)
+    toast({
+      title: "Erro",
+      description: "Ocorreu um erro ao finalizar. Por favor, tente novamente.",
+      variant: "destructive",
+    })
+    setIsSubmitting(false)
   }
 }
 
@@ -682,7 +749,7 @@ export function PreviewSite() {
             size="lg"
             className="gradient-bg text-lg px-8 py-6 relative"
             disabled={!isFormValid() || isProcessing}
-            onClick={processForm}
+            onClick={handleFinish}
           >
             {isProcessing ? (
               <>

@@ -66,7 +66,8 @@
     "@supabase/supabase-js": "latest",
     "@vercel/analytics": "latest",
     "lz-string": "latest",
-    "qrcode": "latest"
+    "qrcode": "latest",
+    "uuid": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

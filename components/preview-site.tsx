@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Music, Heart, QrCode, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
+import { Music, Heart, QrCode, ChevronLeft, ChevronRight, Loader2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useFormContext } from "@/context/form-context"
 import { FallingHearts } from "@/components/falling-hearts"
@@ -202,6 +202,7 @@ export function PreviewSite() {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [debugInfo, setDebugInfo] = useState<string | null>(null)
 
   // Usar a data do formulário ou uma data padrão
   const startDate = formData.date
@@ -319,6 +320,7 @@ export function PreviewSite() {
     try {
       setIsProcessing(true)
       setError(null)
+      setDebugInfo(null)
       console.log("=== INICIANDO PROCESSO DE SUBMISSÃO ===")
 
       // Normalizar o e-mail (trim e lowercase)
@@ -413,25 +415,45 @@ export function PreviewSite() {
 
       // Salvar os dados usando a API
       console.log("Salvando dados via API...")
-      const response = await fetch("/api/save-page", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(pageData),
-        cache: "no-store",
-      })
 
-      const result = await response.json()
-      console.log("Resposta da API:", result)
+      try {
+        const response = await fetch("/api/save-page", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(pageData),
+          cache: "no-store",
+        })
 
-      // Verificar se o salvamento foi bem-sucedido
-      if (result.success) {
-        console.log("Página salva com sucesso, redirecionando para checkout:", result.checkoutUrl)
-        window.location.href = result.checkoutUrl
-      } else {
-        // Se não foi bem-sucedido, mostrar erro e não redirecionar
-        setError(`Erro ao salvar página: ${result.error || "Erro desconhecido"}`)
+        // Verificar se a resposta HTTP foi bem-sucedida
+        if (!response.ok) {
+          const errorText = await response.text()
+          throw new Error(`Erro HTTP ${response.status}: ${errorText}`)
+        }
+
+        const result = await response.json()
+        console.log("Resposta da API:", result)
+
+        // Verificar explicitamente se o salvamento foi bem-sucedido
+        if (result.success === true) {
+          console.log("Página salva com sucesso, redirecionando para checkout:", result.checkoutUrl)
+
+          // Adicionar um pequeno atraso para garantir que o console.log seja exibido
+          setTimeout(() => {
+            window.location.href = result.checkoutUrl
+          }, 100)
+        } else {
+          // Se não foi bem-sucedido, mostrar erro e não redirecionar
+          setError(`Erro ao salvar página: ${result.error || "Erro desconhecido"}`)
+          setDebugInfo(JSON.stringify(result, null, 2))
+          setIsProcessing(false)
+        }
+      } catch (apiError) {
+        console.error("Erro na API de salvamento:", apiError)
+        setError(
+          `Erro na comunicação com o servidor: ${apiError instanceof Error ? apiError.message : String(apiError)}`,
+        )
         setIsProcessing(false)
       }
     } catch (error) {
@@ -658,7 +680,19 @@ export function PreviewSite() {
 
         <div className="flex flex-col items-center justify-center mt-12">
           {error && (
-            <div className="text-red-500 mb-4 p-3 bg-red-100 border border-red-300 rounded-md max-w-md">{error}</div>
+            <div className="text-red-500 mb-4 p-3 bg-red-100 border border-red-300 rounded-md max-w-md">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className="h-5 w-5" />
+                <span className="font-semibold">Erro ao salvar página</span>
+              </div>
+              <p>{error}</p>
+              {debugInfo && (
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-sm">Detalhes técnicos</summary>
+                  <pre className="text-xs mt-2 p-2 bg-red-50 overflow-auto">{debugInfo}</pre>
+                </details>
+              )}
+            </div>
           )}
 
           <Button

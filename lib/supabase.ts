@@ -55,9 +55,16 @@ export async function savePage(pageData: {
   console.log("Plano:", pageData.plan)
   console.log("URLs das fotos:", pageData.photo_urls.length)
   console.log("Status de pagamento:", pageData.payment_status || "pending")
+  console.log("Supabase URL:", supabaseUrl ? "Configurado" : "NÃO CONFIGURADO")
+  console.log("Supabase Anon Key:", supabaseAnonKey ? "Configurado" : "NÃO CONFIGURADO")
+  console.log("Supabase Service Key:", supabaseServiceKey ? "Configurado" : "NÃO CONFIGURADO")
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error("Credenciais do Supabase não configuradas. Impossível salvar dados.")
+    console.error("ERRO CRÍTICO: Credenciais do Supabase não configuradas")
+    return {
+      success: false,
+      error: "Credenciais do Supabase não configuradas. Impossível salvar dados.",
+    }
   }
 
   // Preparar os dados para inserção, incluindo os timestamps
@@ -80,38 +87,54 @@ export async function savePage(pageData: {
   }
 
   try {
-    // Tentar salvar com o cliente admin primeiro (se disponível)
+    // Tentar primeiro com o cliente admin (se disponível)
     if (supabaseServiceKey && supabaseAdmin !== supabase) {
+      console.log("Tentando salvar com cliente admin...")
       const { data, error } = await supabaseAdmin.from("pages").insert([dataToInsert]).select()
 
       if (error) {
         console.error("Erro ao salvar com cliente admin:", error)
+
         // Se falhar com admin, tentar com cliente normal
+        console.log("Tentando salvar com cliente normal...")
         const { data: normalData, error: normalError } = await supabase.from("pages").insert([dataToInsert]).select()
 
         if (normalError) {
           console.error("Erro ao salvar com cliente normal:", normalError)
-          throw normalError
+          return {
+            success: false,
+            error: `Falha ao salvar no Supabase: ${normalError.message}`,
+          }
         }
 
+        console.log("Página salva com sucesso usando cliente normal")
         return { success: true, data: normalData }
       }
 
+      console.log("Página salva com sucesso usando cliente admin")
       return { success: true, data }
     } else {
       // Se não temos cliente admin, usar o cliente normal
+      console.log("Tentando salvar com cliente normal (admin não disponível)...")
       const { data, error } = await supabase.from("pages").insert([dataToInsert]).select()
 
       if (error) {
         console.error("Erro ao salvar com cliente normal:", error)
-        throw error
+        return {
+          success: false,
+          error: `Falha ao salvar no Supabase: ${error.message}`,
+        }
       }
 
+      console.log("Página salva com sucesso usando cliente normal")
       return { success: true, data }
     }
   } catch (error) {
     console.error("FALHA CRÍTICA: Não foi possível salvar a página:", error)
-    throw new Error(`Falha ao salvar no Supabase: ${error instanceof Error ? error.message : String(error)}`)
+    return {
+      success: false,
+      error: `Falha ao salvar no Supabase: ${error instanceof Error ? error.message : String(error)}`,
+    }
   }
 }
 

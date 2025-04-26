@@ -203,6 +203,7 @@ export function PreviewSite() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [debugInfo, setDebugInfo] = useState<string | null>(null)
+  const [warningMessage, setWarningMessage] = useState<string | null>(null)
 
   // Usar a data do formulário ou uma data padrão
   const startDate = formData.date
@@ -321,6 +322,7 @@ export function PreviewSite() {
       setIsProcessing(true)
       setError(null)
       setDebugInfo(null)
+      setWarningMessage(null)
       console.log("=== INICIANDO PROCESSO DE SUBMISSÃO ===")
 
       // Normalizar o e-mail (trim e lowercase)
@@ -433,6 +435,11 @@ export function PreviewSite() {
 
         // Verificar explicitamente se o salvamento foi bem-sucedido
         if (result.success === true) {
+          // Se houver um aviso, mostrar para o usuário
+          if (result.warning) {
+            setWarningMessage(result.warning)
+          }
+
           console.log("Página salva com sucesso, redirecionando para checkout:", result.checkoutUrl)
 
           // Adicionar um pequeno atraso para garantir que o console.log seja exibido
@@ -688,6 +695,16 @@ export function PreviewSite() {
                   <pre className="text-xs mt-2 p-2 bg-red-50 overflow-auto">{debugInfo}</pre>
                 </details>
               )}
+            </div>
+          )}
+
+          {warningMessage && (
+            <div className="text-amber-700 mb-4 p-3 bg-amber-50 border border-amber-300 rounded-md max-w-md">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className="h-5 w-5" />
+                <span className="font-semibold">Aviso</span>
+              </div>
+              <p>{warningMessage}</p>
             </div>
           )}
 

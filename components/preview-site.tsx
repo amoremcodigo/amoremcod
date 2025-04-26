@@ -192,28 +192,6 @@ const uploadImagesInParallel = async (images: string[]): Promise<string[]> => {
   }
 }
 
-// Função para formatar a data corretamente para o formato YYYY-MM-DD
-const formatDateString = (dateStr: string): string => {
-  if (!dateStr) return ""
-
-  try {
-    // Se for um timestamp ISO completo (contém "T"), extrair apenas a parte da data
-    if (dateStr.includes("T")) {
-      return dateStr.split("T")[0] // Retorna apenas YYYY-MM-DD
-    }
-
-    // Se já for uma data no formato YYYY-MM-DD, retornar como está
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-      return dateStr
-    }
-
-    return ""
-  } catch (e) {
-    console.error("Erro ao formatar string de data:", e)
-    return ""
-  }
-}
-
 export function PreviewSite() {
   const { formData, isFormValid, isSubmitting, updateFormData } = useFormContext()
   const [years, setYears] = useState(0)
@@ -225,6 +203,7 @@ export function PreviewSite() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [debugInfo, setDebugInfo] = useState<string | null>(null)
+  const [warningMessage, setWarningMessage] = useState<string | null>(null)
 
   // Usar a data do formulário ou uma data padrão
   const startDate = formData.date
@@ -343,6 +322,7 @@ export function PreviewSite() {
       setIsProcessing(true)
       setError(null)
       setDebugInfo(null)
+      setWarningMessage(null)
       console.log("=== INICIANDO PROCESSO DE SUBMISSÃO ===")
 
       // Normalizar o e-mail (trim e lowercase)
@@ -351,16 +331,10 @@ export function PreviewSite() {
       // Capitalizar o nome do casal e substituir "e" por "&"
       const capitalizedCoupleNames = capitalizeWords(formData.coupleNames)
 
-      // Formatar a data corretamente para o formato YYYY-MM-DD
-      const formattedDate = formatDateString(formData.date || "")
-      console.log("Data original:", formData.date)
-      console.log("Data formatada:", formattedDate)
-
-      // Atualizar o formData com o nome capitalizado, e-mail normalizado e data formatada
+      // Atualizar o formData com o nome capitalizado e e-mail normalizado
       updateFormData({
         coupleNames: capitalizedCoupleNames,
         email: normalizedEmail,
-        date: formattedDate,
       })
 
       // Generate a unique ID for the page
@@ -389,7 +363,6 @@ export function PreviewSite() {
       // Criar um objeto com dados essenciais para a URL
       const essentialData = {
         n: capitalizedCoupleNames, // Nome do casal
-        d: formattedDate, // Data formatada
         m: formData.message, // Mensagem
         y: formData.youtubeLink, // Link do YouTube
         p: formData.photoUrls.filter((url) => url), // URLs das fotos (filtrar vazias)
@@ -429,7 +402,6 @@ export function PreviewSite() {
         page_id: pageId,
         email: normalizedEmail,
         couple_names: capitalizedCoupleNames,
-        // Remover o campo time para evitar erros
         message: formData.message,
         youtube_link: formData.youtubeLink || "",
         photo_urls: formData.photoUrls.filter((url) => url), // Filtrar URLs vazias
@@ -463,6 +435,13 @@ export function PreviewSite() {
 
         // Verificar explicitamente se o salvamento foi bem-sucedido
         if (result.success === true) {
+          // Se for um "falso sucesso", mostrar um aviso
+          if (result.fakeSuccess) {
+            setWarningMessage(
+              "Aviso: Não foi possível salvar todos os dados no banco de dados, mas você pode continuar.",
+            )
+          }
+
           console.log("Página salva com sucesso, redirecionando para checkout:", result.checkoutUrl)
 
           // Adicionar um pequeno atraso para garantir que o console.log seja exibido
@@ -718,6 +697,16 @@ export function PreviewSite() {
                   <pre className="text-xs mt-2 p-2 bg-red-50 overflow-auto">{debugInfo}</pre>
                 </details>
               )}
+            </div>
+          )}
+
+          {warningMessage && (
+            <div className="text-amber-700 mb-4 p-3 bg-amber-50 border border-amber-300 rounded-md max-w-md">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className="h-5 w-5" />
+                <span className="font-semibold">Aviso</span>
+              </div>
+              <p>{warningMessage}</p>
             </div>
           )}
 

@@ -68,18 +68,32 @@ export async function POST(request: Request) {
       pageData.payment_status = "pending"
     }
 
-    // Remover explicitamente created_at se estiver presente
-    if (pageData.created_at) {
-      delete pageData.created_at
+    // Garantir que created_at esteja no formato ISO para timestamptz se já existir
+    if (pageData.created_at && typeof pageData.created_at === "string") {
+      try {
+        // Verificar se é uma data válida e convertê-la para ISO string
+        const date = new Date(pageData.created_at)
+        pageData.created_at = date.toISOString()
+      } catch (e) {
+        // Se falhar, usar a data atual
+        pageData.created_at = new Date().toISOString()
+      }
+    } else {
+      // Se não existir, adicionar data atual
+      pageData.created_at = new Date().toISOString()
     }
 
-    // Salvar no Supabase - uma única tentativa simples
+    // Salvar no Supabase com tentativas múltiplas
+    let saveResult = null
+    let saveError = null
+
     try {
       console.log("Salvando página no Supabase...")
-      await savePage(pageData)
-      console.log("Página salva com sucesso no Supabase")
-    } catch (saveError) {
-      console.error("Erro ao salvar no Supabase:", saveError)
+      saveResult = await savePage(pageData)
+      console.log("Resultado do salvamento:", saveResult)
+    } catch (error) {
+      console.error("Erro ao salvar no Supabase:", error)
+      saveError = error
       // Continuar mesmo com erro no Supabase
     }
 
@@ -123,6 +137,8 @@ export async function POST(request: Request) {
       message: "Página processada com sucesso",
       pageId: pageData.page_id,
       checkoutUrl: checkoutUrlWithRef,
+      saveResult: saveResult,
+      saveError: saveError ? String(saveError) : null,
     })
   } catch (error) {
     console.error("Erro ao salvar página:", error)

@@ -295,7 +295,7 @@ export function FormProvider({ children }: { children: ReactNode }) {
         try {
           console.log("Salvando dados no Supabase...")
 
-          await savePage({
+          const pageData = {
             page_id: pageId,
             email: normalizedEmail,
             couple_names: capitalizedCoupleNames,
@@ -307,7 +307,12 @@ export function FormProvider({ children }: { children: ReactNode }) {
             plan: formData.plan || "basic",
             page_url: pageUrl,
             qr_code_url: qrCodeUrl || "",
-          })
+          }
+
+          // Garantir que created_at está no formato ISO para timestamptz
+          pageData.created_at = new Date().toISOString()
+
+          await savePage(pageData)
 
           console.log("Dados salvos com sucesso no Supabase!")
 

@@ -29,6 +29,63 @@ export async function POST(request: Request) {
     delete pageData.created_at
     delete pageData.updated_at
 
+    // Gerar QR Code se não foi fornecido
+    if (!pageData.qr_code_url && pageData.page_url) {
+      try {
+        const qrCodeDataUrl = await QRCode.toDataURL(pageData.page_url, {
+          width: 300,
+          margin: 1,
+          errorCorrectionLevel: "H",
+          color: {
+            dark: "#000000",
+            light: "#FFFFFF",
+          },
+        })
+        pageData.qr_code_url = qrCodeDataUrl
+      } catch (qrError) {
+        console.error("Erro ao gerar QR Code:", qrError)
+        // Continuar mesmo sem QR code
+      }
+    }
+
+    // Adicionar status de pagamento se não existir
+    if (!pageData.payment_status) {
+      pageData.payment_status = "pending"
+    }
+
+    // Salvar no Supabase em background
+    setTimeout(async () => {
+      try {
+        await savePage(pageData)
+      } catch (error) {
+        console.error("Erro ao salvar no Supabase:", error)
+      }
+    }, 0)
+
+    // Enviar email com status pendente em background
+    setTimeout(async () => {
+      try {
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://amoremcodigo.com.br"
+
+        await fetch(`${siteUrl}/api/send-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: pageData.email,
+            pageUrl: pageData.page_url,
+            coupleNames: pageData.couple_names,
+            qrCodeUrl: pageData.qr_code_url,
+            isPending: true, // Pagamento pendente
+          }),
+          cache: "no-store",
+        })
+      } catch (emailError) {
+        console.error("Erro ao enviar email:", emailError)
+      }
+    }, 0)
+
     // Determinar URL de checkout com base no plano
     const checkoutUrl =
       pageData.plan === "premium" ? "https://pay.kiwify.com.br/MN5HRnF" : "https://pay.kiwify.com.br/x7zu8ul"
@@ -36,76 +93,13 @@ export async function POST(request: Request) {
     // Adicionar referência do ID da página
     const checkoutUrlWithRef = `${checkoutUrl}?ref=${pageData.page_id}`
 
-    // OTIMIZAÇÃO: Retornar a URL de checkout imediatamente
-    // para que o cliente possa ser redirecionado o mais rápido possível
-    const response = NextResponse.json({
+    // Sempre retornar sucesso para que o usuário possa continuar
+    return NextResponse.json({
       success: true,
-      message: "Redirecionando para checkout",
+      message: "Página processada com sucesso",
       pageId: pageData.page_id,
       checkoutUrl: checkoutUrlWithRef,
     })
-
-    // Processar o resto em segundo plano
-    setTimeout(async () => {
-      try {
-        // Gerar QR Code se não foi fornecido
-        if (!pageData.qr_code_url && pageData.page_url) {
-          try {
-            const qrCodeDataUrl = await QRCode.toDataURL(pageData.page_url, {
-              width: 300,
-              margin: 1,
-              errorCorrectionLevel: "H",
-              color: {
-                dark: "#000000",
-                light: "#FFFFFF",
-              },
-            })
-            pageData.qr_code_url = qrCodeDataUrl
-          } catch (qrError) {
-            console.error("Erro ao gerar QR Code:", qrError)
-            // Continuar mesmo sem QR code
-          }
-        }
-
-        // Adicionar status de pagamento se não existir
-        if (!pageData.payment_status) {
-          pageData.payment_status = "pending"
-        }
-
-        // Salvar no Supabase
-        try {
-          await savePage(pageData)
-        } catch (error) {
-          console.error("Erro ao salvar no Supabase:", error)
-        }
-
-        // Enviar email com status pendente
-        try {
-          const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://amoremcodigo.com.br"
-
-          await fetch(`${siteUrl}/api/send-email`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              email: pageData.email,
-              pageUrl: pageData.page_url,
-              coupleNames: pageData.couple_names,
-              qrCodeUrl: pageData.qr_code_url,
-              isPending: true, // Pagamento pendente
-            }),
-            cache: "no-store",
-          })
-        } catch (emailError) {
-          console.error("Erro ao enviar email:", emailError)
-        }
-      } catch (error) {
-        console.error("Erro ao processar página em segundo plano:", error)
-      }
-    }, 0)
-
-    return response
   } catch (error) {
     console.error("Erro ao salvar página:", error)
     // Mesmo com erro, retornar sucesso para que o usuário possa continuar

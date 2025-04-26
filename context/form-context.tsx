@@ -226,8 +226,6 @@ export function FormProvider({ children }: { children: ReactNode }) {
     })
   }
 
-  // Reverter a função submitForm para a versão original que estava funcionando
-
   // Otimizar a função submitForm para redirecionar mais rapidamente
   const submitForm = async () => {
     if (isFormValid()) {

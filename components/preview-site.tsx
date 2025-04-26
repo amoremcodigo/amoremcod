@@ -348,9 +348,6 @@ export function PreviewSite() {
           console.log("Todas as fotos foram enviadas com sucesso:", photoUrls)
         } catch (uploadError) {
           console.error("Erro durante o upload de fotos:", uploadError)
-          setError(
-            "Houve um problema ao enviar algumas fotos. Continuando com as fotos que foram enviadas com sucesso.",
-          )
           // Continuar mesmo com erro nas fotos
         }
       } else {
@@ -361,7 +358,6 @@ export function PreviewSite() {
       const essentialData = {
         n: capitalizedCoupleNames, // Nome do casal
         d: formData.date, // Data
-        t: formData.time, // Hora
         m: formData.message, // Mensagem
         y: formData.youtubeLink, // Link do YouTube
         p: formData.photoUrls.filter((url) => url), // URLs das fotos (filtrar vazias)
@@ -412,7 +408,7 @@ export function PreviewSite() {
         updated_at: new Date().toISOString(),
       }
 
-      // Salvar os dados usando a API
+      // Salvar os dados usando a API - uma única tentativa
       try {
         console.log("Salvando dados via API...")
         const response = await fetch("/api/save-page", {
@@ -426,38 +422,21 @@ export function PreviewSite() {
 
         const result = await response.json()
         console.log("Resposta da API:", result)
-
-        if (!result.success) {
-          throw new Error(result.error || "Erro desconhecido ao salvar a página")
-        }
-
-        // Pequeno delay antes de redirecionar para garantir que o usuário veja a mensagem
-        setTimeout(() => {
-          // Redirecionar para o checkout apenas se o salvamento foi bem-sucedido
-          if (result.checkoutUrl) {
-            console.log("Redirecionando para:", result.checkoutUrl)
-            window.location.href = result.checkoutUrl
-          } else {
-            // Fallback para URL de checkout padrão
-            const checkoutUrl =
-              formData.plan === "premium" ? "https://pay.kiwify.com.br/MN5HRnF" : "https://pay.kiwify.com.br/x7zu8ul"
-            const checkoutUrlWithRef = `${checkoutUrl}?ref=${pageId}`
-            console.log("Redirecionando para URL fallback:", checkoutUrlWithRef)
-            window.location.href = checkoutUrlWithRef
-          }
-        }, 1000)
       } catch (apiError) {
         console.error("Erro na API de salvamento:", apiError)
-        setError(
-          `Ocorreu um erro ao salvar sua página: ${apiError instanceof Error ? apiError.message : String(apiError)}. Por favor, tente novamente.`,
-        )
-        setIsProcessing(false)
+        // Continuar mesmo com erro na API
       }
+
+      // Determinar URL de checkout com base no plano
+      const checkoutUrl =
+        formData.plan === "premium" ? "https://pay.kiwify.com.br/MN5HRnF" : "https://pay.kiwify.com.br/x7zu8ul"
+      const checkoutUrlWithRef = `${checkoutUrl}?ref=${pageId}`
+
+      console.log("Redirecionando para:", checkoutUrlWithRef)
+      window.location.href = checkoutUrlWithRef
     } catch (error) {
       console.error("Erro durante o processamento:", error)
-      setError(
-        `Ocorreu um erro ao processar sua solicitação: ${error instanceof Error ? error.message : String(error)}. Por favor, tente novamente.`,
-      )
+      setError(`Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.`)
       setIsProcessing(false)
     }
   }

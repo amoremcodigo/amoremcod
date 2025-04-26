@@ -201,8 +201,6 @@ export function PreviewSite() {
   const [seconds, setSeconds] = useState(0)
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [loadingText, setLoadingText] = useState("Processando...")
-  const [uploadProgress, setUploadProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
   // Usar a data do formulário ou uma data padrão
@@ -321,8 +319,6 @@ export function PreviewSite() {
     try {
       setIsProcessing(true)
       setError(null)
-      setLoadingText("Preparando dados...")
-      setUploadProgress(0)
       console.log("=== INICIANDO PROCESSO DE SUBMISSÃO ===")
 
       // Normalizar o e-mail (trim e lowercase)
@@ -342,7 +338,6 @@ export function PreviewSite() {
       console.log("ID da página gerado:", pageId)
 
       // Fazer upload das fotos para o servidor usando upload paralelo
-      setLoadingText("Comprimindo e enviando fotos...")
       const photosToUpload = formData.photos.filter((photo) => photo && photo.startsWith("data:image"))
 
       if (photosToUpload.length > 0) {
@@ -350,18 +345,15 @@ export function PreviewSite() {
           // Usar upload paralelo para todas as fotos
           const photoUrls = await uploadImagesInParallel(formData.photos)
           updateFormData({ photoUrls })
-          setUploadProgress(100)
           console.log("Todas as fotos foram enviadas com sucesso:", photoUrls)
         } catch (uploadError) {
           console.error("Erro durante o upload de fotos:", uploadError)
-          setError(
-            "Houve um problema ao enviar algumas fotos. Continuando com as fotos que foram enviadas com sucesso.",
-          )
-          // Continuar mesmo com erro nas fotos
+          setError("Erro ao fazer upload das fotos. Por favor, tente novamente.")
+          setIsProcessing(false)
+          return // Não continuar se houver erro no upload das fotos
         }
       } else {
         console.log("Nenhuma foto para enviar")
-        setUploadProgress(100)
       }
 
       // Criar um objeto com dados essenciais para a URL
@@ -383,7 +375,6 @@ export function PreviewSite() {
       const pageUrl = `${siteUrl}/pagina/${pageId}?d=${compressedData}`
       console.log("URL da página gerada:", pageUrl)
 
-      setLoadingText("Gerando QR Code...")
       // Gerar QR Code para o email
       let qrCodeUrl = null
       try {
@@ -420,76 +411,32 @@ export function PreviewSite() {
         payment_status: "pending",
       }
 
-      setLoadingText("Salvando página...")
       // Salvar os dados usando a API
-      try {
-        console.log("Salvando dados via API...")
-        const response = await fetch("/api/save-page", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(pageData),
-          cache: "no-store",
-        })
+      console.log("Salvando dados via API...")
+      const response = await fetch("/api/save-page", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(pageData),
+        cache: "no-store",
+      })
 
-        const result = await response.json()
-        console.log("Resposta da API:", result)
+      const result = await response.json()
+      console.log("Resposta da API:", result)
 
-        // Mesmo se houver erro no salvamento, continuar com o redirecionamento
-        // se a API retornou uma URL de checkout
-        if (result.checkoutUrl) {
-          setLoadingText("Redirecionando para pagamento...")
-
-          // Pequeno delay antes de redirecionar para garantir que o usuário veja a mensagem
-          setTimeout(() => {
-            console.log("Redirecionando para:", result.checkoutUrl)
-
-            // Usar window.location.replace para garantir o redirecionamento
-            try {
-              window.location.replace(result.checkoutUrl)
-            } catch (redirectError) {
-              console.error("Erro ao redirecionar com replace:", redirectError)
-
-              // Fallback para href se replace falhar
-              window.location.href = result.checkoutUrl
-            }
-
-            // Fallback final - se após 3 segundos ainda não redirecionou, tentar novamente
-            setTimeout(() => {
-              if (document.location.href !== result.checkoutUrl) {
-                console.log("Redirecionamento falhou, tentando novamente...")
-                document.location.href = result.checkoutUrl
-              }
-            }, 3000)
-          }, 1000)
-        } else if (!result.success) {
-          throw new Error(`Erro ao salvar página: ${result.error || "Erro desconhecido"}`)
-        }
-      } catch (apiError) {
-        console.error("Erro na API de salvamento:", apiError)
-
-        // Mesmo em caso de erro, tentar redirecionar para o checkout
-        const fallbackCheckoutUrl =
-          formData.plan === "premium" ? "https://pay.kiwify.com.br/MN5HRnF" : "https://pay.kiwify.com.br/x7zu8ul"
-
-        const fallbackUrlWithRef = `${fallbackCheckoutUrl}?ref=${pageId}`
-
-        setError(
-          `Ocorreu um erro ao salvar sua página, mas você será redirecionado para o pagamento. Por favor, salve este código: ${pageId}`,
-        )
-
-        // Redirecionar após mostrar o erro
-        setTimeout(() => {
-          console.log("Redirecionando para URL fallback após erro:", fallbackUrlWithRef)
-          window.location.replace(fallbackUrlWithRef)
-        }, 3000)
+      // Verificar se o salvamento foi bem-sucedido
+      if (result.success) {
+        console.log("Página salva com sucesso, redirecionando para checkout:", result.checkoutUrl)
+        window.location.href = result.checkoutUrl
+      } else {
+        // Se não foi bem-sucedido, mostrar erro e não redirecionar
+        setError(`Erro ao salvar página: ${result.error || "Erro desconhecido"}`)
+        setIsProcessing(false)
       }
     } catch (error) {
       console.error("Erro durante o processamento:", error)
-      setError(
-        `Ocorreu um erro ao processar sua solicitação: ${error instanceof Error ? error.message : String(error)}. Por favor, tente novamente.`,
-      )
+      setError(`Erro ao processar formulário: ${error instanceof Error ? error.message : String(error)}`)
       setIsProcessing(false)
     }
   }
@@ -710,23 +657,6 @@ export function PreviewSite() {
         </div>
 
         <div className="flex flex-col items-center justify-center mt-12">
-          {/* Barra de progresso para upload de fotos */}
-          {isProcessing && (
-            <div className="w-full max-w-md mb-4">
-              <div className="flex justify-between text-sm mb-1">
-                <span>{loadingText}</span>
-                <span>{uploadProgress}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                <div
-                  className="bg-gradient-to-r from-pink-500 to-purple-500 h-2.5 rounded-full transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
-                ></div>
-              </div>
-            </div>
-          )}
-
-          {/* Mensagem de erro */}
           {error && (
             <div className="text-red-500 mb-4 p-3 bg-red-100 border border-red-300 rounded-md max-w-md">{error}</div>
           )}

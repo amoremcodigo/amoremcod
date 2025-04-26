@@ -436,35 +436,54 @@ export function PreviewSite() {
         const result = await response.json()
         console.log("Resposta da API:", result)
 
-        if (!result.success) {
+        // Mesmo se houver erro no salvamento, continuar com o redirecionamento
+        // se a API retornou uma URL de checkout
+        if (result.checkoutUrl) {
+          setLoadingText("Redirecionando para pagamento...")
+
+          // Pequeno delay antes de redirecionar para garantir que o usuário veja a mensagem
+          setTimeout(() => {
+            console.log("Redirecionando para:", result.checkoutUrl)
+
+            // Usar window.location.replace para garantir o redirecionamento
+            try {
+              window.location.replace(result.checkoutUrl)
+            } catch (redirectError) {
+              console.error("Erro ao redirecionar com replace:", redirectError)
+
+              // Fallback para href se replace falhar
+              window.location.href = result.checkoutUrl
+            }
+
+            // Fallback final - se após 3 segundos ainda não redirecionou, tentar novamente
+            setTimeout(() => {
+              if (document.location.href !== result.checkoutUrl) {
+                console.log("Redirecionamento falhou, tentando novamente...")
+                document.location.href = result.checkoutUrl
+              }
+            }, 3000)
+          }, 1000)
+        } else if (!result.success) {
           throw new Error(`Erro ao salvar página: ${result.error || "Erro desconhecido"}`)
         }
-
-        setLoadingText("Redirecionando para pagamento...")
-
-        // Pequeno delay antes de redirecionar para garantir que o usuário veja a mensagem
-        setTimeout(() => {
-          // Redirecionar para o checkout
-          if (result.checkoutUrl) {
-            console.log("Redirecionando para:", result.checkoutUrl)
-            // Usar window.location.href para garantir o redirecionamento
-            window.location.href = result.checkoutUrl
-          } else {
-            // Fallback para URL de checkout padrão com referência
-            const checkoutUrl =
-              formData.plan === "premium" ? "https://pay.kiwify.com.br/MN5HRnF" : "https://pay.kiwify.com.br/x7zu8ul"
-            const checkoutUrlWithRef = `${checkoutUrl}?ref=${pageId}`
-            console.log("Redirecionando para URL fallback:", checkoutUrlWithRef)
-            // Forçar redirecionamento com window.location.replace para garantir
-            window.location.replace(checkoutUrlWithRef)
-          }
-        }, 1000)
       } catch (apiError) {
         console.error("Erro na API de salvamento:", apiError)
+
+        // Mesmo em caso de erro, tentar redirecionar para o checkout
+        const fallbackCheckoutUrl =
+          formData.plan === "premium" ? "https://pay.kiwify.com.br/MN5HRnF" : "https://pay.kiwify.com.br/x7zu8ul"
+
+        const fallbackUrlWithRef = `${fallbackCheckoutUrl}?ref=${pageId}`
+
         setError(
-          `Ocorreu um erro ao salvar sua página: ${apiError instanceof Error ? apiError.message : String(apiError)}. Por favor, tente novamente.`,
+          `Ocorreu um erro ao salvar sua página, mas você será redirecionado para o pagamento. Por favor, salve este código: ${pageId}`,
         )
-        setIsProcessing(false)
+
+        // Redirecionar após mostrar o erro
+        setTimeout(() => {
+          console.log("Redirecionando para URL fallback após erro:", fallbackUrlWithRef)
+          window.location.replace(fallbackUrlWithRef)
+        }, 3000)
       }
     } catch (error) {
       console.error("Erro durante o processamento:", error)

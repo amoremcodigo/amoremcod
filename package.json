@@ -64,9 +64,9 @@
     "vue": "latest",
     "vue-router": "latest",
     "@supabase/supabase-js": "latest",
-    "@vercel/analytics": "latest",
     "qrcode": "latest",
-    "lz-string": "latest"
+    "lz-string": "latest",
+    "@vercel/analytics": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

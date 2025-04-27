@@ -8,6 +8,8 @@ import { FormProvider } from "@/context/form-context"
 import FacebookPixel from "@/components/facebook-pixel"
 // Adicionar a importação do Analytics no topo do arquivo
 import { Analytics } from "@vercel/analytics/react"
+// Adicionar a importação do componente GoogleTagManager no topo do arquivo
+import GoogleTagManager from "@/components/google-tag-manager"
 import { Suspense } from "react"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -64,6 +66,7 @@ export default function RootLayout({
             <FormProvider>{children}</FormProvider>
           </Suspense>
         </ThemeProvider>
+        <GoogleTagManager gtmId="GTM-W4MJ8DVF" />
         <FacebookPixel />
         <Analytics />
       </body>

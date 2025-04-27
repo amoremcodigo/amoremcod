@@ -19,7 +19,6 @@ const trackFbEvent = (event: string, options?: any) => {
     // Fila de eventos para garantir que nenhum evento seja perdido antes do pixel carregar
     if (!window.fbEventsQueue) window.fbEventsQueue = []
     window.fbEventsQueue.push({ event, options })
-    console.log(`[FB Pixel] Queued event: ${event}`, options || {})
   }
 }
 
@@ -28,6 +27,7 @@ export default function FacebookPixel() {
   const searchParams = useSearchParams()
   const timeOnPageRef = useRef<number>(Date.now())
   const previousPathRef = useRef<string>("")
+  const isInitializedRef = useRef<boolean>(false)
 
   // Inicializar o Facebook Pixel
   useEffect(() => {
@@ -46,46 +46,43 @@ export default function FacebookPixel() {
       t.async = !0
       t.src = v
       s = b.getElementsByTagName(e)[0]
-      s.parentNode.insertBefore(t, s)
+      if (s && s.parentNode) s.parentNode.insertBefore(t, s)
     })(window, document, "script", "https://connect.facebook.net/en_US/fbevents.js")
 
     // Inicializar com o ID do Pixel fornecido
-    window.fbq("init", "645764484878124", {
-      // Parâmetros avançados para melhorar a qualidade dos dados
-      em: undefined, // Email (hash)
-      ph: undefined, // Telefone (hash)
-      fn: undefined, // Primeiro nome (hash)
-      ln: undefined, // Sobrenome (hash)
-      external_id: undefined, // ID externo do usuário
-    })
+    if (typeof window !== "undefined" && !isInitializedRef.current) {
+      window.fbq("init", "645764484878124")
+      isInitializedRef.current = true
+
+      // Registrar o evento PageView inicial
+      trackFbEvent("PageView", {
+        page_path: pathname,
+        page_title: document.title,
+        page_location: window.location.href,
+      })
+    }
 
     // Processar eventos na fila
-    if (window.fbEventsQueue && window.fbEventsQueue.length > 0) {
+    if (typeof window !== "undefined" && window.fbEventsQueue && window.fbEventsQueue.length > 0) {
       window.fbEventsQueue.forEach((item) => {
         window.fbq("track", item.event, item.options)
-        console.log(`[FB Pixel] Processed queued event: ${item.event}`, item.options || {})
       })
       window.fbEventsQueue = []
     }
 
-    // Registrar o evento PageView inicial
-    trackFbEvent("PageView", {
-      page_path: pathname,
-      page_title: document.title,
-      page_location: window.location.href,
-    })
-
     // Salvar o caminho atual como referência
-    previousPathRef.current = pathname
+    previousPathRef.current = pathname || ""
 
     // Limpar
     return () => {
       // Não há nada específico para limpar
     }
-  }, [])
+  }, [pathname])
 
   // Rastrear mudanças de página
   useEffect(() => {
+    if (!pathname) return
+
     // Calcular tempo na página anterior
     const timeSpent = Math.floor((Date.now() - timeOnPageRef.current) / 1000)
 
@@ -108,7 +105,7 @@ export default function FacebookPixel() {
       // Verificar se é uma página de produto/conteúdo específico
       if (pathname.includes("/pagina/")) {
         trackFbEvent("ViewContent", {
-          content_type: "product",
+          content_type: "page",
           content_ids: [pathname.split("/").pop()],
           content_name: document.title,
         })
@@ -121,64 +118,65 @@ export default function FacebookPixel() {
 
     // Configurar rastreamento de cliques em botões importantes
     const setupButtonTracking = () => {
-      // Botões de compra/checkout
-      document.querySelectorAll("button, a").forEach((element) => {
-        const text = element.textContent?.toLowerCase() || ""
-        const classes = element.className || ""
+      try {
+        // Botões de compra/checkout
+        document.querySelectorAll("button, a").forEach((element) => {
+          const text = (element.textContent || "").toLowerCase()
 
-        if (!element.hasAttribute("data-fb-tracked")) {
-          element.setAttribute("data-fb-tracked", "true")
+          if (!element.hasAttribute("data-fb-tracked")) {
+            element.setAttribute("data-fb-tracked", "true")
 
-          element.addEventListener("click", (e) => {
-            // Rastrear cliques em botões importantes
-            if (text.includes("comprar") || text.includes("continuar") || classes.includes("gradient-bg")) {
-              trackFbEvent("InitiateCheckout", {
-                button_text: element.textContent,
-                page_path: pathname,
-              })
-            } else if (text.includes("plano") || text.includes("escolher plano")) {
-              trackFbEvent("AddToCart", {
-                content_type: "product",
-                content_name: text,
-                page_path: pathname,
-              })
-            } else if (text.includes("whatsapp") || text.includes("contato")) {
-              trackFbEvent("Contact", {
-                contact_method: "whatsapp",
-                page_path: pathname,
-              })
-            }
-          })
-        }
-      })
+            element.addEventListener("click", () => {
+              // Rastrear cliques em botões importantes
+              if (
+                text.includes("comprar") ||
+                text.includes("continuar") ||
+                text.includes("criar") ||
+                text.includes("começar")
+              ) {
+                trackFbEvent("InitiateCheckout", {
+                  button_text: element.textContent,
+                  page_path: pathname,
+                })
+              } else if (text.includes("plano") || text.includes("escolher")) {
+                trackFbEvent("AddToCart", {
+                  content_type: "product",
+                  content_name: text,
+                  page_path: pathname,
+                })
+              } else if (text.includes("whatsapp") || text.includes("contato")) {
+                trackFbEvent("Contact", {
+                  contact_method: "whatsapp",
+                  page_path: pathname,
+                })
+              }
+            })
+          }
+        })
 
-      // Formulários
-      document.querySelectorAll("form").forEach((form) => {
-        if (!form.hasAttribute("data-fb-tracked")) {
-          form.setAttribute("data-fb-tracked", "true")
+        // Formulários
+        document.querySelectorAll("form").forEach((form) => {
+          if (!form.hasAttribute("data-fb-tracked")) {
+            form.setAttribute("data-fb-tracked", "true")
 
-          form.addEventListener("submit", (e) => {
-            // Identificar o tipo de formulário
-            const formId = form.id || ""
-            const formAction = form.getAttribute("action") || ""
-
-            if (pathname === "/" || pathname.includes("/criar")) {
-              trackFbEvent("Lead", {
-                form_id: formId || pathname,
-                page_path: pathname,
-              })
-            } else if (formAction.includes("checkout") || pathname.includes("planos")) {
-              trackFbEvent("AddPaymentInfo", {
-                page_path: pathname,
-              })
-            }
-          })
-        }
-      })
+            form.addEventListener("submit", () => {
+              if (pathname === "/" || pathname.includes("/criar")) {
+                trackFbEvent("Lead", {
+                  form_id: form.id || pathname,
+                  page_path: pathname,
+                })
+              }
+            })
+          }
+        })
+      } catch (error) {
+        // Silenciar erros para não interromper a execução
+        console.error("[FB Pixel] Error setting up tracking:", error)
+      }
     }
 
     // Executar após um pequeno atraso para garantir que o DOM esteja pronto
-    setTimeout(setupButtonTracking, 1000)
+    const timer = setTimeout(setupButtonTracking, 1500)
 
     // Configurar rastreamento de saída da página
     const handleBeforeUnload = () => {
@@ -195,32 +193,33 @@ export default function FacebookPixel() {
     window.addEventListener("beforeunload", handleBeforeUnload)
 
     return () => {
+      clearTimeout(timer)
       window.removeEventListener("beforeunload", handleBeforeUnload)
     }
-  }, [pathname, searchParams])
+  }, [pathname])
 
   // Rastrear conclusão de compra quando estiver na página de obrigado
   useEffect(() => {
+    if (!pathname || !searchParams) return
+
     if (pathname === "/obrigado") {
       // Extrair parâmetros da URL para informações de compra
       const orderId = searchParams.get("order") || undefined
       const value = searchParams.get("value") || undefined
       const plan = searchParams.get("plan") || undefined
 
-      if (orderId) {
-        trackFbEvent("Purchase", {
-          content_type: "product",
-          content_name: plan || "Plano",
-          content_ids: [orderId],
-          value: value ? Number.parseFloat(value) : undefined,
-          currency: "BRL",
-        })
+      trackFbEvent("Purchase", {
+        content_type: "product",
+        content_name: plan || "Plano",
+        content_ids: orderId ? [orderId] : undefined,
+        value: value ? Number.parseFloat(value) : undefined,
+        currency: "BRL",
+      })
 
-        trackFbEvent("CompleteRegistration", {
-          content_name: plan || "Plano",
-          status: "complete",
-        })
-      }
+      trackFbEvent("CompleteRegistration", {
+        content_name: plan || "Plano",
+        status: "complete",
+      })
     }
   }, [pathname, searchParams])
 

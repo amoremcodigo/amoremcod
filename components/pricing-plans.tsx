@@ -111,7 +111,6 @@ export function PricingPlans() {
               <CardFooter className="px-4 py-3 sm:px-6 sm:py-4">
                 <Button
                   className={`w-full ${plan.popular ? "gradient-bg" : ""} ${formData.plan === plan.id ? "bg-primary" : ""}`}
-                  data-fb-event="AddToCart"
                 >
                   {formData.plan === plan.id ? "Plano Selecionado" : "Escolher Plano"}
                 </Button>

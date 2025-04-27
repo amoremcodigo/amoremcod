@@ -14,36 +14,67 @@ export default function FacebookPixel() {
   const initialized = useRef(false)
   const pathname = usePathname()
 
-  useEffect(() => {
-    // Inicializar o Facebook Pixel apenas uma vez
-    if (!initialized.current) {
-      // Código padrão do Pixel do Facebook
-      !((f, b, e, v, n, t, s) => {
-        if (f.fbq) return
-        n = f.fbq = () => {
-          n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments)
-        }
-        if (!f._fbq) f._fbq = n
-        n.push = n
-        n.loaded = !0
-        n.version = "2.0"
-        n.queue = []
-        t = b.createElement(e)
-        t.async = !0
-        t.src = v
-        s = b.getElementsByTagName(e)[0]
-        s.parentNode.insertBefore(t, s)
-      })(window, document, "script", "https://connect.facebook.net/en_US/fbevents.js")
+  // Função para carregar o script do Facebook Pixel
+  const loadFacebookPixel = () => {
+    return new Promise<void>((resolve) => {
+      if (window.fbq) {
+        resolve()
+        return
+      }
 
-      // Inicializar com o ID do Pixel fornecido
+      // Criar o script do Facebook Pixel
+      const script = document.createElement("script")
+      script.src = "https://connect.facebook.net/en_US/fbevents.js"
+      script.async = true
+      script.onload = () => resolve()
+
+      // Configurar o objeto fbq
+      window.fbq = () => {
+        window.fbq.callMethod ? window.fbq.callMethod.apply(window.fbq, arguments) : window.fbq.queue.push(arguments)
+      }
+
+      if (!window._fbq) window._fbq = window.fbq
+      window.fbq.push = window.fbq
+      window.fbq.loaded = true
+      window.fbq.version = "2.0"
+      window.fbq.queue = []
+
+      // Adicionar o script ao documento
+      document.head.appendChild(script)
+    })
+  }
+
+  // Inicializar o Facebook Pixel
+  useEffect(() => {
+    if (initialized.current) return
+
+    const initPixel = async () => {
+      await loadFacebookPixel()
+
+      // Inicializar com o ID do Pixel
       window.fbq("init", "645764484878124")
+
+      // Registrar o evento PageView inicial
+      window.fbq("track", "PageView")
+
       initialized.current = true
     }
 
-    // Registrar o evento PageView a cada mudança de rota
-    if (typeof window.fbq === "function") {
-      window.fbq("track", "PageView")
-    }
+    initPixel()
+  }, [])
+
+  // Rastrear mudanças de página
+  useEffect(() => {
+    if (!initialized.current) return
+
+    // Pequeno atraso para garantir que o evento seja registrado após a mudança de página
+    const timer = setTimeout(() => {
+      if (typeof window.fbq === "function") {
+        window.fbq("track", "PageView")
+      }
+    }, 100)
+
+    return () => clearTimeout(timer)
   }, [pathname])
 
   return (

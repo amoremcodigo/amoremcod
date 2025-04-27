@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
-import { usePathname, useSearchParams } from "next/navigation"
+import { usePathname } from "next/navigation"
 
 declare global {
   interface Window {
@@ -13,7 +13,6 @@ declare global {
 export default function FacebookPixel() {
   const initialized = useRef(false)
   const pathname = usePathname()
-  const searchParams = useSearchParams()
 
   useEffect(() => {
     // Inicializar o Facebook Pixel apenas uma vez
@@ -39,22 +38,13 @@ export default function FacebookPixel() {
       // Inicializar com o ID do Pixel fornecido
       window.fbq("init", "645764484878124")
       initialized.current = true
-
-      // Registrar o evento PageView inicial
-      window.fbq("track", "PageView")
     }
-  }, [])
-
-  // Rastrear mudanças de página
-  useEffect(() => {
-    // Verificar se o fbq está disponível
-    if (typeof window.fbq !== "function") return
 
     // Registrar o evento PageView a cada mudança de rota
-    window.fbq("track", "PageView")
-
-    console.log("Facebook Pixel: PageView tracked for", pathname)
-  }, [pathname, searchParams])
+    if (typeof window.fbq === "function") {
+      window.fbq("track", "PageView")
+    }
+  }, [pathname])
 
   return (
     <>

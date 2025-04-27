@@ -95,6 +95,7 @@ export function Hero() {
                 size="lg"
                 className="gradient-bg text-lg px-8 py-6"
                 onClick={() => document.getElementById("formulario")?.scrollIntoView({ behavior: "smooth" })}
+                data-fb-event="CTA"
               >
                 Começar Agora
               </Button>

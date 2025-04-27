@@ -171,6 +171,13 @@ export function Formulario() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Adicione código para rastrear o evento de envio do formulário
+    if (window.trackFBEvent) {
+      // @ts-ignore
+      window.trackFBEvent("FormSubmit", { form_name: "criacao_pagina" })
+    }
+
     document.getElementById("planos")?.scrollIntoView({ behavior: "smooth" })
   }
 

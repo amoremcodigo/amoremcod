@@ -3,36 +3,9 @@ import { updatePaymentStatus, getPagesByEmail } from "@/lib/supabase"
 import { sendConfirmationEmail } from "@/lib/email"
 import { listRecentPages } from "@/lib/pages"
 
-// Verificar o token de autenticação
-const verifyToken = (request: Request): boolean => {
-  const url = new URL(request.url)
-  const token = url.searchParams.get("token")
-
-  // Verificar o token da requisição com o token configurado
-  const validToken = process.env.NEONPAY_WEBHOOK_TOKEN
-
-  if (token === validToken) {
-    return true
-  }
-
-  // Se não encontrou na URL, verificar no cabeçalho
-  const authHeader = request.headers.get("Authorization")
-  if (authHeader && authHeader.startsWith("Bearer ") && authHeader.substring(7) === validToken) {
-    return true
-  }
-
-  return false
-}
-
 export async function POST(request: Request) {
-  console.log("=== WEBHOOK DO NEONPAY RECEBIDO ===")
+  console.log("=== WEBHOOK DA KIWIFY RECEBIDO ===")
   console.log("URL completa:", request.url)
-
-  // Verificar o token
-  if (!verifyToken(request)) {
-    console.error("Token inválido ou não fornecido")
-    return NextResponse.json({ error: "Token inválido ou não fornecido" }, { status: 401 })
-  }
 
   try {
     // Obter o corpo da requisição como texto bruto
@@ -49,16 +22,18 @@ export async function POST(request: Request) {
       console.log("O corpo não é JSON válido, usando como texto bruto")
     }
 
-    // Extrair o email do cliente de várias possíveis localizações
+    // ACESSO DIRETO AO CAMPO EMAIL DO CUSTOMER
+    // Baseado na estrutura exata fornecida pelo usuário
     let customerEmail = null
 
     // Verificar todos os caminhos possíveis para o e-mail
     const possibleEmailPaths = [
+      webhookData.Customer?.email,
       webhookData.customer?.email,
-      webhookData.buyer?.email,
-      webhookData.user?.email,
-      webhookData.email,
+      webhookData.Customer?.Email,
+      webhookData.customer?.Email,
       webhookData.customer_email,
+      webhookData.email,
       webhookData.buyer_email,
       webhookData.user_email,
     ]
@@ -85,7 +60,7 @@ export async function POST(request: Request) {
     }
 
     // Extrair o status do pagamento
-    const status = webhookData.status || webhookData.payment_status || "paid"
+    const status = webhookData.order_status || webhookData.status || "paid"
     console.log(`Status do pagamento: ${status}`)
 
     // Se não temos o e-mail do cliente, não podemos continuar
@@ -173,7 +148,7 @@ export async function POST(request: Request) {
       status,
     })
   } catch (error) {
-    console.error("Erro ao processar webhook do NeonPay:", error)
+    console.error("Erro ao processar webhook da Kiwify:", error)
     return NextResponse.json(
       {
         error: "Erro interno do servidor",
@@ -186,6 +161,6 @@ export async function POST(request: Request) {
 
 // Adicionar suporte para GET para facilitar testes
 export async function GET(request: Request) {
-  console.log("=== WEBHOOK DO NEONPAY RECEBIDO VIA GET ===")
+  console.log("=== WEBHOOK DA KIWIFY RECEBIDO VIA GET ===")
   return POST(request)
 }

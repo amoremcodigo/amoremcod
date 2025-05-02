@@ -8,64 +8,18 @@ import { useFormContext } from "@/context/form-context"
 export function PricingPlans() {
   const { formData, updateFormData } = useFormContext()
 
-  // Função para selecionar o plano (apenas para preview)
+  // Modificar a função selectPlan para garantir que o redirecionamento funcione
   const selectPlan = (plan: "basic" | "premium") => {
     console.log(`Selecionando plano: ${plan}`)
     updateFormData({ plan })
 
-    // Rolar para a seção de preview
-    setTimeout(() => {
-      document.getElementById("preview")?.scrollIntoView({ behavior: "smooth" })
-    }, 100)
-  }
-
-  // Função separada para ir para o checkout
-  const goToCheckout = (plan: "basic" | "premium") => {
-    // Primeiro seleciona o plano para atualizar o estado
-    updateFormData({ plan })
-
-    // Redireciona para o checkout correspondente
+    // Redirecionar diretamente para o checkout da NeonPay
     if (plan === "premium") {
       window.location.href = "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=FO0XZT0"
-    } else {
+    } else if (plan === "basic") {
       window.location.href = "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=ZSC4E0P"
     }
   }
-
-  const plans = [
-    {
-      title: "Plano Premium",
-      price: "R$ 19,90",
-      originalPrice: "R$ 39,80",
-      discount: "50% OFF",
-      description: "Para eternizar momentos especiais",
-      features: [
-        { text: "Validade permanente", included: true },
-        { text: "Até 5 fotos", included: true },
-        { text: "Cronômetro dinâmico em tempo real", included: true },
-        { text: "Música do YouTube", included: true },
-        { text: "Atualizações gratuitas", included: true },
-      ],
-      popular: true,
-      id: "premium",
-      checkoutUrl: "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=FO0XZT0",
-    },
-    {
-      title: "Plano Básico",
-      price: "R$ 15,90",
-      description: "Perfeito para uma surpresa especial",
-      features: [
-        { text: "Validade de 1 ano", included: true },
-        { text: "1 foto", included: true },
-        { text: "Cronômetro dinâmico", included: true },
-        { text: "Música do YouTube", included: false },
-        { text: "Múltiplas fotos", included: false },
-      ],
-      popular: false,
-      id: "basic",
-      checkoutUrl: "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=ZSC4E0P",
-    },
-  ]
 
   return (
     <section className="w-full py-10 md:py-16 lg:py-20" id="planos">
@@ -81,7 +35,38 @@ export function PricingPlans() {
           </div>
         </div>
         <div className="mx-auto grid max-w-4xl grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 lg:gap-8 mt-8 md:mt-10">
-          {plans.map((plan, index) => (
+          {[
+            {
+              title: "Plano Premium",
+              price: "R$ 19,90",
+              originalPrice: "R$ 39,80",
+              discount: "50% OFF",
+              description: "Para eternizar momentos especiais",
+              features: [
+                { text: "Validade permanente", included: true },
+                { text: "Até 5 fotos", included: true },
+                { text: "Cronômetro dinâmico em tempo real", included: true },
+                { text: "Música do YouTube", included: true },
+                { text: "Atualizações gratuitas", included: true },
+              ],
+              popular: true,
+              id: "premium",
+            },
+            {
+              title: "Plano Básico",
+              price: "R$ 15,90",
+              description: "Perfeito para uma surpresa especial",
+              features: [
+                { text: "Validade de 1 ano", included: true },
+                { text: "1 foto", included: true },
+                { text: "Cronômetro dinâmico", included: true },
+                { text: "Música do YouTube", included: false },
+                { text: "Múltiplas fotos", included: false },
+              ],
+              popular: false,
+              id: "basic",
+            },
+          ].map((plan, index) => (
             <Card
               key={index}
               className={`flex flex-col relative ${plan.popular && formData.plan !== plan.id ? "border-gray-800" : ""} ${
@@ -126,18 +111,17 @@ export function PricingPlans() {
                   ))}
                 </ul>
               </CardContent>
+              {/* Substituir o CardFooter com o botão para usar um link direto */}
               <CardFooter className="px-4 py-3 sm:px-6 sm:py-4">
-                <a href={plan.checkoutUrl} className="w-full">
-                  <Button
-                    className={`w-full ${plan.popular ? "gradient-bg" : ""} ${formData.plan === plan.id ? "bg-primary" : ""}`}
-                    onClick={(e) => {
-                      e.stopPropagation() // Impede que o evento se propague para o card
-                      selectPlan(plan.id as "basic" | "premium")
-                    }}
-                  >
-                    {formData.plan === plan.id ? "Finalizar Compra" : "Escolher Plano"}
-                  </Button>
-                </a>
+                <Button
+                  className={`w-full ${plan.popular ? "gradient-bg" : ""} ${formData.plan === plan.id ? "bg-primary" : ""}`}
+                  onClick={(e) => {
+                    e.stopPropagation() // Impede que o evento se propague para o card
+                    selectPlan(plan.id as "basic" | "premium")
+                  }}
+                >
+                  {formData.plan === plan.id ? "Finalizar Compra" : "Escolher Plano"}
+                </Button>
               </CardFooter>
             </Card>
           ))}

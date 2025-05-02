@@ -1,346 +1,472 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useRef, useEffect } from "react"
-import { useFormContext } from "@/context/form-context"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Loader2, Upload, X, Check, AlertCircle } from "lucide-react"
-import { PreviewSite } from "@/components/preview-site"
-import { PricingPlans } from "@/components/pricing-plans"
-import { nanoid } from "nanoid"
+import { X, Info, ImageIcon, Music } from "lucide-react"
+import { useFormContext } from "@/context/form-context"
+
+// Função para capitalizar a primeira letra de cada palavra e substituir "e" por "&"
+const capitalizeWords = (text: string): string => {
+  if (!text) return text
+
+  // Primeiro, substituir " e " por " & " (com espaços ao redor)
+  const processedText = text.replace(/\s+e\s+/gi, " & ")
+
+  return processedText
+    .split(" ")
+    .map((word) => {
+      // Trata palavras com caracteres especiais como "&" ou "-"
+      return word
+        .split(/([&-])/)
+        .map((part) => {
+          // Se for um separador, retorna ele mesmo
+          if (part === "&" || part === "-") return part
+          // Se for uma palavra, capitaliza a primeira letra
+          return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+        })
+        .join("")
+    })
+    .join(" ")
+}
+
+// Função para comprimir a imagem
+const compressImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+
+    reader.onload = (event) => {
+      const img = new Image()
+      img.src = event.target?.result as string
+
+      img.onload = () => {
+        // Criar um canvas para redimensionar a imagem
+        const canvas = document.createElement("canvas")
+        const MAX_WIDTH = 800
+        const MAX_HEIGHT = 800
+
+        let width = img.width
+        let height = img.height
+
+        // Calcular as novas dimensões mantendo a proporção
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height = Math.round((height * MAX_WIDTH) / width)
+            width = MAX_WIDTH
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width = Math.round((width * MAX_HEIGHT) / height)
+            height = MAX_HEIGHT
+          }
+        }
+
+        canvas.width = width
+        canvas.height = height
+
+        // Desenhar a imagem redimensionada no canvas
+        const ctx = canvas.getContext("2d")
+        ctx?.drawImage(img, 0, 0, width, height)
+
+        // Converter para base64 com qualidade reduzida
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.7)
+
+        // Verificar o tamanho da imagem comprimida
+        const sizeInKB = Math.round(dataUrl.length / 1024)
+        console.log(`Imagem comprimida: ${sizeInKB}KB`)
+
+        resolve(dataUrl)
+      }
+
+      img.onerror = () => {
+        reject(new Error("Erro ao carregar a imagem"))
+      }
+    }
+
+    reader.onerror = () => {
+      reject(new Error("Erro ao ler o arquivo"))
+    }
+  })
+}
 
 export function Formulario() {
-  const { formData, updateFormData, resetForm } = useFormContext()
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [submitError, setSubmitError] = useState<string | null>(null)
-  const [submitSuccess, setSubmitSuccess] = useState(false)
-  const [activeTab, setActiveTab] = useState("informacoes")
-  const [photoFiles, setPhotoFiles] = useState<File[]>([])
-  const [photoUrls, setPhotoUrls] = useState<string[]>([])
-  const [uploadingPhotos, setUploadingPhotos] = useState(false)
-  const [photoUploadError, setPhotoUploadError] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const { formData, updateFormData, addPhoto, removePhoto, updatePhotos } = useFormContext()
+  const [photoPreview, setPhotoPreview] = useState<(string | null)[]>([null, null, null, null, null])
+  const [isUploading, setIsUploading] = useState<boolean[]>([false, false, false, false, false])
+  const [uploadError, setUploadError] = useState<(string | null)[]>([null, null, null, null, null])
+  const [charCount, setCharCount] = useState(0)
+  const MAX_CHARS = 500
+  const fileInputRefs = [
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+  ]
 
-  // Gerar um ID único para a página quando o componente é montado
+  // Inicializar com as fotos existentes, se houver
   useEffect(() => {
-    if (!formData.pageId) {
-      const pageId = nanoid(8) // Gera um ID curto e único
-      updateFormData({ pageId })
-      // Salvar o ID no localStorage para recuperação posterior
-      localStorage.setItem("lastPageId", pageId)
-    }
-  }, [formData.pageId, updateFormData])
+    const newPhotoPreview = [...photoPreview]
 
-  // Atualizar as URLs das fotos no formData quando photoUrls mudar
-  useEffect(() => {
-    if (photoUrls.length > 0) {
-      updateFormData({ photoUrls })
-    }
-  }, [photoUrls, updateFormData])
+    formData.photos.forEach((photo, index) => {
+      if (photo && photo.startsWith("data:image")) {
+        newPhotoPreview[index] = photo
+      }
+    })
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    updateFormData({ [name]: value })
+    setPhotoPreview(newPhotoPreview)
+
+    // Inicializar o contador de caracteres
+    setCharCount(formData.message.length)
+  }, [formData.photos, formData.message])
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { id, value } = e.target
+
+    // Se for o campo de nomes do casal, capitalizar as primeiras letras e substituir "e" por "&"
+    if (id === "coupleNames") {
+      updateFormData({ [id]: capitalizeWords(value) })
+    }
+    // Se for o campo de mensagem, verificar o limite de caracteres
+    else if (id === "message") {
+      if (value.length <= MAX_CHARS) {
+        updateFormData({ [id]: value })
+        setCharCount(value.length)
+      }
+    } else {
+      updateFormData({ [id]: value })
+    }
   }
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { value } = e.target
+
+    // Verificar se o valor é uma data válida
+    if (value) {
+      const [year, month, day] = value.split("-")
+
+      // Verificar se o ano tem mais de 4 dígitos
+      if (year && year.length > 4) {
+        // Limitar o ano para 4 dígitos
+        const limitedYear = year.substring(0, 4)
+        const formattedDate = `${limitedYear}-${month}-${day}`
+
+        // Atualizar o valor do input
+        e.target.value = formattedDate
+
+        // Atualizar o estado
+        updateFormData({ date: formattedDate })
+        return
+      }
+    }
+
+    // Se não precisar de correção, atualizar normalmente
+    updateFormData({ date: value })
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    document.getElementById("planos")?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  // Função simplificada para lidar com o upload de fotos
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>, startIndex: number) => {
     const files = e.target.files
     if (!files || files.length === 0) return
 
-    // Verificar o número máximo de fotos com base no plano
-    const maxPhotos = formData.plan === "premium" ? 5 : 1
-    if (photoFiles.length + files.length > maxPhotos) {
-      setPhotoUploadError(
-        `Você pode enviar no máximo ${maxPhotos} foto${maxPhotos > 1 ? "s" : ""} no plano ${formData.plan === "premium" ? "Premium" : "Básico"}.`,
+    console.log(`Processando ${files.length} fotos a partir do índice ${startIndex}`)
+
+    // Verificar quantas fotos já existem
+    const existingPhotosCount = formData.photos.filter((photo) => photo !== "").length
+
+    // Criar cópias dos estados atuais
+    const newIsUploading = [...isUploading]
+    const newUploadError = [...uploadError]
+    const newPhotoPreview = [...photoPreview]
+    const newPhotos = [...formData.photos]
+
+    // Verificar se ultrapassará o limite de 5 fotos
+    if (existingPhotosCount + files.length > 5) {
+      const remainingSlots = Math.max(0, 5 - existingPhotosCount)
+      alert(
+        `Você só pode adicionar até 5 fotos no total. ${remainingSlots > 0 ? `Você ainda pode adicionar ${remainingSlots} foto(s).` : "Você já atingiu o limite de fotos."}`,
       )
-      return
+
+      // Se não houver slots restantes, retornar
+      if (remainingSlots <= 0) return
     }
 
-    setUploadingPhotos(true)
-    setPhotoUploadError(null)
+    // Processar cada arquivo
+    for (let i = 0; i < files.length; i++) {
+      const currentIndex = startIndex + i
 
-    try {
-      // Adicionar os novos arquivos à lista
-      const newFiles = Array.from(files)
-      setPhotoFiles((prev) => [...prev, ...newFiles])
+      // Parar se atingirmos o máximo de 5 fotos
+      if (currentIndex >= 5) {
+        console.log(`Limite de 5 fotos atingido. Ignorando fotos adicionais.`)
+        break
+      }
 
-      // Converter os arquivos para URLs de dados para preview
-      const newUrls = await Promise.all(
-        newFiles.map((file) => {
-          return new Promise<string>((resolve) => {
-            const reader = new FileReader()
-            reader.onload = (e) => resolve(e.target?.result as string)
-            reader.readAsDataURL(file)
-          })
-        }),
-      )
+      // Verificar se já atingimos o limite total de 5 fotos
+      const currentTotalPhotos = newPhotos.filter((photo) => photo !== "").length
+      if (currentTotalPhotos >= 5) {
+        console.log(`Limite total de 5 fotos atingido.`)
+        break
+      }
 
-      // Adicionar as novas URLs à lista
-      setPhotoUrls((prev) => [...prev, ...newUrls])
-    } catch (error) {
-      console.error("Erro ao processar as fotos:", error)
-      setPhotoUploadError("Ocorreu um erro ao processar as fotos. Por favor, tente novamente.")
-    } finally {
-      setUploadingPhotos(false)
-      // Limpar o input de arquivo para permitir o upload do mesmo arquivo novamente
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ""
+      const file = files[i]
+      console.log(`Processando foto ${i + 1}/${files.length} para o slot ${currentIndex + 1}`)
+
+      // Atualizar estado de carregamento
+      newIsUploading[currentIndex] = true
+      setIsUploading([...newIsUploading])
+
+      // Limpar erro anterior
+      newUploadError[currentIndex] = null
+      setUploadError([...newUploadError])
+
+      try {
+        // Verificar o tamanho do arquivo
+        const fileSizeMB = file.size / (1024 * 1024)
+        if (fileSizeMB > 5) {
+          console.error(`Arquivo muito grande (${fileSizeMB.toFixed(1)}MB) para o slot ${currentIndex + 1}`)
+          newUploadError[currentIndex] = `Arquivo muito grande (${fileSizeMB.toFixed(1)}MB). O tamanho máximo é 5MB.`
+          setUploadError([...newUploadError])
+          continue
+        }
+
+        // Criar URL para preview
+        const objectUrl = URL.createObjectURL(file)
+        newPhotoPreview[currentIndex] = objectUrl
+        setPhotoPreview([...newPhotoPreview])
+
+        // Comprimir a imagem
+        const compressedImage = await compressImage(file)
+
+        // Adicionar a foto ao array
+        newPhotos[currentIndex] = compressedImage
+
+        console.log(`Foto ${currentIndex + 1} processada com sucesso`)
+      } catch (error) {
+        console.error(`Erro ao processar imagem ${currentIndex + 1}:`, error)
+        newUploadError[currentIndex] = "Erro ao processar a imagem."
+        setUploadError([...newUploadError])
+      } finally {
+        // Finalizar o carregamento
+        newIsUploading[currentIndex] = false
+        setIsUploading([...newIsUploading])
       }
     }
+
+    // Atualizar todas as fotos de uma vez
+    updatePhotos(newPhotos)
+
+    console.log(`Processamento de múltiplas fotos concluído`)
   }
 
   const handleRemovePhoto = (index: number) => {
-    setPhotoFiles((prev) => prev.filter((_, i) => i !== index))
-    setPhotoUrls((prev) => {
-      const newUrls = prev.filter((_, i) => i !== index)
-      return newUrls
-    })
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    setSubmitError(null)
-    setSubmitSuccess(false)
-
-    // Validar os campos obrigatórios
-    if (!formData.coupleNames || !formData.email || !formData.message || photoUrls.length === 0) {
-      setSubmitError("Por favor, preencha todos os campos obrigatórios e envie pelo menos uma foto.")
-      setIsSubmitting(false)
-      return
+    // Limpar o input de arquivo
+    if (fileInputRefs[index].current) {
+      fileInputRefs[index].current.value = ""
     }
 
-    try {
-      // Preparar os dados para envio
-      const pageData = {
-        ...formData,
-        photoUrls,
-        pageUrl: `${window.location.origin}/pagina/${formData.pageId}`,
-      }
-
-      // Enviar os dados para a API
-      const response = await fetch("/api/save-page", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(pageData),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Erro ao salvar a página")
-      }
-
-      // Sucesso!
-      setSubmitSuccess(true)
-
-      // Redirecionar para a página de checkout com base no plano selecionado
-      const checkoutUrl =
-        formData.plan === "premium"
-          ? "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=FO0XZT0"
-          : "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=ZSC4E0P"
-
-      window.location.href = checkoutUrl
-    } catch (error) {
-      console.error("Erro ao enviar o formulário:", error)
-      setSubmitError(error instanceof Error ? error.message : "Ocorreu um erro ao processar sua solicitação.")
-    } finally {
-      setIsSubmitting(false)
+    // Remover preview
+    const newPhotoPreview = [...photoPreview]
+    if (newPhotoPreview[index]) {
+      URL.revokeObjectURL(newPhotoPreview[index] as string)
+      newPhotoPreview[index] = null
+      setPhotoPreview(newPhotoPreview)
     }
-  }
 
-  const handleTabChange = (value: string) => {
-    setActiveTab(value)
+    // Limpar erro
+    const newUploadError = [...uploadError]
+    newUploadError[index] = null
+    setUploadError(newUploadError)
+
+    // Atualizar o contexto
+    removePhoto(index)
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 py-8">
-      <Tabs defaultValue="informacoes" value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-8">
-          <TabsTrigger value="informacoes">Informações</TabsTrigger>
-          <TabsTrigger value="planos">Planos</TabsTrigger>
-          <TabsTrigger value="preview" id="preview">
-            Preview
-          </TabsTrigger>
-        </TabsList>
+    <section className="w-full py-16 md:py-20" id="formulario">
+      <div className="container px-4 md:px-6">
+        <div className="flex flex-col items-center justify-center space-y-4 text-center mb-10">
+          <div className="space-y-2">
+            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+              Crie sua <span className="gradient-text">página personalizada</span>
+            </h2>
+            <p className="mx-auto max-w-[700px] text-gray-400 md:text-xl">
+              Preencha os dados abaixo para criar uma página especial para alguém importante em sua vida.
+            </p>
+          </div>
+        </div>
 
-        <TabsContent value="informacoes" className="space-y-4">
-          <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="coupleNames">Nome do Casal</Label>
-                <Input
-                  id="coupleNames"
-                  name="coupleNames"
-                  placeholder="Ex: Maria & João"
-                  value={formData.coupleNames}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="date">Juntos desde</Label>
-                <Input id="date" name="date" type="date" value={formData.date || ""} onChange={handleInputChange} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  required
-                />
-                <p className="text-xs text-gray-400">Usaremos para enviar o QR Code e Link da sua página</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="youtubeLink">Link do YouTube (opcional)</Label>
-                <Input
-                  id="youtubeLink"
-                  name="youtubeLink"
-                  placeholder="https://www.youtube.com/watch?v=..."
-                  value={formData.youtubeLink || ""}
-                  onChange={handleInputChange}
-                />
-                <p className="text-xs text-gray-400">Música que tocará ao abrir a página</p>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="message">Mensagem</Label>
-              <Textarea
-                id="message"
-                name="message"
-                placeholder="Escreva uma mensagem especial..."
-                value={formData.message}
-                onChange={handleInputChange}
-                rows={5}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Fotos (máx. {formData.plan === "premium" ? "5" : "1"})</Label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-2">
-                {photoUrls.map((url, index) => (
-                  <div key={index} className="relative aspect-square rounded-md overflow-hidden border border-gray-700">
-                    <img
-                      src={url || "/placeholder.svg"}
-                      alt={`Foto ${index + 1}`}
-                      className="w-full h-full object-cover"
+        <div className="mx-auto max-w-3xl">
+          <Card className="border-gray-800 bg-black/50">
+            <form onSubmit={handleSubmit}>
+              <CardHeader>
+                <CardTitle>Informações</CardTitle>
+                <CardDescription>Preencha os dados básicos para personalizar sua página.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Seu E-mail</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                  />
+                  <p className="text-xs text-gray-400">Usaremos para enviar o QR Code e Link da sua página.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="coupleNames">Nomes</Label>
+                  <Input
+                    id="coupleNames"
+                    placeholder="Ex: Maria & João, Família Silva, Eu & Rex..."
+                    value={formData.coupleNames}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="date">Juntos desde</Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      value={formData.date}
+                      onChange={handleDateChange}
+                      required
+                      className="bg-transparent"
+                      placeholder="dd/mm/aaaa"
+                      max="9999-12-31" // Adicionar limite máximo para o ano
                     />
-                    <button
-                      type="button"
-                      onClick={() => handleRemovePhoto(index)}
-                      className="absolute top-1 right-1 bg-black bg-opacity-70 rounded-full p-1"
-                      aria-label="Remover foto"
-                    >
-                      <X className="h-4 w-4 text-white" />
-                    </button>
                   </div>
-                ))}
-
-                {photoUrls.length < (formData.plan === "premium" ? 5 : 1) && (
-                  <div className="aspect-square rounded-md border border-dashed border-gray-700 flex flex-col items-center justify-center p-4">
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handlePhotoUpload}
-                      accept="image/*"
-                      className="hidden"
-                      disabled={uploadingPhotos}
+                  <div className="space-y-2">
+                    <Label htmlFor="time">Horário (opcional)</Label>
+                    <Input
+                      id="time"
+                      type="time"
+                      value={formData.time}
+                      onChange={handleChange}
+                      className="bg-transparent"
+                      placeholder="--:--"
                     />
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex flex-col items-center justify-center w-full h-full"
-                      disabled={uploadingPhotos}
-                    >
-                      {uploadingPhotos ? (
-                        <Loader2 className="h-6 w-6 text-primary animate-spin" />
-                      ) : (
-                        <Upload className="h-6 w-6 text-gray-400 mb-2" />
-                      )}
-                      <span className="text-xs text-gray-400 text-center">
-                        {uploadingPhotos ? "Enviando..." : "Adicionar foto"}
-                      </span>
-                    </button>
                   </div>
-                )}
-              </div>
-              {photoUploadError && (
-                <p className="text-sm text-red-500 mt-2 flex items-center">
-                  <AlertCircle className="h-4 w-4 mr-1" />
-                  {photoUploadError}
-                </p>
-              )}
-            </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <Label htmlFor="message">Mensagem Especial</Label>
+                    <span className={`text-xs ${charCount > MAX_CHARS * 0.9 ? "text-amber-500" : "text-gray-400"}`}>
+                      {charCount}/{MAX_CHARS}
+                    </span>
+                  </div>
+                  <Textarea
+                    id="message"
+                    placeholder="Escreva uma mensagem especial para seu amor..."
+                    className="min-h-[120px]"
+                    value={formData.message}
+                    onChange={handleChange}
+                    required
+                    maxLength={MAX_CHARS}
+                  />
+                </div>
 
-            <div className="flex justify-end">
-              <Button type="button" onClick={() => setActiveTab("planos")}>
-                Próximo: Escolher Plano
-              </Button>
-            </div>
-          </form>
-        </TabsContent>
+                <div className="space-y-2">
+                  <Label htmlFor="youtubeLink">Link da Música no YouTube (opcional)</Label>
+                  <Input
+                    id="youtubeLink"
+                    placeholder="Ex: https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                    value={formData.youtubeLink}
+                    onChange={handleChange}
+                  />
+                  <div className="mt-1 text-sm flex items-center gap-1 whitespace-nowrap">
+                    <a
+                      href="https://www.youtube.com.br"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:text-primary/80 font-medium flex items-center gap-1"
+                    >
+                      <Music className="h-4 w-4" />
+                      Ir para o YouTube
+                    </a>
+                  </div>
+                </div>
 
-        <TabsContent value="planos">
-          <PricingPlans />
-        </TabsContent>
+                <div className="space-y-2">
+                  <Label>
+                    Fotos <span className="text-xs text-gray-400 ml-2">(máximo 5 fotos)</span>
+                  </Label>
 
-        <TabsContent value="preview" id="preview-tab">
-          <div className="space-y-8">
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="text-xl font-bold mb-4">Preview da sua página</h3>
-                <div className="bg-gray-900 rounded-lg overflow-hidden border border-gray-800">
-                  <PreviewSite />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    {/* Repetir para cada slot de foto */}
+                    {[0, 1, 2, 3, 4].map((index) => (
+                      <div key={index} className="space-y-1">
+                        <div className="border-2 border-dashed border-gray-700 rounded-lg p-2 flex flex-col items-center justify-center h-40 hover:border-primary transition-colors relative">
+                          {isUploading[index] ? (
+                            <div className="flex flex-col items-center justify-center h-full">
+                              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mb-2"></div>
+                              <p className="text-gray-400 text-xs">Processando...</p>
+                            </div>
+                          ) : photoPreview[index] ? (
+                            <div className="w-full h-full relative">
+                              <img
+                                src={photoPreview[index] || "/placeholder.svg"}
+                                alt={`Foto ${index + 1} do casal`}
+                                className="w-full h-full object-cover rounded-lg"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleRemovePhoto(index)}
+                                className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1 text-white"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="file-input-wrapper flex flex-col items-center justify-center w-full h-full">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                onChange={(e) => handlePhotoUpload(e, index)}
+                                ref={fileInputRefs[index]}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                              />
+                              <ImageIcon className="h-8 w-8 text-gray-500 mb-2" />
+                              <p className="text-center text-gray-400 text-xs">
+                                {index === 0 ? "Foto principal (obrigatória)" : `Foto ${index + 1} (opcional)`}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        {uploadError[index] && (
+                          <div className="flex items-center text-amber-500 text-xs">
+                            <Info className="h-3 w-3 mr-1 flex-shrink-0" />
+                            <span>{uploadError[index]}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </CardContent>
-            </Card>
-
-            <div className="space-y-4">
-              <Button className="w-full gradient-bg text-lg py-6" onClick={handleSubmit} disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Processando...
-                  </>
-                ) : (
-                  "Finalizar e Ir para Pagamento"
-                )}
-              </Button>
-
-              {submitError && (
-                <div className="bg-red-900/30 border border-red-800 rounded-md p-4 text-red-400 text-sm flex items-start">
-                  <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
-                  <span>{submitError}</span>
-                </div>
-              )}
-
-              {submitSuccess && (
-                <div className="bg-green-900/30 border border-green-800 rounded-md p-4 text-green-400 text-sm flex items-start">
-                  <Check className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
-                  <span>Sua página foi criada com sucesso! Redirecionando para o pagamento...</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </TabsContent>
-      </Tabs>
-    </div>
+              <CardFooter className="flex flex-col gap-4">
+                <Button type="submit" className="w-full gradient-bg">
+                  Continuar para Escolher o Plano
+                </Button>
+              </CardFooter>
+            </form>
+          </Card>
+        </div>
+      </div>
+    </section>
   )
 }

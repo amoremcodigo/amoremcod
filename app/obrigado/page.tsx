@@ -43,13 +43,12 @@ export default function ObrigadoPage() {
     return () => clearTimeout(timer)
   }, [pageId, checkCount, paymentStatus])
 
-  // Atualizar a função checkPaymentStatus para usar a API da NeonPay em vez da Kiwify
   const checkPaymentStatus = async (id: string) => {
     setIsLoading(true)
     setError(null)
 
     try {
-      const response = await fetch(`/api/neonpay/check-payment?pageId=${id}`)
+      const response = await fetch(`/api/kiwify/check-payment?pageId=${id}`)
       const data = await response.json()
 
       if (!response.ok) {

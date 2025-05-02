@@ -10,7 +10,7 @@ import { Footer } from "@/components/footer"
 import { PromoBar } from "@/components/promo-bar"
 import { Loader2 } from "lucide-react"
 
-export default function TesteNeonPayPage() {
+export default function TesteKiwifyPage() {
   const [pageId, setPageId] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [result, setResult] = useState<any>(null)
@@ -27,7 +27,7 @@ export default function TesteNeonPayPage() {
     setResult(null)
 
     try {
-      const response = await fetch(`/api/neonpay/check-payment?pageId=${pageId}`)
+      const response = await fetch(`/api/kiwify/check-payment?pageId=${pageId}`)
       const data = await response.json()
 
       if (!response.ok) {
@@ -51,10 +51,10 @@ export default function TesteNeonPayPage() {
         <div className="mx-auto max-w-3xl">
           <div className="mb-8 text-center">
             <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
-              Teste da <span className="gradient-text">API da NeonPay</span>
+              Teste da <span className="gradient-text">API da Kiwify</span>
             </h1>
             <p className="mt-4 text-gray-400">
-              Esta página permite testar a integração com a API da NeonPay para verificar o status de pagamentos.
+              Esta página permite testar a integração com a API da Kiwify para verificar o status de pagamentos.
             </p>
           </div>
 

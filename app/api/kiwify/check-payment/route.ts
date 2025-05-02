@@ -1,16 +1,25 @@
 import { NextResponse } from "next/server"
 import { updatePaymentStatus, getPageById } from "@/lib/supabase"
 
-export async function POST(request: Request) {
+export async function GET(request: Request) {
   try {
-    // Extrair dados do corpo da requisição
-    const { pageId } = await request.json()
+    // Obter o ID da página da query string
+    const url = new URL(request.url)
+    const pageId = url.searchParams.get("pageId")
 
     if (!pageId) {
       return NextResponse.json({ error: "ID da página não fornecido" }, { status: 400 })
     }
 
-    console.log(`Verificando status de pagamento para página ${pageId}`)
+    console.log(`Verificando pagamento para página ${pageId}`)
+
+    // Obter a chave de API da Kiwify
+    const kiwifyApiKey = process.env.KIWIFY_API_KEY
+
+    if (!kiwifyApiKey) {
+      console.error("Chave de API da Kiwify não configurada")
+      return NextResponse.json({ error: "Configuração de API ausente" }, { status: 500 })
+    }
 
     // Buscar os dados da página no Supabase
     const pageData = await getPageById(pageId)
@@ -20,43 +29,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Página não encontrada" }, { status: 404 })
     }
 
-    // Verificar o status atual
-    const currentStatus = pageData.payment_status || "pending"
-
-    // Se já estiver pago, não precisa verificar novamente
-    if (currentStatus === "approved" || currentStatus === "paid") {
-      return NextResponse.json({
-        success: true,
-        status: currentStatus,
-        message: "Pagamento já confirmado",
-      })
-    }
-
-    // Obter a chave de API da NeonPay
-    const neonpayApiKey = process.env.NEONPAY_API_KEY
-
-    if (!neonpayApiKey) {
-      console.error("Chave de API da NeonPay não configurada")
-      return NextResponse.json({ error: "Configuração de API ausente" }, { status: 500 })
-    }
-
-    // Verificar o status do pagamento na API da NeonPay
-    // Usando a API real da NeonPay com a chave fornecida
-    const response = await fetch(`https://api.neonpay.com.br/v1/sales?reference=${pageId}`, {
+    // Verificar o status do pagamento na API da Kiwify
+    // Usando a API real da Kiwify com a chave fornecida
+    const response = await fetch(`https://api.kiwify.com.br/v1/sales?reference=${pageId}`, {
       headers: {
-        Authorization: `Bearer ${neonpayApiKey}`,
+        Authorization: `Bearer ${kiwifyApiKey}`,
         "Content-Type": "application/json",
       },
     })
 
     if (!response.ok) {
-      console.error(`Erro ao consultar API da NeonPay: ${response.status} ${response.statusText}`)
+      console.error(`Erro ao consultar API da Kiwify: ${response.status} ${response.statusText}`)
       const errorText = await response.text()
       console.error(`Resposta de erro: ${errorText}`)
 
       return NextResponse.json(
         {
-          error: "Erro ao consultar API da NeonPay",
+          error: "Erro ao consultar API da Kiwify",
           status: response.status,
           details: errorText,
         },
@@ -65,7 +54,7 @@ export async function POST(request: Request) {
     }
 
     const data = await response.json()
-    console.log("Resposta da API da NeonPay:", JSON.stringify(data, null, 2))
+    console.log("Resposta da API da Kiwify:", JSON.stringify(data, null, 2))
 
     // Verificar se encontrou alguma transação
     if (!data.data || data.data.length === 0) {
@@ -79,15 +68,6 @@ export async function POST(request: Request) {
     // Obter a transação mais recente
     const transaction = data.data[0]
     const paymentStatus = transaction.status
-
-    // Se o status não mudou, retornar o status atual
-    if (paymentStatus === currentStatus) {
-      return NextResponse.json({
-        success: true,
-        status: paymentStatus,
-        message: "Status não alterado",
-      })
-    }
 
     // Atualizar o status no Supabase
     await updatePaymentStatus(pageId, paymentStatus)
@@ -122,7 +102,6 @@ export async function POST(request: Request) {
       success: true,
       status: paymentStatus,
       pageId: pageId,
-      message: "Status atualizado com sucesso",
     })
   } catch (error) {
     console.error("Erro ao verificar pagamento:", error)

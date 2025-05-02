@@ -8,17 +8,14 @@ import { useFormContext } from "@/context/form-context"
 export function PricingPlans() {
   const { formData, updateFormData } = useFormContext()
 
-  // Modificar a função selectPlan para garantir que o redirecionamento funcione
   const selectPlan = (plan: "basic" | "premium") => {
     console.log(`Selecionando plano: ${plan}`)
     updateFormData({ plan })
 
-    // Redirecionar diretamente para o checkout da NeonPay
-    if (plan === "premium") {
-      window.location.href = "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=FO0XZT0"
-    } else if (plan === "basic") {
-      window.location.href = "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=ZSC4E0P"
-    }
+    // Rolar para a seção de preview
+    setTimeout(() => {
+      document.getElementById("preview")?.scrollIntoView({ behavior: "smooth" })
+    }, 100)
   }
 
   return (
@@ -111,16 +108,11 @@ export function PricingPlans() {
                   ))}
                 </ul>
               </CardContent>
-              {/* Substituir o CardFooter com o botão para usar um link direto */}
               <CardFooter className="px-4 py-3 sm:px-6 sm:py-4">
                 <Button
                   className={`w-full ${plan.popular ? "gradient-bg" : ""} ${formData.plan === plan.id ? "bg-primary" : ""}`}
-                  onClick={(e) => {
-                    e.stopPropagation() // Impede que o evento se propague para o card
-                    selectPlan(plan.id as "basic" | "premium")
-                  }}
                 >
-                  {formData.plan === plan.id ? "Finalizar Compra" : "Escolher Plano"}
+                  {formData.plan === plan.id ? "Plano Selecionado" : "Escolher Plano"}
                 </Button>
               </CardFooter>
             </Card>

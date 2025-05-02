@@ -111,6 +111,19 @@ export function PricingPlans() {
               <CardFooter className="px-4 py-3 sm:px-6 sm:py-4">
                 <Button
                   className={`w-full ${plan.popular ? "gradient-bg" : ""} ${formData.plan === plan.id ? "bg-primary" : ""}`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    selectPlan(plan.id as "basic" | "premium")
+
+                    // Redirecionar para o checkout apropriado após selecionar o plano
+                    if (plan.id === "premium") {
+                      window.location.href =
+                        "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=FO0XZT0"
+                    } else if (plan.id === "basic") {
+                      window.location.href =
+                        "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=ZSC4E0P"
+                    }
+                  }}
                 >
                   {formData.plan === plan.id ? "Plano Selecionado" : "Escolher Plano"}
                 </Button>

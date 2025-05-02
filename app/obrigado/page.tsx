@@ -48,14 +48,15 @@ export default function ObrigadoPage() {
     setError(null)
 
     try {
-      const response = await fetch(`/api/kiwify/check-payment?pageId=${id}`)
+      // Verificar o status diretamente no banco de dados
+      const response = await fetch(`/api/pages/${id}`)
       const data = await response.json()
 
       if (!response.ok) {
         throw new Error(data.error || "Erro ao verificar pagamento")
       }
 
-      setPaymentStatus(data.status)
+      setPaymentStatus(data.payment_status)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro desconhecido")
     } finally {

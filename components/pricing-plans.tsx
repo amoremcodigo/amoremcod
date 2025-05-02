@@ -8,7 +8,8 @@ import { useFormContext } from "@/context/form-context"
 export function PricingPlans() {
   const { formData, updateFormData } = useFormContext()
 
-  const selectPlan = (plan: "basic" | "premium") => {
+  // Modifique a função selectPlan para incluir um parâmetro opcional redirectToCheckout
+  const selectPlan = (plan: "basic" | "premium", redirectToCheckout = false) => {
     console.log(`Selecionando plano: ${plan}`)
     updateFormData({ plan })
 
@@ -16,6 +17,15 @@ export function PricingPlans() {
     setTimeout(() => {
       document.getElementById("preview")?.scrollIntoView({ behavior: "smooth" })
     }, 100)
+
+    // Redirecionar para o checkout se solicitado
+    if (redirectToCheckout) {
+      if (plan === "premium") {
+        window.location.href = "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=FO0XZT0"
+      } else if (plan === "basic") {
+        window.location.href = "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=ZSC4E0P"
+      }
+    }
   }
 
   return (
@@ -108,24 +118,16 @@ export function PricingPlans() {
                   ))}
                 </ul>
               </CardContent>
+              {/* Substitua o CardFooter com o botão para incluir o redirecionamento */}
               <CardFooter className="px-4 py-3 sm:px-6 sm:py-4">
                 <Button
                   className={`w-full ${plan.popular ? "gradient-bg" : ""} ${formData.plan === plan.id ? "bg-primary" : ""}`}
                   onClick={(e) => {
-                    e.stopPropagation()
-                    selectPlan(plan.id as "basic" | "premium")
-
-                    // Redirecionar para o checkout apropriado após selecionar o plano
-                    if (plan.id === "premium") {
-                      window.location.href =
-                        "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=FO0XZT0"
-                    } else if (plan.id === "basic") {
-                      window.location.href =
-                        "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=ZSC4E0P"
-                    }
+                    e.stopPropagation() // Impede que o evento se propague para o card
+                    selectPlan(plan.id as "basic" | "premium", true) // Passa true para redirecionar
                   }}
                 >
-                  {formData.plan === plan.id ? "Plano Selecionado" : "Escolher Plano"}
+                  {formData.plan === plan.id ? "Finalizar Compra" : "Escolher Plano"}
                 </Button>
               </CardFooter>
             </Card>

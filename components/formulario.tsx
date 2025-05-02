@@ -323,7 +323,7 @@ export function Formulario() {
                     onChange={handleChange}
                     required
                   />
-                  <p className="text-xs text-gray-400">Usaremos para enviar o QR Code e Link da sua página.</p>
+                  <p className="text-xs text-gray-400">Usaremos para enviar o QR Code da sua página.</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="coupleNames">Nomes</Label>
@@ -337,7 +337,7 @@ export function Formulario() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="date">Juntos desde</Label>
+                    <Label htmlFor="date">Data de Início</Label>
                     <Input
                       id="date"
                       type="date"

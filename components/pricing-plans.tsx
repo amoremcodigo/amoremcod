@@ -18,11 +18,6 @@ export function PricingPlans() {
     }, 100)
   }
 
-  const checkoutLinks = {
-    premium: "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=FO0XZT0",
-    basic: "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=ZSC4E0P",
-  }
-
   return (
     <section className="w-full py-10 md:py-16 lg:py-20" id="planos">
       <div className="container px-4 md:px-6">
@@ -116,11 +111,8 @@ export function PricingPlans() {
               <CardFooter className="px-4 py-3 sm:px-6 sm:py-4">
                 <Button
                   className={`w-full ${plan.popular ? "gradient-bg" : ""} ${formData.plan === plan.id ? "bg-primary" : ""}`}
-                  asChild
                 >
-                  <a href={checkoutLinks[plan.id as "basic" | "premium"]} target="_blank" rel="noopener noreferrer">
-                    {formData.plan === plan.id ? "Plano Selecionado" : "Escolher Plano"}
-                  </a>
+                  {formData.plan === plan.id ? "Plano Selecionado" : "Escolher Plano"}
                 </Button>
               </CardFooter>
             </Card>

@@ -1,123 +1,97 @@
 import { NextResponse } from "next/server"
-import { savePage } from "@/lib/supabase"
-import QRCode from "qrcode"
+import { createClient } from "@/lib/supabase"
+import { sendEmail } from "@/lib/email"
+import { revalidatePath } from "next/cache"
 
-// Modificar a função POST para remover o envio duplicado de email
 export async function POST(request: Request) {
   try {
-    // Obter os dados do corpo da requisição
-    const pageData = await request.json()
+    const supabase = createClient()
+    const data = await request.json()
 
-    console.log("=== API SAVE-PAGE: INICIANDO SALVAMENTO ===")
-    console.log(
-      "Dados recebidos:",
-      JSON.stringify({
-        page_id: pageData.page_id,
-        email: pageData.email,
-        couple_names: pageData.couple_names,
-        plan: pageData.plan,
-        photo_urls_count: pageData.photo_urls?.length || 0,
-      }),
-    )
+    // Verificar se já existe uma página com o mesmo slug
+    const { data: existingPage, error: checkError } = await supabase
+      .from("pages")
+      .select("id")
+      .eq("slug", data.slug)
+      .maybeSingle()
 
-    // Verificar se temos os dados necessários
-    if (!pageData.page_id || !pageData.email || !pageData.couple_names) {
-      console.error("Dados incompletos:", {
-        page_id: pageData.page_id ? "OK" : "Faltando",
-        email: pageData.email ? "OK" : "Faltando",
-        couple_names: pageData.couple_names ? "OK" : "Faltando",
-      })
-
-      // Gerar IDs aleatórios para campos faltantes
-      if (!pageData.page_id) {
-        pageData.page_id = `auto-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`
-        console.log("ID da página gerado automaticamente:", pageData.page_id)
-      }
-
-      if (!pageData.email) {
-        pageData.email = `auto-${Date.now()}@amoremcodigo.com.br`
-        console.log("Email gerado automaticamente:", pageData.email)
-      }
-
-      if (!pageData.couple_names) {
-        pageData.couple_names = "Casal Anônimo"
-        console.log("Nome do casal definido automaticamente:", pageData.couple_names)
-      }
+    if (checkError) {
+      console.error("Erro ao verificar slug existente:", checkError)
+      return NextResponse.json({ error: "Erro ao verificar disponibilidade do slug" }, { status: 500 })
     }
 
-    // Remover explicitamente campos problemáticos
-    delete pageData.time
-    delete pageData.created_at
-    delete pageData.updated_at
-    console.log("Campos problemáticos removidos dos dados")
-
-    // Gerar QR Code se não foi fornecido
-    if (!pageData.qr_code_url && pageData.page_url) {
-      try {
-        console.log("Gerando QR Code para a URL:", pageData.page_url)
-        const qrCodeDataUrl = await QRCode.toDataURL(pageData.page_url, {
-          width: 300,
-          margin: 1,
-          errorCorrectionLevel: "H",
-          color: {
-            dark: "#000000",
-            light: "#FFFFFF",
-          },
-        })
-        pageData.qr_code_url = qrCodeDataUrl
-        console.log("QR Code gerado com sucesso")
-      } catch (qrError) {
-        console.error("Erro ao gerar QR Code:", qrError)
-        // Continuar mesmo sem QR code
-      }
+    if (existingPage) {
+      return NextResponse.json({ error: "Este link já está em uso. Por favor, escolha outro." }, { status: 400 })
     }
 
-    // Adicionar status de pagamento se não existir
-    if (!pageData.payment_status) {
-      pageData.payment_status = "pending"
+    // Inserir a nova página
+    const { data: page, error } = await supabase
+      .from("pages")
+      .insert([
+        {
+          title: data.title,
+          slug: data.slug,
+          recipient_name: data.recipientName,
+          sender_name: data.senderName,
+          message: data.message,
+          email: data.email,
+          phone: data.phone,
+          youtube_url: data.youtubeUrl || null,
+          date: data.date || null,
+          plan: data.plan || "basic",
+          status: "pending",
+          image_urls: data.imageUrls || [],
+        },
+      ])
+      .select()
+      .single()
+
+    if (error) {
+      console.error("Erro ao salvar página:", error)
+      return NextResponse.json({ error: "Erro ao salvar página" }, { status: 500 })
     }
 
-    // Salvar no Supabase com tentativas múltiplas
-    let saveResult = null
-    let saveError = null
-
+    // Enviar email de confirmação
     try {
-      console.log("Salvando página no Supabase...")
-      saveResult = await savePage(pageData)
-      console.log("Resultado do salvamento:", saveResult)
-    } catch (error) {
-      console.error("Erro ao salvar no Supabase:", error)
-      saveError = error
-      // Continuar mesmo com erro no Supabase
+      await sendEmail({
+        to: data.email,
+        subject: "Seu site de declaração de amor foi criado!",
+        text: `Olá ${data.senderName}!\n\nSeu site de declaração de amor para ${data.recipientName} foi criado com sucesso!\n\nAcesse: ${process.env.NEXT_PUBLIC_SITE_URL}/pagina/${data.slug}\n\nObrigado por usar nosso serviço!\n\nEquipe Amor em Código`,
+        html: `
+          <h1>Olá ${data.senderName}!</h1>
+          <p>Seu site de declaração de amor para ${data.recipientName} foi criado com sucesso!</p>
+          <p>Acesse: <a href="${process.env.NEXT_PUBLIC_SITE_URL}/pagina/${data.slug}">${process.env.NEXT_PUBLIC_SITE_URL}/pagina/${data.slug}</a></p>
+          <p>Obrigado por usar nosso serviço!</p>
+          <p>Equipe Amor em Código</p>
+        `,
+      })
+    } catch (emailError) {
+      console.error("Erro ao enviar email:", emailError)
+      // Não retornamos erro aqui para não interromper o fluxo
     }
+
+    // Revalidar o caminho da página
+    revalidatePath(`/pagina/${data.slug}`)
 
     // Determinar URL de checkout com base no plano
-    const checkoutUrl =
-      pageData.plan === "premium" ? "https://pay.kiwify.com.br/MN5HRnF" : "https://pay.kiwify.com.br/x7zu8ul"
+    let checkoutUrl = ""
 
-    // Adicionar referência do ID da página
-    const checkoutUrlWithRef = `${checkoutUrl}?ref=${pageData.page_id}`
+    if (data.plan === "premium") {
+      checkoutUrl = "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=FO0XZT0"
+    } else {
+      checkoutUrl = "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=ZSC4E0P"
+    }
 
-    // REMOVIDO: O envio de email foi removido daqui para evitar duplicidade
-    // O email será enviado apenas pelo frontend ou por outro processo
+    // Adicionar parâmetros ao URL de checkout
+    const finalCheckoutUrl = `${checkoutUrl}&external_reference=${page.id}&buyer_name=${encodeURIComponent(data.senderName)}&buyer_email=${encodeURIComponent(data.email)}&buyer_phone=${encodeURIComponent(data.phone || "")}&redirect_url=${encodeURIComponent(`${process.env.NEXT_PUBLIC_SITE_URL}/obrigado?page_id=${page.id}`)}`
 
-    // Sempre retornar sucesso para que o usuário possa continuar
     return NextResponse.json({
       success: true,
-      message: "Página processada com sucesso",
-      pageId: pageData.page_id,
-      checkoutUrl: checkoutUrlWithRef,
-      saveResult: saveResult,
-      saveError: saveError ? String(saveError) : null,
+      page_id: page.id,
+      checkout_url: finalCheckoutUrl,
     })
   } catch (error) {
-    console.error("Erro ao salvar página:", error)
-    // Mesmo com erro, retornar sucesso para que o usuário possa continuar
-    return NextResponse.json({
-      success: true,
-      message: "Página será processada em segundo plano",
-      error: "Erro ao processar página, mas continuando",
-      details: error instanceof Error ? error.message : String(error),
-    })
+    console.error("Erro ao processar requisição:", error)
+    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })
   }
 }

@@ -38,3 +38,66 @@ export async function sendConfirmationEmail(pageData: any) {
     return false
   }
 }
+
+/**
+ * Envia um email usando a API do MailerSend
+ * @param mailData Dados do email a ser enviado
+ * @returns true se o email foi enviado com sucesso, false caso contrário
+ */
+export async function sendEmail(mailData: any) {
+  try {
+    console.log("=== ENVIANDO EMAIL ===")
+    console.log("Email:", mailData.to[0].email)
+    console.log("Assunto:", mailData.subject)
+
+    // Verificar a chave API do MailerSend
+    const apiKey = process.env.mailersend_API_KEY
+    if (!apiKey) {
+      console.error("API Key do MailerSend não configurada")
+      return false
+    }
+
+    console.log("API Key do MailerSend:", apiKey.substring(0, 5) + "..." + apiKey.substring(apiKey.length - 5))
+
+    console.log("Enviando email via MailerSend...")
+
+    try {
+      // Enviar o email usando a API do MailerSend
+      const response = await fetch("https://api.mailersend.com/v1/email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(mailData),
+      })
+
+      // Obter a resposta completa para diagnóstico
+      const responseText = await response.text()
+      console.log("Resposta bruta da API do MailerSend:", responseText)
+
+      let responseData
+      try {
+        responseData = JSON.parse(responseText)
+        console.log("Resposta da API do MailerSend (JSON):", JSON.stringify(responseData, null, 2))
+      } catch (e) {
+        console.log("Resposta não é JSON válido")
+      }
+
+      // Verificar se houve erro na API do MailerSend
+      if (!response.ok) {
+        console.error("Erro na API do MailerSend:", responseData || responseText)
+        return false
+      }
+
+      console.log("Email enviado com sucesso!")
+      return true
+    } catch (fetchError) {
+      console.error("Erro ao fazer requisição para a API do MailerSend:", fetchError)
+      return false
+    }
+  } catch (error) {
+    console.error("Erro ao enviar email:", error)
+    return false
+  }
+}

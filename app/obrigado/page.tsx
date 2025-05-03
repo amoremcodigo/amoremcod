@@ -48,7 +48,7 @@ export default function ObrigadoPage() {
     setError(null)
 
     try {
-      const response = await fetch(`/api/kiwify/check-payment?pageId=${id}`)
+      const response = await fetch(`/api/neonpay/check-payment?pageId=${id}`)
       const data = await response.json()
 
       if (!response.ok) {

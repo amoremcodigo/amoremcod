@@ -160,10 +160,10 @@ const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetri
   }
 }
 
-// Links para checkout da Kiwify
-const KIWIFY_CHECKOUT_LINKS = {
-  basic: "https://pay.kiwify.com.br/x7zu8ul",
-  premium: "https://pay.kiwify.com.br/MN5HRnF",
+// Links para checkout da Neon Pay
+const NEON_PAY_CHECKOUT_LINKS = {
+  basic: "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=ZSC4E0P",
+  premium: "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=FO0XZT0",
 }
 
 export function FormProvider({ children }: { children: ReactNode }) {
@@ -241,7 +241,7 @@ export function FormProvider({ children }: { children: ReactNode }) {
     })
   }
 
-  // Modificar a função submitForm para garantir que os dados sejam salvos de qualquer forma
+  // Modificar a função submitForm para usar a Neon Pay
   const submitForm = async () => {
     if (isFormValid()) {
       try {
@@ -352,15 +352,16 @@ export function FormProvider({ children }: { children: ReactNode }) {
           // Continuar mesmo com erro no Supabase
         }
 
-        // Usar links da Kiwify
-        const checkoutUrl = formData.plan === "premium" ? KIWIFY_CHECKOUT_LINKS.premium : KIWIFY_CHECKOUT_LINKS.basic
+        // Usar links da Neon Pay
+        const checkoutUrl =
+          formData.plan === "premium" ? NEON_PAY_CHECKOUT_LINKS.premium : NEON_PAY_CHECKOUT_LINKS.basic
 
         // Adicionar parâmetros de query para identificar o pedido
-        const checkoutUrlWithParams = `${checkoutUrl}?ref=${pageId}`
+        const checkoutUrlWithParams = `${checkoutUrl}&external_reference=${pageId}`
 
         console.log("Redirecionando para checkout:", checkoutUrlWithParams)
 
-        // Redirecionar para o checkout da Kiwify
+        // Redirecionar para o checkout da Neon Pay
         window.location.href = checkoutUrlWithParams
       } catch (error) {
         console.error("Erro durante o envio do formulário:", error)

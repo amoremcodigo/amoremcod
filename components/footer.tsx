@@ -63,7 +63,7 @@ export function Footer() {
           <p className="text-sm text-gray-400 flex items-center justify-center">
             Feito com <Heart className="h-4 w-4 text-red-500 mx-1 fill-current" /> por Amor em Código
           </p>
-          <p className="text-xs text-gray-400 mt-2">© 2018-2025 Amor em Código®. Todos os direitos reservados.</p>
+          <p className="text-xs text-gray-400 mt-2">© 2017-2025 Amor em Código®. Todos os direitos reservados.</p>
           <p className="text-xs text-gray-400 mt-2">CNPJ: 60.289.342/0001-03</p>
         </div>
       </div>

@@ -260,7 +260,7 @@ const compressDataForUrl = (data: any): string => {
 }
 
 export function PreviewSite() {
-  const { formData, isFormValid, isSubmitting, updateFormData } = useFormContext()
+  const { formData, isFormValid, isSubmitting, updateFormData, setIsSubmitting } = useFormContext()
   const [years, setYears] = useState(0)
   const [days, setDays] = useState(0)
   const [hours, setHours] = useState(0)
@@ -555,20 +555,159 @@ export function PreviewSite() {
   }
 
   // Função para redirecionar diretamente para o checkout da Neon Pay
-  const redirectToCheckout = () => {
+  const redirectToCheckout = async () => {
     if (!isFormValid()) {
-      alert("Por favor, preencha todos os campos obrigatórios e escolha um plano para finalizar.")
+      alert("Por favor, preencha todos os campos obrigatórios e escolha um plano.")
       return
     }
 
-    // Determinar qual link de checkout usar com base no plano selecionado
-    const checkoutUrl = formData.plan === "premium" ? NEON_PAY_CHECKOUT_LINKS.premium : NEON_PAY_CHECKOUT_LINKS.basic
+    try {
+      setIsSubmitting(true)
 
-    // Adicionar referência externa para identificar o pedido
-    const checkoutUrlWithRef = `${checkoutUrl}&external_reference=${pageId}`
+      // Gerar um ID único para a página
+      const pageId = Math.random().toString(36).substring(2, 8)
+      console.log("ID da página gerado:", pageId)
 
-    // Redirecionar para o checkout da Neon Pay
-    window.location.href = checkoutUrlWithRef
+      // Fazer upload das fotos para o Imgur
+      const photoUrls = [...formData.photoUrls]
+      for (let i = 0; i < formData.photos.length; i++) {
+        if (formData.photos[i] && formData.photos[i].startsWith("data:image")) {
+          try {
+            console.log(`Iniciando upload da foto ${i + 1}...`)
+            // Usar a API de upload de imagem
+            const response = await fetch("/api/upload-image", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ image: formData.photos[i] }),
+            })
+
+            const data = await response.json()
+            if (data.success) {
+              photoUrls[i] = data.url
+              console.log(`Foto ${i + 1} enviada para o Imgur, URL:`, photoUrls[i])
+            } else {
+              throw new Error(data.error || "Erro ao fazer upload da imagem")
+            }
+          } catch (error) {
+            console.error(`Erro ao enviar foto ${i + 1} para o servidor:`, error)
+            // Se falhar, usar um placeholder
+            photoUrls[i] = `/placeholder.svg?height=800&width=600&query=couple photo ${i + 1}`
+            console.log(`Usando placeholder para foto ${i + 1}`)
+          }
+        }
+      }
+
+      // Atualizar o formData com as URLs das fotos
+      updateFormData({ photoUrls })
+
+      // Criar um objeto com dados essenciais para a URL (versão compacta)
+      const essentialData = {
+        n: formData.coupleNames, // Nome do casal
+        d: formData.date, // Data
+        t: formData.time, // Hora
+        m: formData.message, // Mensagem
+        y: formData.youtubeLink, // Link do YouTube
+        p: photoUrls, // URLs das fotos
+        pl: formData.plan, // Plano
+      }
+
+      // Comprimir os dados para a URL
+      const compressedData = compressToEncodedURIComponent(JSON.stringify(essentialData))
+
+      // Construir a URL completa da página
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
+      const pageUrl = `${siteUrl}/pagina/${pageId}?d=${compressedData}`
+      console.log("URL da página gerada:", pageUrl)
+
+      // Gerar QR Code
+      let qrCodeUrl = null
+      try {
+        console.log("Gerando QR Code...")
+        const QRCode = await import("qrcode")
+        qrCodeUrl = await QRCode.toDataURL(pageUrl, {
+          width: 300,
+          margin: 1,
+          errorCorrectionLevel: "H",
+          color: {
+            dark: "#000000",
+            light: "#FFFFFF",
+          },
+        })
+        console.log("QR Code gerado com sucesso")
+      } catch (qrError) {
+        console.error("Erro ao gerar QR Code:", qrError)
+      }
+
+      // Salvar os dados no Supabase
+      try {
+        console.log("Salvando dados no Supabase...")
+
+        const pageData = {
+          page_id: pageId,
+          email: formData.email.trim().toLowerCase(),
+          couple_names: formData.coupleNames,
+          date: formData.date,
+          message: formData.message,
+          youtube_link: formData.youtubeLink || "",
+          photo_urls: photoUrls.filter((url) => url), // Filtrar URLs vazias
+          plan: formData.plan || "basic",
+          page_url: pageUrl,
+          qr_code_url: qrCodeUrl || "",
+          payment_status: "pending", // Status inicial: pendente
+        }
+
+        // const result = await savePage(pageData);
+        // console.log("Resultado do salvamento no Supabase:", result);
+
+        // Armazenar o ID da página no localStorage para referência futura
+        // localStorage.setItem("lastPageId", pageId)
+
+        // Enviar email de confirmação de pagamento pendente
+        try {
+          console.log("Enviando email de confirmação de pagamento pendente...")
+          const emailResponse = await fetch("/api/send-email", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              email: formData.email.trim().toLowerCase(),
+              pageUrl: pageUrl,
+              coupleNames: formData.coupleNames,
+              qrCodeUrl: qrCodeUrl,
+              isPending: true, // Indica que o pagamento está pendente
+            }),
+          })
+
+          if (!emailResponse.ok) {
+            throw new Error("Erro ao enviar email de confirmação")
+          }
+
+          console.log("Email de confirmação de pagamento pendente enviado com sucesso")
+        } catch (emailError) {
+          console.error("Erro ao enviar email de confirmação:", emailError)
+          // Continuar mesmo se o envio do email falhar
+        }
+      } catch (dbError) {
+        console.error("Erro ao salvar dados no Supabase:", dbError)
+        // Continuar mesmo com erro no Supabase
+      }
+
+      // Redirecionar para o checkout da Neon Pay
+      const checkoutUrl = formData.plan === "premium" ? NEON_PAY_CHECKOUT_LINKS.premium : NEON_PAY_CHECKOUT_LINKS.basic
+
+      // Adicionar parâmetros de query para identificar o pedido
+      const finalCheckoutUrl = `${checkoutUrl}&external_reference=${pageId}&buyer_name=${encodeURIComponent(formData.coupleNames)}&buyer_email=${encodeURIComponent(formData.email.trim().toLowerCase())}&redirect_url=${encodeURIComponent(`${siteUrl}/obrigado`)}`
+
+      console.log("Redirecionando para checkout:", finalCheckoutUrl)
+      window.location.href = finalCheckoutUrl
+    } catch (error) {
+      console.error("Erro durante o processo:", error)
+      alert("Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.")
+      setIsSubmitting(false)
+    }
   }
 
   return (

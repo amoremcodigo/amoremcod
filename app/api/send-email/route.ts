@@ -1,167 +1,129 @@
+// Vamos verificar e ajustar a rota de envio de email para suportar emails de pagamento pendente e confirmado
+
 import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {
   try {
-    // Extrair dados do corpo da requisição
-    const { email, pageUrl, coupleNames, qrCodeUrl, isPending = false } = await request.json()
+    const { email, pageUrl, coupleNames, qrCodeUrl, isPending } = await request.json()
 
-    console.log("=== ENVIANDO EMAIL ===")
-    console.log("Email:", email)
-    console.log("URL da página:", pageUrl)
-    console.log("Nomes:", coupleNames)
-    console.log("Status de pagamento:", isPending ? "Pendente" : "Confirmado")
-
-    // Validar dados
-    if (!email || !pageUrl || !coupleNames) {
-      console.error("Dados incompletos:", { email, pageUrl, coupleNames })
-      return NextResponse.json({ error: "Email, pageUrl e coupleNames são obrigatórios" }, { status: 400 })
+    if (!email) {
+      return NextResponse.json({ error: "Email não fornecido" }, { status: 400 })
     }
-
-    // Definir o assunto com base no status do pagamento
-    const subject = isPending
-      ? `Sua página para ${coupleNames} foi criada! Aguardando confirmação de pagamento.`
-      : `Sua página personalizada para ${coupleNames} está pronta!`
-
-    // Adicionar mensagem sobre o status do pagamento
-    const paymentMessage = isPending
-      ? `<div style="background-color: #fff3cd; border: 1px solid #ffeeba; color: #856404; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-          <p style="margin: 0; font-weight: bold;">⚠️ Aguardando confirmação de pagamento</p>
-          <p style="margin-top: 10px;">Sua página foi criada com sucesso, mas estamos aguardando a confirmação do seu pagamento. Você receberá outro email quando o pagamento for confirmado.</p>
-        </div>`
-      : `<div style="background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-          <p style="margin: 0; font-weight: bold;">✅ Pagamento confirmado</p>
-          <p style="margin-top: 10px;">Seu pagamento foi confirmado e sua página está pronta para ser compartilhada!</p>
-        </div>`
 
     // Verificar a chave API do MailerSend
     const apiKey = process.env.mailersend_API_KEY
     if (!apiKey) {
       console.error("API Key do MailerSend não configurada")
-      return NextResponse.json({ success: false, error: "API Key do MailerSend não configurada" }, { status: 500 })
+      return NextResponse.json({ error: "Configuração de email não disponível" }, { status: 500 })
     }
 
-    console.log("API Key do MailerSend:", apiKey.substring(0, 5) + "..." + apiKey.substring(apiKey.length - 5))
+    // Determinar o assunto e conteúdo com base no status do pagamento
+    const subject = isPending
+      ? "Sua página de declaração de amor está quase pronta!"
+      : "Sua página de declaração de amor está pronta!"
 
-    // Configurar o corpo da requisição para a API do MailerSend
+    // Conteúdo do email para pagamento pendente
+    const pendingHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+        <h1 style="color: #e91e63; text-align: center;">Quase lá!</h1>
+        <p>Olá,</p>
+        <p>Sua página de declaração de amor para <strong>${coupleNames}</strong> foi criada e está aguardando a confirmação do pagamento.</p>
+        <p>Assim que o pagamento for confirmado, você receberá outro email com o link de acesso e o QR Code da sua página.</p>
+        <p>Se você já realizou o pagamento, aguarde alguns instantes para a confirmação.</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <p style="font-size: 18px; font-weight: bold;">Obrigado por usar o Amor em Código!</p>
+        </div>
+        <p style="font-size: 12px; color: #666; text-align: center;">
+          © ${new Date().getFullYear()} Amor em Código - Todos os direitos reservados
+        </p>
+      </div>
+    `
+
+    // Conteúdo do email para pagamento confirmado
+    const confirmedHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+        <h1 style="color: #e91e63; text-align: center;">Sua página está pronta!</h1>
+        <p>Olá,</p>
+        <p>Sua página de declaração de amor para <strong>${coupleNames}</strong> está pronta!</p>
+        <p>Acesse sua página através do link: <a href="${pageUrl}" style="color: #e91e63;">${pageUrl}</a></p>
+        <p>Ou use o QR Code abaixo:</p>
+        ${
+          qrCodeUrl
+            ? `<div style="text-align: center; margin: 20px 0;">
+          <img src="${qrCodeUrl}" alt="QR Code" style="max-width: 200px; height: auto;" />
+        </div>`
+            : ""
+        }
+        <p>Compartilhe este link ou QR Code com a pessoa especial para expressar todo o seu amor!</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <p style="font-size: 18px; font-weight: bold;">Obrigado por usar o Amor em Código!</p>
+        </div>
+        <p style="font-size: 12px; color: #666; text-align: center;">
+          © ${new Date().getFullYear()} Amor em Código - Todos os direitos reservados
+        </p>
+      </div>
+    `
+
+    // Escolher o conteúdo com base no status do pagamento
+    const htmlContent = isPending ? pendingHtml : confirmedHtml
+
+    // Preparar os dados para o MailerSend
     const mailData = {
+      from: {
+        email: "contato@amoremcodigo.com.br",
+        name: "Amor em Código",
+      },
       to: [
         {
           email: email,
-          name: coupleNames,
+          name: coupleNames.split(" ")[0] || "Cliente",
         },
       ],
-      from: {
-        email: "noreply@amoremcodigo.com.br",
-        name: "Amor em Código",
-      },
       subject: subject,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-          <div style="text-align: center; margin-bottom: 20px;">
-            <h1 style="color: #9333EA; margin-bottom: 5px;">Amor em Código</h1>
-            <p style="color: #666; font-size: 16px;">Sua página personalizada está pronta!</p>
-          </div>
-          
-          ${paymentMessage}
-          
-          <div style="background-color: #f8f8f8; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
-            <p>Olá,</p>
-            <p>Sua página personalizada para <strong>${coupleNames}</strong> foi criada com sucesso!</p>
-            
-            ${
-              !isPending
-                ? `
-            <p>Você pode acessar e compartilhar sua página através do link abaixo:</p>
-            
-            <div style="text-align: center; margin: 25px 0;">
-              <a href="${pageUrl}" style="display: inline-block; background-color: #9333EA; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Acessar Minha Página</a>
-            </div>
-            
-            <p>Ou copie e cole este link no navegador:</p>
-            <p style="background-color: #eee; padding: 10px; border-radius: 5px; word-break: break-all; font-size: 14px;">${pageUrl}</p>
-            `
-                : `
-            <p>Assim que seu pagamento for confirmado, você receberá outro e-mail com o link para acessar sua página personalizada.</p>
-            `
-            }
-          </div>
-          
-          ${
-            !isPending && qrCodeUrl
-              ? `
-          <div style="text-align: center; margin: 30px 0;">
-            <p style="margin-bottom: 15px; font-weight: bold;">QR Code da sua página:</p>
-            <img src="${qrCodeUrl}" alt="QR Code" style="max-width: 200px; border: 1px solid #ddd; padding: 10px; border-radius: 5px;">
-            <p style="font-size: 14px; color: #666; margin-top: 10px;">Escaneie este QR Code para acessar sua página</p>
-          </div>
-          `
-              : ""
-          }
-          
-          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 20px; font-size: 14px; color: #666;">
-            ${!isPending ? `<p>Compartilhe este link ou QR Code com seu amor para uma surpresa especial!</p>` : ""}
-            <p>Se tiver alguma dúvida, entre em contato conosco pelo WhatsApp.</p>
-            <p style="margin-top: 20px;">Atenciosamente,<br>Equipe Amor em Código</p>
-          </div>
-        </div>
-      `,
+      html: htmlContent,
     }
 
     console.log("Enviando email via MailerSend...")
+    console.log("Para:", email)
+    console.log("Assunto:", subject)
+    console.log("Status:", isPending ? "Pagamento Pendente" : "Pagamento Confirmado")
 
+    // Enviar o email usando a API do MailerSend
+    const response = await fetch("https://api.mailersend.com/v1/email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(mailData),
+    })
+
+    // Obter a resposta completa para diagnóstico
+    const responseText = await response.text()
+    console.log("Resposta bruta da API do MailerSend:", responseText)
+
+    let responseData
     try {
-      // Enviar o email usando a API do MailerSend
-      const response = await fetch("https://api.mailersend.com/v1/email", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify(mailData),
-      })
+      responseData = JSON.parse(responseText)
+    } catch (e) {
+      console.log("Resposta não é JSON válido")
+    }
 
-      // Obter a resposta completa para diagnóstico
-      const responseText = await response.text()
-      console.log("Resposta bruta da API do MailerSend:", responseText)
-
-      let responseData
-      try {
-        responseData = JSON.parse(responseText)
-        console.log("Resposta da API do MailerSend (JSON):", JSON.stringify(responseData, null, 2))
-      } catch (e) {
-        console.log("Resposta não é JSON válido")
-      }
-
-      // Verificar se houve erro na API do MailerSend
-      if (!response.ok) {
-        console.error("Erro na API do MailerSend:", responseData || responseText)
-        return NextResponse.json(
-          { success: false, error: "Erro ao enviar email", details: responseData || responseText },
-          { status: response.status },
-        )
-      }
-
-      console.log("Email enviado com sucesso!")
-      return NextResponse.json({ success: true, data: responseData })
-    } catch (fetchError) {
-      console.error("Erro ao fazer requisição para a API do MailerSend:", fetchError)
+    // Verificar se houve erro na API do MailerSend
+    if (!response.ok) {
+      console.error("Erro na API do MailerSend:", responseData || responseText)
       return NextResponse.json(
-        {
-          success: false,
-          error: "Erro ao fazer requisição para a API do MailerSend",
-          details: fetchError instanceof Error ? fetchError.message : String(fetchError),
-        },
-        { status: 500 },
+        { error: "Erro ao enviar email", details: responseData || responseText },
+        { status: response.status },
       )
     }
+
+    console.log("Email enviado com sucesso!")
+    return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("Erro ao enviar email:", error)
+    console.error("Erro ao processar requisição de email:", error)
     return NextResponse.json(
-      {
-        success: false,
-        error: "Erro ao processar solicitação de email",
-        details: error instanceof Error ? error.message : String(error),
-      },
+      { error: "Erro interno do servidor", details: error instanceof Error ? error.message : String(error) },
       { status: 500 },
     )
   }

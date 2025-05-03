@@ -7,6 +7,12 @@ import { useFormContext } from "@/context/form-context"
 import { FallingHearts } from "@/components/falling-hearts"
 import { compressToEncodedURIComponent } from "lz-string"
 
+// Links para checkout da Neon Pay
+const NEON_PAY_CHECKOUT_LINKS = {
+  premium: "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=FO0XZT0",
+  basic: "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=ZSC4E0P",
+}
+
 // Função para comprimir imagem antes do upload
 const compressImage = async (base64Image: string, maxWidth = 1200, quality = 0.7): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -263,6 +269,7 @@ export function PreviewSite() {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pageId, setPageId] = useState<string>("")
 
   // Usar a data do formulário ou uma data padrão
   const startDate = formData.date
@@ -324,6 +331,12 @@ export function PreviewSite() {
 
     return () => clearInterval(interval)
   }, [hasCarousel, validPhotos.length])
+
+  // Gerar um ID de página ao montar o componente
+  useEffect(() => {
+    const newPageId = Math.random().toString(36).substring(2, 8)
+    setPageId(newPageId)
+  }, [])
 
   // Função para extrair o ID do vídeo do YouTube
   const extractYoutubeVideoId = (url: string): string | null => {
@@ -393,10 +406,6 @@ export function PreviewSite() {
         coupleNames: capitalizedCoupleNames,
         email: normalizedEmail,
       })
-
-      // Generate a unique ID for the page
-      const pageId = Math.random().toString(36).substring(2, 8)
-      console.log("ID da página gerado:", pageId)
 
       // Fazer upload das fotos para o servidor usando upload paralelo
       const photosToUpload = formData.photos.filter((photo) => photo && photo.startsWith("data:image"))
@@ -530,10 +539,11 @@ export function PreviewSite() {
         // Continuar mesmo com erro na API
       }
 
-      // Determinar URL de checkout com base no plano
-      const checkoutUrl =
-        formData.plan === "premium" ? "https://pay.kiwify.com.br/MN5HRnF" : "https://pay.kiwify.com.br/x7zu8ul"
-      const checkoutUrlWithRef = `${checkoutUrl}?ref=${pageId}`
+      // Redirecionar para o checkout da Neon Pay
+      const checkoutUrl = formData.plan === "premium" ? NEON_PAY_CHECKOUT_LINKS.premium : NEON_PAY_CHECKOUT_LINKS.basic
+
+      // Adicionar referência externa para identificar o pedido
+      const checkoutUrlWithRef = `${checkoutUrl}&external_reference=${pageId}`
 
       console.log("Redirecionando para:", checkoutUrlWithRef)
       window.location.href = checkoutUrlWithRef
@@ -542,6 +552,23 @@ export function PreviewSite() {
       setError(`Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.`)
       setIsProcessing(false)
     }
+  }
+
+  // Função para redirecionar diretamente para o checkout da Neon Pay
+  const redirectToCheckout = () => {
+    if (!isFormValid()) {
+      alert("Por favor, preencha todos os campos obrigatórios e escolha um plano para finalizar.")
+      return
+    }
+
+    // Determinar qual link de checkout usar com base no plano selecionado
+    const checkoutUrl = formData.plan === "premium" ? NEON_PAY_CHECKOUT_LINKS.premium : NEON_PAY_CHECKOUT_LINKS.basic
+
+    // Adicionar referência externa para identificar o pedido
+    const checkoutUrlWithRef = `${checkoutUrl}&external_reference=${pageId}`
+
+    // Redirecionar para o checkout da Neon Pay
+    window.location.href = checkoutUrlWithRef
   }
 
   return (
@@ -765,19 +792,20 @@ export function PreviewSite() {
             <div className="text-red-500 mb-4 p-3 bg-red-100 border border-red-300 rounded-md max-w-md">{error}</div>
           )}
 
+          {/* Botão para redirecionar diretamente para o checkout da Neon Pay */}
           <Button
             size="lg"
             className="gradient-bg text-lg px-8 py-6 relative"
             disabled={!isFormValid() || isProcessing}
-            onClick={processForm}
+            onClick={redirectToCheckout}
           >
             {isProcessing ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin inline" />
-                <span>Criando página...</span>
+                <span>Processando...</span>
               </>
             ) : (
-              "Finalizar e criar minha página"
+              "Finalizar e Criar"
             )}
           </Button>
         </div>

@@ -323,13 +323,13 @@ export function Formulario() {
                     onChange={handleChange}
                     required
                   />
-                  <p className="text-xs text-gray-400">Usaremos para enviar o QR Code da sua página.</p>
+                  <p className="text-xs text-gray-400">Usaremos para enviar o QR Code e Link da sua página.</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="coupleNames">Nomes</Label>
                   <Input
                     id="coupleNames"
-                    placeholder="Ex: Maria & João, Família Silva, Eu & Rex..."
+                    placeholder="Ex: Maria & João, Família Silva, Eu & Pai..."
                     value={formData.coupleNames}
                     onChange={handleChange}
                     required
@@ -337,7 +337,7 @@ export function Formulario() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="date">Data de Início</Label>
+                    <Label htmlFor="date">Juntos desde</Label>
                     <Input
                       id="date"
                       type="date"
@@ -370,7 +370,7 @@ export function Formulario() {
                   </div>
                   <Textarea
                     id="message"
-                    placeholder="Escreva uma mensagem especial para seu amor..."
+                    placeholder="Escreva uma mensagem especial"
                     className="min-h-[120px]"
                     value={formData.message}
                     onChange={handleChange}

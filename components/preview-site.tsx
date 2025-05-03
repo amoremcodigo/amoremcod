@@ -348,13 +348,13 @@ export function PreviewSite() {
     // Array de mensagens de carregamento para rotacionar
     const messages = [
       "Processando...",
-      "Criando seu QR Code...",
-      "Salvando suas informações...",
-      "Preparando sua página personalizada...",
+      "Criando QR Code...",
+      "Salvando informações...",
+      "Preparando sua página...",
       "Quase lá...",
       "Finalizando os detalhes...",
       "Aguarde mais um pouquinho...",
-      "Estamos quase terminando...",
+      "Estamos quase...",
     ]
 
     let currentIndex = 0

@@ -7,6 +7,12 @@ export async function POST(request: Request) {
   try {
     const { email, pageUrl, coupleNames, qrCodeUrl, isPending } = await request.json()
 
+    // Adicionar logs mais detalhados para depuração
+    console.log("=== INICIANDO ENVIO DE EMAIL ===")
+    console.log("Email para:", email)
+    console.log("Tipo de email:", isPending ? "Pendente" : "Confirmado")
+    console.log("Casal:", coupleNames)
+
     // Verificar se os dados necessários foram fornecidos
     if (!email || !pageUrl || !coupleNames) {
       return NextResponse.json({ error: "Dados incompletos" }, { status: 400 })
@@ -96,8 +102,21 @@ export async function POST(request: Request) {
       html: htmlContent,
     }
 
+    // Após a criação do mailData, adicionar:
+    console.log("Dados do email preparados:", {
+      to: email,
+      subject: subject,
+      isPending: isPending,
+    })
+
+    // Antes de chamar sendEmail, adicionar:
+    console.log("Tentando enviar email via lib/email.ts...")
+
     // Enviar o email
     const success = await sendEmail(mailData)
+
+    // Após chamar sendEmail, adicionar:
+    console.log("Resultado do envio:", success ? "Sucesso" : "Falha")
 
     if (!success) {
       return NextResponse.json({ error: "Falha ao enviar o email" }, { status: 500 })

@@ -1,4 +1,4 @@
-// Vamos modificar a rota de envio de email para remover a parte mencionada do email pendente
+// Vamos corrigir o endereço de email remetente
 
 import { NextResponse } from "next/server"
 import { sendEmail } from "@/lib/email"
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
       </div>
     `
 
-    // Configurar os dados do email
+    // Configurar os dados do email com o endereço correto
     const mailData = {
       to: [
         {
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
         },
       ],
       from: {
-        email: "contato@pretaamoremcodigo.com.br",
+        email: "contato@amoremcodigo.com.br", // Endereço de email correto
         name: "Preta Amor em Código",
       },
       subject: subject,
@@ -105,6 +105,7 @@ export async function POST(request: Request) {
     // Após a criação do mailData, adicionar:
     console.log("Dados do email preparados:", {
       to: email,
+      from: "contato@amoremcodigo.com.br", // Log do endereço correto
       subject: subject,
       isPending: isPending,
     })

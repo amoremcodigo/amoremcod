@@ -271,6 +271,8 @@ export function PreviewSite() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pageId, setPageId] = useState<string>("")
+  // Adicionar um novo estado para mensagens de carregamento rotativas
+  const [loadingMessage, setLoadingMessage] = useState("Processando...")
 
   // Usar a data do formulário ou uma data padrão
   const startDate = formData.date
@@ -339,6 +341,40 @@ export function PreviewSite() {
     setPageId(newPageId)
   }, [])
 
+  // Adicionar este efeito após os outros useEffect existentes
+  useEffect(() => {
+    if (!isProcessing) return
+
+    // Array de mensagens de carregamento para rotacionar
+    const messages = [
+      "Processando...",
+      "Criando seu QR Code...",
+      "Salvando suas informações...",
+      "Preparando sua página personalizada...",
+      "Quase lá...",
+      "Finalizando os detalhes...",
+      "Aguarde mais um pouquinho...",
+      "Estamos quase terminando...",
+    ]
+
+    let currentIndex = 0
+
+    // Função para atualizar a mensagem
+    const updateMessage = () => {
+      setLoadingMessage(messages[currentIndex])
+      currentIndex = (currentIndex + 1) % messages.length
+    }
+
+    // Atualizar a mensagem imediatamente
+    updateMessage()
+
+    // Configurar um intervalo para atualizar a mensagem a cada 2 segundos
+    const interval = setInterval(updateMessage, 2000)
+
+    // Limpar o intervalo quando o componente for desmontado ou quando isProcessing mudar
+    return () => clearInterval(interval)
+  }, [isProcessing])
+
   // Função para extrair o ID do vídeo do YouTube
   const extractYoutubeVideoId = (url: string): string | null => {
     if (!url) return null
@@ -387,7 +423,7 @@ export function PreviewSite() {
     setCurrentPhotoIndex((prevIndex) => (prevIndex + 1) % validPhotos.length)
   }
 
-  // Função para redirecionar diretamente para o checkout da Neon Pay
+  // Modificar a função redirectToCheckout para garantir que os dados sejam salvos corretamente
   const redirectToCheckout = async () => {
     if (!isFormValid()) {
       alert("Por favor, preencha todos os campos obrigatórios e escolha um plano.")
@@ -417,6 +453,7 @@ export function PreviewSite() {
       let photoUrls = [...formData.photoUrls]
       if (photosToUpload.length > 0) {
         try {
+          setLoadingMessage("Enviando suas fotos...")
           // Usar upload paralelo para todas as fotos
           photoUrls = await uploadImagesInParallel(formData.photos)
           updateFormData({ photoUrls })
@@ -464,6 +501,7 @@ export function PreviewSite() {
       console.log("URL da página gerada:", pageUrl)
 
       // Gerar QR Code para o email
+      setLoadingMessage("Criando seu QR Code personalizado...")
       let qrCodeUrl = null
       try {
         console.log("Gerando QR Code...")
@@ -499,14 +537,38 @@ export function PreviewSite() {
       }
 
       // Salvar os dados diretamente no Supabase
+      setLoadingMessage("Salvando sua página no nosso banco de dados...")
       try {
         console.log("Salvando dados no Supabase...")
-        const result = await savePage(pageData)
-        console.log("Resultado do salvamento no Supabase:", result)
+        console.log("Dados a serem salvos:", JSON.stringify(pageData))
 
-        if (!result.success) {
-          console.error("Erro ao salvar no Supabase:", result.error)
-          // Continuar mesmo com erro
+        // Primeiro, tentar salvar via API
+        try {
+          const apiResponse = await fetch("/api/save-page", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(pageData),
+          })
+
+          const apiResult = await apiResponse.json()
+          console.log("Resultado do salvamento via API:", apiResult)
+
+          if (!apiResponse.ok) {
+            throw new Error("Falha ao salvar via API")
+          }
+        } catch (apiError) {
+          console.error("Erro ao salvar via API, tentando diretamente com savePage:", apiError)
+
+          // Se falhar via API, tentar diretamente com savePage
+          const result = await savePage(pageData)
+          console.log("Resultado do salvamento direto no Supabase:", result)
+
+          if (!result.success) {
+            console.error("Erro ao salvar no Supabase:", result.error)
+            // Continuar mesmo com erro
+          }
         }
       } catch (supabaseError) {
         console.error("Erro ao salvar no Supabase:", supabaseError)
@@ -514,6 +576,7 @@ export function PreviewSite() {
       }
 
       // Enviar e-mail de confirmação pendente
+      setLoadingMessage("Enviando confirmação por email...")
       try {
         console.log("Enviando e-mail de confirmação pendente...")
         const emailResponse = await fetch("/api/send-email", {
@@ -540,13 +603,18 @@ export function PreviewSite() {
       }
 
       // Redirecionar para o checkout da Neon Pay
+      setLoadingMessage("Redirecionando para o pagamento...")
       const checkoutUrl = formData.plan === "premium" ? NEON_PAY_CHECKOUT_LINKS.premium : NEON_PAY_CHECKOUT_LINKS.basic
 
       // Adicionar referência externa para identificar o pedido
       const checkoutUrlWithRef = `${checkoutUrl}&external_reference=${pageId}&buyer_name=${encodeURIComponent(capitalizedCoupleNames)}&buyer_email=${encodeURIComponent(normalizedEmail)}`
 
       console.log("Redirecionando para:", checkoutUrlWithRef)
-      window.location.href = checkoutUrlWithRef
+
+      // Pequeno atraso antes de redirecionar para garantir que os dados sejam salvos
+      setTimeout(() => {
+        window.location.href = checkoutUrlWithRef
+      }, 1500)
     } catch (error) {
       console.error("Erro durante o processamento:", error)
       setError(`Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.`)
@@ -785,7 +853,7 @@ export function PreviewSite() {
             {isProcessing ? (
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin inline" />
-                <span>Processando...</span>
+                <span>{loadingMessage}</span>
               </>
             ) : (
               "Finalizar e Criar"

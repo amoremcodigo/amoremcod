@@ -36,7 +36,7 @@ export const supabaseAdmin = supabaseServiceKey
     })
   : supabase
 
-// Função para salvar uma página no Supabase - com máxima tolerância a falhas
+// Adicionar logs mais detalhados na função savePage para depuração
 export async function savePage(pageData: {
   page_id: string
   email: string
@@ -58,6 +58,7 @@ export async function savePage(pageData: {
   console.log("Nome do casal:", pageData.couple_names)
   console.log("Plano:", pageData.plan)
   console.log("URLs das fotos:", pageData.photo_urls.length)
+  console.log("Dados completos:", JSON.stringify(pageData))
 
   // Verificar e limpar as URLs das fotos
   const cleanedPhotoUrls = pageData.photo_urls.map((url) => {

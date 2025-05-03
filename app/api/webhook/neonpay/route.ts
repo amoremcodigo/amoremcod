@@ -30,15 +30,27 @@ export async function POST(request: Request) {
       // Continuamos mesmo com erro de parsing
     }
 
-    // Verificar se o pagamento foi confirmado
-    const paymentStatus = webhookData.status || webhookData.payment_status || ""
+    // Verificar se o pagamento foi confirmado - ADICIONANDO VERIFICAÇÃO ESPECÍFICA PARA "TRANSACTION_PAID"
+    const paymentStatus = webhookData.status || webhookData.payment_status || webhookData.transaction_status || ""
     const isPaymentConfirmed =
       paymentStatus.toLowerCase() === "approved" ||
       paymentStatus.toLowerCase() === "paid" ||
       paymentStatus.toLowerCase() === "completed" ||
       paymentStatus.toLowerCase() === "approved" ||
+      paymentStatus === "TRANSACTION_PAID" || // Verificação específica para TRANSACTION_PAID
+      webhookData.event === "TRANSACTION_PAID" || // Verificação no campo event
+      webhookData.event_type === "TRANSACTION_PAID" || // Verificação no campo event_type
       webhookData.approved === true ||
       webhookData.paid === true
+
+    // Log específico para TRANSACTION_PAID
+    if (
+      paymentStatus === "TRANSACTION_PAID" ||
+      webhookData.event === "TRANSACTION_PAID" ||
+      webhookData.event_type === "TRANSACTION_PAID"
+    ) {
+      console.log("TRANSACTION_PAID detectado! Processando pagamento confirmado.")
+    }
 
     // Se o pagamento não foi confirmado, não enviamos o email final
     if (!isPaymentConfirmed) {
@@ -58,7 +70,12 @@ export async function POST(request: Request) {
       webhookData.metadata?.email ||
       webhookData.client_email ||
       webhookData.user_email ||
-      webhookData.data?.email
+      webhookData.data?.email ||
+      webhookData.customer_email ||
+      (webhookData.customer && webhookData.customer.email) ||
+      (webhookData.buyer && webhookData.buyer.email) ||
+      (webhookData.payer && webhookData.payer.email) ||
+      (webhookData.transaction && webhookData.transaction.customer_email)
 
     if (!customerEmail) {
       console.error("Email do cliente não encontrado nos dados do webhook")

@@ -1,232 +1,111 @@
-// Vamos verificar e ajustar a rota de envio de email para suportar emails de pagamento pendente e confirmado
+// Vamos modificar a rota de envio de email para remover a parte mencionada do email pendente
 
 import { NextResponse } from "next/server"
+import { sendEmail } from "@/lib/email"
 
 export async function POST(request: Request) {
   try {
     const { email, pageUrl, coupleNames, qrCodeUrl, isPending } = await request.json()
 
-    if (!email) {
-      return NextResponse.json({ error: "Email não fornecido" }, { status: 400 })
+    // Verificar se os dados necessários foram fornecidos
+    if (!email || !pageUrl || !coupleNames) {
+      return NextResponse.json({ error: "Dados incompletos" }, { status: 400 })
     }
 
-    // Verificar a chave API do MailerSend
-    const apiKey = process.env.mailersend_API_KEY
-    if (!apiKey) {
-      console.error("API Key do MailerSend não configurada")
-      return NextResponse.json({ error: "Configuração de email não disponível" }, { status: 500 })
-    }
-
-    // Determinar o assunto e conteúdo com base no status do pagamento
+    // Construir o assunto do email
     const subject = isPending
-      ? "Sua página de declaração de amor está quase pronta!"
-      : "Sua página de declaração de amor está pronta!"
+      ? "Seu pedido foi recebido - Preta Amor em Código"
+      : "Sua página de amor está pronta! - Preta Amor em Código"
 
-    // Template para pagamento pendente
-    const htmlContent = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Sua Página de Amor está quase pronta! ❤️</title>
-  <style>
-    body {
-      font-family: 'Helvetica Neue', Arial, sans-serif;
-      line-height: 1.6;
-      color: #333;
-      background-color: #fdf6f8;
-      margin: 0;
-      padding: 0;
-    }
-    .container {
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 20px;
-      background-color: #fff;
-      border-radius: 15px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-    }
-    .header {
-      text-align: center;
-      padding: 20px 0;
-      background: linear-gradient(135deg, #ff7eb3, #ff758c);
-      border-radius: 10px 10px 0 0;
-      margin-bottom: 20px;
-    }
-    .header h1 {
-      color: white;
-      margin: 0;
-      font-size: 28px;
-      text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
-    }
-    .content {
-      padding: 20px;
-      background-color: #fff;
-      border-radius: 10px;
-    }
-    .footer {
-      text-align: center;
-      padding: 20px;
-      font-size: 12px;
-      color: #999;
-    }
-    .button {
-      display: inline-block;
-      padding: 12px 24px;
-      background: linear-gradient(135deg, #ff7eb3, #ff758c);
-      color: white;
-      text-decoration: none;
-      border-radius: 50px;
-      font-weight: bold;
-      margin: 20px 0;
-      box-shadow: 0 4px 8px rgba(255,123,179,0.3);
-      transition: all 0.3s ease;
-    }
-    .button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 12px rgba(255,123,179,0.4);
-    }
-    .emoji-large {
-      font-size: 36px;
-      margin: 10px 0;
-    }
-    .highlight {
-      background: linear-gradient(120deg, rgba(255,123,179,0.2) 0%, rgba(255,123,179,0.2) 100%);
-      padding: 2px 5px;
-      border-radius: 4px;
-    }
-    .divider {
-      height: 3px;
-      background: linear-gradient(90deg, transparent, #ff7eb3, transparent);
-      margin: 20px 0;
-      border: none;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>✨ Amor em Código ✨</h1>
-    </div>
-    <div class="content">
-      <p>Olá ${coupleNames}! 💖</p>
-      
-      <div style="text-align: center;" class="emoji-large">
-        🎉 🥰 💝
-      </div>
-      
-      <p>Estamos <span class="highlight">super animados</span> em informar que sua página de amor está sendo preparada com muito carinho! 💕</p>
-      
-      <p>Assim que recebermos a confirmação do seu pagamento, sua página ficará disponível imediatamente e enviaremos o QR Code personalizado para você compartilhar com quem ama! 💌</p>
-      
-      <hr class="divider">
-      
-      <p>Enquanto isso, você já pode conferir como sua página ficará:</p>
-      
-      <div style="text-align: center;">
-        <a href="${pageUrl}" class="button">Ver Minha Página de Amor 💘</a>
-      </div>
-      
-      <p style="text-align: center; font-style: italic; margin-top: 30px;">⏳ Aguardando confirmação do pagamento... ⏳</p>
-      
-      <hr class="divider">
-      
-      <p>Se tiver qualquer dúvida, pode responder diretamente a este email! Estamos aqui para ajudar! 🤗</p>
-      
-      <p>Com carinho,<br>
-      <strong>Equipe Amor em Código</strong> 💻❤️</p>
-    </div>
-    <div class="footer">
-      <p>© ${new Date().getFullYear()} Amor em Código - Todos os direitos reservados</p>
-    </div>
-  </div>
-</body>
-</html>
-`
-
-    // Conteúdo do email para pagamento confirmado
-    const confirmedHtml = `
+    // Construir o conteúdo HTML do email
+    let htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-        <h1 style="color: #e91e63; text-align: center;">Sua página está pronta!</h1>
-        <p>Olá,</p>
-        <p>Sua página de declaração de amor para <strong>${coupleNames}</strong> está pronta!</p>
-        <p>Acesse sua página através do link: <a href="${pageUrl}" style="color: #e91e63;">${pageUrl}</a></p>
-        <p>Ou use o QR Code abaixo:</p>
-        ${
-          qrCodeUrl
-            ? `<div style="text-align: center; margin: 20px 0;">
-          <img src="${qrCodeUrl}" alt="QR Code" style="max-width: 200px; height: auto;" />
-        </div>`
-            : ""
-        }
-        <p>Compartilhe este link ou QR Code com a pessoa especial para expressar todo o seu amor!</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <p style="font-size: 18px; font-weight: bold;">Obrigado por usar o Amor em Código!</p>
+        <div style="text-align: center; margin-bottom: 20px;">
+          <img src="${process.env.NEXT_PUBLIC_SITE_URL}/logo-icon.png" alt="Preta Amor em Código" style="width: 100px; height: auto;" />
         </div>
-        <p style="font-size: 12px; color: #666; text-align: center;">
-          © ${new Date().getFullYear()} Amor em Código - Todos os direitos reservados
+        <h1 style="color: #e11d48; text-align: center; margin-bottom: 20px;">
+          ${isPending ? "Seu pedido foi recebido!" : "Sua página de amor está pronta!"}
+        </h1>
+        <p style="font-size: 16px; line-height: 1.5; margin-bottom: 20px;">
+          Olá,
         </p>
+        <p style="font-size: 16px; line-height: 1.5; margin-bottom: 20px;">
+          ${
+            isPending
+              ? `Recebemos seu pedido para a criação da página de amor para <strong>${coupleNames}</strong>. Estamos aguardando a confirmação do seu pagamento para liberar o acesso à sua página personalizada.`
+              : `Sua página de amor para <strong>${coupleNames}</strong> está pronta! Você já pode compartilhar o link ou o QR Code com quem você ama.`
+          }
+        </p>
+    `
+
+    // Adicionar o botão de acesso à página APENAS se NÃO for um email pendente
+    if (!isPending) {
+      htmlContent += `
+        <p style="font-size: 16px; line-height: 1.5; margin-bottom: 20px;">
+          Você pode acessar sua página através do link abaixo:
+        </p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${pageUrl}" style="background-color: #e11d48; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">
+            Acessar Minha Página
+          </a>
+        </div>
+      `
+
+      // Adicionar o QR Code se disponível
+      if (qrCodeUrl) {
+        htmlContent += `
+          <p style="font-size: 16px; line-height: 1.5; margin-bottom: 20px; text-align: center;">
+            Ou escaneie o QR Code abaixo:
+          </p>
+          <div style="text-align: center; margin: 20px 0;">
+            <img src="${qrCodeUrl}" alt="QR Code" style="width: 200px; height: auto; border: 1px solid #ddd; padding: 10px;" />
+          </div>
+        `
+      }
+    }
+
+    // Finalizar o conteúdo do email
+    htmlContent += `
+        <p style="font-size: 16px; line-height: 1.5; margin-top: 30px;">
+          Com amor,<br />
+          Equipe Preta Amor em Código
+        </p>
+        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; color: #777; font-size: 12px;">
+          <p>© ${new Date().getFullYear()} Preta Amor em Código. Todos os direitos reservados.</p>
+          <p>
+            <a href="${process.env.NEXT_PUBLIC_SITE_URL}/termos" style="color: #777; text-decoration: underline;">Termos de Uso</a> | 
+            <a href="${process.env.NEXT_PUBLIC_SITE_URL}/privacidade" style="color: #777; text-decoration: underline;">Política de Privacidade</a>
+          </p>
+        </div>
       </div>
     `
 
-    // Escolher o conteúdo com base no status do pagamento
-    const htmlContentFinal = isPending ? htmlContent : confirmedHtml
-
-    // Preparar os dados para o MailerSend
+    // Configurar os dados do email
     const mailData = {
-      from: {
-        email: "contato@amoremcodigo.com.br",
-        name: "Amor em Código",
-      },
       to: [
         {
           email: email,
-          name: coupleNames.split(" ")[0] || "Cliente",
+          name: coupleNames,
         },
       ],
-      subject: subject,
-      html: htmlContentFinal,
-    }
-
-    console.log("Enviando email via MailerSend...")
-    console.log("Para:", email)
-    console.log("Assunto:", subject)
-    console.log("Status:", isPending ? "Pagamento Pendente" : "Pagamento Confirmado")
-
-    // Enviar o email usando a API do MailerSend
-    const response = await fetch("https://api.mailersend.com/v1/email", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+      from: {
+        email: "contato@pretaamoremcodigo.com.br",
+        name: "Preta Amor em Código",
       },
-      body: JSON.stringify(mailData),
-    })
-
-    // Obter a resposta completa para diagnóstico
-    const responseText = await response.text()
-    console.log("Resposta bruta da API do MailerSend:", responseText)
-
-    let responseData
-    try {
-      responseData = JSON.parse(responseText)
-    } catch (e) {
-      console.log("Resposta não é JSON válido")
+      subject: subject,
+      html: htmlContent,
     }
 
-    // Verificar se houve erro na API do MailerSend
-    if (!response.ok) {
-      console.error("Erro na API do MailerSend:", responseData || responseText)
-      return NextResponse.json(
-        { error: "Erro ao enviar email", details: responseData || responseText },
-        { status: response.status },
-      )
+    // Enviar o email
+    const success = await sendEmail(mailData)
+
+    if (!success) {
+      return NextResponse.json({ error: "Falha ao enviar o email" }, { status: 500 })
     }
 
-    console.log("Email enviado com sucesso!")
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("Erro ao processar requisição de email:", error)
+    console.error("Erro ao enviar email:", error)
     return NextResponse.json(
       { error: "Erro interno do servidor", details: error instanceof Error ? error.message : String(error) },
       { status: 500 },

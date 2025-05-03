@@ -9,16 +9,7 @@
  */
 export async function sendConfirmationEmail(pageData: any) {
   try {
-    console.log("=== ENVIANDO E-MAIL DE CONFIRMAÇÃO PARA:", pageData.email)
-    console.log("Status de pagamento:", pageData.payment_status)
-
-    // Determinar se o pagamento está pendente
-    const isPending =
-      !pageData.payment_status ||
-      pageData.payment_status === "pending" ||
-      pageData.payment_status === "awaiting_payment"
-
-    console.log("Pagamento pendente?", isPending ? "SIM" : "NÃO")
+    console.log("ENVIANDO E-MAIL DE CONFIRMAÇÃO PARA:", pageData.email)
 
     const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || ""}/api/send-email`, {
       method: "POST",
@@ -30,7 +21,7 @@ export async function sendConfirmationEmail(pageData: any) {
         pageUrl: pageData.page_url,
         coupleNames: pageData.couple_names,
         qrCodeUrl: pageData.qr_code_url,
-        isPending: isPending,
+        isPending: false, // Pagamento confirmado
       }),
     })
 
@@ -55,26 +46,23 @@ export async function sendConfirmationEmail(pageData: any) {
  */
 export async function sendEmail(mailData: any) {
   try {
-    console.log("=== INICIANDO ENVIO DE EMAIL DETALHADO ===")
-    console.log("Email para:", mailData.to[0].email)
+    console.log("=== ENVIANDO EMAIL ===")
+    console.log("Email:", mailData.to[0].email)
     console.log("Assunto:", mailData.subject)
-    console.log("Tamanho do HTML:", mailData.html?.length || 0, "caracteres")
 
     // Verificar a chave API do MailerSend
     const apiKey = process.env.mailersend_API_KEY
     if (!apiKey) {
-      console.error("ERRO CRÍTICO: API Key do MailerSend não configurada")
+      console.error("API Key do MailerSend não configurada")
       return false
     }
 
-    console.log(
-      "API Key do MailerSend encontrada:",
-      apiKey.substring(0, 5) + "..." + apiKey.substring(apiKey.length - 5),
-    )
+    console.log("API Key do MailerSend:", apiKey.substring(0, 5) + "..." + apiKey.substring(apiKey.length - 5))
+
+    console.log("Enviando email via MailerSend...")
 
     try {
       // Enviar o email usando a API do MailerSend
-      console.log("Enviando requisição para a API do MailerSend...")
       const response = await fetch("https://api.mailersend.com/v1/email", {
         method: "POST",
         headers: {
@@ -86,7 +74,6 @@ export async function sendEmail(mailData: any) {
 
       // Obter a resposta completa para diagnóstico
       const responseText = await response.text()
-      console.log("Status da resposta:", response.status)
       console.log("Resposta bruta da API do MailerSend:", responseText)
 
       let responseData
@@ -110,7 +97,7 @@ export async function sendEmail(mailData: any) {
       return false
     }
   } catch (error) {
-    console.error("Erro geral ao enviar email:", error)
+    console.error("Erro ao enviar email:", error)
     return false
   }
 }

@@ -162,8 +162,8 @@ const uploadImageToServer = async (base64Image: string, retryCount = 0, maxRetri
 
 // Links para checkout da Neon Pay
 const NEON_PAY_CHECKOUT_LINKS = {
-  basic: "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=ZSC4E0P",
   premium: "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=FO0XZT0",
+  basic: "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=ZSC4E0P",
 }
 
 export function FormProvider({ children }: { children: ReactNode }) {
@@ -354,7 +354,9 @@ export function FormProvider({ children }: { children: ReactNode }) {
 
         // Usar links da Neon Pay
         const checkoutUrl =
-          formData.plan === "premium" ? NEON_PAY_CHECKOUT_LINKS.premium : NEON_PAY_CHECKOUT_LINKS.basic
+          formData.plan === "premium"
+            ? "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=FO0XZT0"
+            : "https://checkout.neonpay.com.br/checkout/cma699jmn02tgt4xjw8nyh7vh?offer=ZSC4E0P"
 
         // Adicionar parâmetros de query para identificar o pedido
         const checkoutUrlWithParams = `${checkoutUrl}&external_reference=${pageId}`

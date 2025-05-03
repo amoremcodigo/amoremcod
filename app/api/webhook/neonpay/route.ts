@@ -19,10 +19,25 @@ export async function POST(request: Request) {
     const rawBody = await request.text()
     console.log("Corpo bruto da requisição:", rawBody)
 
+    // VERIFICAÇÃO DIRETA NO TEXTO BRUTO
+    const isTransactionPaidInRawBody = rawBody.includes("TRANSACTION_PAID")
+    const isStatusCompletedInRawBody =
+      rawBody.includes('"status":"COMPLETED"') || rawBody.includes('"status": "COMPLETED"')
+
+    if (isTransactionPaidInRawBody) {
+      console.log("TRANSACTION_PAID detectado no corpo bruto da requisição!")
+    }
+
+    if (isStatusCompletedInRawBody) {
+      console.log('"status":"COMPLETED" detectado no corpo bruto da requisição!')
+    }
+
     // Tentar analisar como JSON
     let webhookData: any = {}
+    let isValidJson = false
     try {
       webhookData = JSON.parse(rawBody)
+      isValidJson = true
       console.log("Dados do webhook parseados com sucesso")
     } catch (e) {
       console.error("ERRO AO PARSEAR JSON:", e)
@@ -30,26 +45,33 @@ export async function POST(request: Request) {
       // Continuamos mesmo com erro de parsing
     }
 
-    // Verificar se o pagamento foi confirmado - ADICIONANDO VERIFICAÇÃO ESPECÍFICA PARA "TRANSACTION_PAID"
-    const paymentStatus = webhookData.status || webhookData.payment_status || webhookData.transaction_status || ""
-    const isPaymentConfirmed =
-      paymentStatus.toLowerCase() === "approved" ||
-      paymentStatus.toLowerCase() === "paid" ||
-      paymentStatus.toLowerCase() === "completed" ||
-      paymentStatus.toLowerCase() === "approved" ||
-      paymentStatus === "TRANSACTION_PAID" || // Verificação específica para TRANSACTION_PAID
-      webhookData.event === "TRANSACTION_PAID" || // Verificação no campo event
-      webhookData.event_type === "TRANSACTION_PAID" || // Verificação no campo event_type
-      webhookData.approved === true ||
-      webhookData.paid === true
+    // VERIFICAÇÃO ESPECÍFICA PARA OS CASOS SOLICITADOS
+    let isPaymentConfirmed = false
 
-    // Log específico para TRANSACTION_PAID
-    if (
-      paymentStatus === "TRANSACTION_PAID" ||
-      webhookData.event === "TRANSACTION_PAID" ||
-      webhookData.event_type === "TRANSACTION_PAID"
-    ) {
-      console.log("TRANSACTION_PAID detectado! Processando pagamento confirmado.")
+    // Verificar diretamente no texto bruto
+    if (isTransactionPaidInRawBody || isStatusCompletedInRawBody) {
+      isPaymentConfirmed = true
+      console.log("Pagamento confirmado detectado no corpo bruto!")
+    }
+
+    // Se temos JSON válido, verificar também nos campos
+    if (isValidJson) {
+      const paymentStatus = webhookData.status || webhookData.payment_status || webhookData.transaction_status || ""
+
+      if (
+        paymentStatus.toLowerCase() === "approved" ||
+        paymentStatus.toLowerCase() === "paid" ||
+        paymentStatus.toLowerCase() === "completed" ||
+        paymentStatus === "COMPLETED" ||
+        paymentStatus === "TRANSACTION_PAID" ||
+        webhookData.event === "TRANSACTION_PAID" ||
+        webhookData.event_type === "TRANSACTION_PAID" ||
+        webhookData.approved === true ||
+        webhookData.paid === true
+      ) {
+        isPaymentConfirmed = true
+        console.log(`Pagamento confirmado detectado no campo status: ${paymentStatus}`)
+      }
     }
 
     // Se o pagamento não foi confirmado, não enviamos o email final
@@ -57,31 +79,51 @@ export async function POST(request: Request) {
       console.log("Pagamento não confirmado, não enviando email final")
       return NextResponse.json({
         message: "Webhook recebido, mas pagamento não confirmado",
-        status: paymentStatus,
+        rawBodyCheck: {
+          isTransactionPaidInRawBody,
+          isStatusCompletedInRawBody,
+        },
       })
     }
 
-    // FOCO EXCLUSIVO NO EMAIL DO CLIENTE
-    const customerEmail =
-      webhookData.customer?.email ||
-      webhookData.email ||
-      webhookData.buyer_email ||
-      webhookData.payer_email ||
-      webhookData.metadata?.email ||
-      webhookData.client_email ||
-      webhookData.user_email ||
-      webhookData.data?.email ||
-      webhookData.customer_email ||
-      (webhookData.customer && webhookData.customer.email) ||
-      (webhookData.buyer && webhookData.buyer.email) ||
-      (webhookData.payer && webhookData.payer.email) ||
-      (webhookData.transaction && webhookData.transaction.customer_email)
+    // EXTRAÇÃO DO EMAIL DO CLIENTE
+    let customerEmail = null
+
+    // Tentar extrair email do JSON se for válido
+    if (isValidJson) {
+      customerEmail =
+        webhookData.customer?.email ||
+        webhookData.email ||
+        webhookData.buyer_email ||
+        webhookData.payer_email ||
+        webhookData.metadata?.email ||
+        webhookData.client_email ||
+        webhookData.user_email ||
+        webhookData.data?.email ||
+        webhookData.customer_email ||
+        (webhookData.customer && webhookData.customer.email) ||
+        (webhookData.buyer && webhookData.buyer.email) ||
+        (webhookData.payer && webhookData.payer.email) ||
+        (webhookData.transaction && webhookData.transaction.customer_email)
+    }
+
+    // Tentar extrair email do corpo bruto usando regex se ainda não encontramos
+    if (!customerEmail) {
+      const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g
+      const emailMatches = rawBody.match(emailRegex)
+
+      if (emailMatches && emailMatches.length > 0) {
+        customerEmail = emailMatches[0]
+        console.log(`Email extraído do corpo bruto usando regex: ${customerEmail}`)
+      }
+    }
 
     if (!customerEmail) {
       console.error("Email do cliente não encontrado nos dados do webhook")
       return NextResponse.json(
         {
           error: "Email do cliente não encontrado nos dados do webhook",
+          isPaymentConfirmed,
         },
         { status: 400 },
       )
@@ -136,6 +178,7 @@ export async function POST(request: Request) {
         success: true,
         message: "Email final enviado com sucesso",
         email: customerEmail,
+        isPaymentConfirmed,
       })
     } catch (emailError) {
       console.error("Erro ao enviar email final:", emailError)

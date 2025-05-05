@@ -52,7 +52,7 @@ export default function FacebookPixel() {
       await loadFacebookPixel()
 
       // Inicializar com o ID do Pixel
-      window.fbq("init", "645764484878124")
+      window.fbq("init", "1251716579642859")
 
       // Registrar o evento PageView inicial
       window.fbq("track", "PageView")
@@ -85,7 +85,7 @@ export default function FacebookPixel() {
           height="1"
           width="1"
           style={{ display: "none" }}
-          src="https://www.facebook.com/tr?id=645764484878124&ev=PageView&noscript=1"
+          src="https://www.facebook.com/tr?id=1251716579642859&ev=PageView&noscript=1"
           alt=""
         />
       </noscript>

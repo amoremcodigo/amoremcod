@@ -35,8 +35,8 @@ export function PricingPlans() {
           {[
             {
               title: "Plano Premium",
-              price: "R$ 9,90",
-              originalPrice: "R$ 19,80",
+              price: "R$ 15,00",
+              originalPrice: "R$ 30,00",
               discount: "50% OFF",
               description: "Para eternizar momentos especiais",
               features: [
@@ -51,7 +51,7 @@ export function PricingPlans() {
             },
             {
               title: "Plano Básico",
-              price: "R$ 7,90",
+              price: "R$ 12,00",
               description: "Perfeito para uma surpresa especial",
               features: [
                 { text: "Validade de 1 ano", included: true },

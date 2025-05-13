@@ -9,7 +9,7 @@ export function HowItWorks() {
             <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
               Crie uma página em <span className="gradient-text">4 etapas!</span>
             </h2>
-            <p className="mx-auto max-w-[700px] text-gray-400 md:text-xl">É rapidinho, dura menos de 3 minutos!</p>
+            <p className="mx-auto max-w-[700px] text-gray-400 md:text-xl">É rapidinho, leva menos de 1 minuto!</p>
           </div>
         </div>
         <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4 mt-10">

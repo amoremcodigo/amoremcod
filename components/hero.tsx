@@ -15,7 +15,6 @@ export function Hero() {
     { text: "eu Amor", emoji: "❤️" },
     { text: "ua Amizade", emoji: "🤝" },
     { text: "eu Familiar", emoji: "👨‍👩‍👧‍👦" }, // Changed from 👨‍👩‍👧 to 👨‍👩‍👧‍👦
-    { text: "eu Pet", emoji: "🐾" },
     { text: "ua Pessoa Especial", emoji: "✨" },
     { text: "eu Amigo", emoji: "🎭" },
     { text: "eu Noivo", emoji: "🤵🏻‍♂️" },
@@ -85,9 +84,7 @@ export function Hero() {
                 <span className="cursor-blink">|</span>
               </h1>
               <p className="max-w-[600px] text-gray-400 md:text-xl">
-                Crie uma página personalizada e receba seu QR Code para compartilhar. Adicione fotos, mensagens e um
-                contador dinâmico para tornar o presente ainda mais especial para qualquer pessoa importante em sua
-                vida.
+                Crie uma página personalizada e receba seu QR Code para compartilhar.
               </p>
             </div>
             <div className="flex justify-center sm:justify-start pt-4">
@@ -146,7 +143,7 @@ export function Hero() {
                       </svg>
                     ))}
                   </div>
-                  <span className="ml-2 text-sm text-gray-400">Aprovado por 31.742 pessoas</span>
+                  <span className="ml-2 text-sm text-gray-400">Aprovado por 6.420 pessoas</span>
                 </div>
               </div>
             </div>

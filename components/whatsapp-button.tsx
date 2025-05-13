@@ -46,7 +46,7 @@ export function WhatsappButton() {
 
       {/* Texto abaixo do botão */}
       <div className="bg-white text-green-600 font-semibold text-xs px-3 py-1 rounded-full shadow-md mt-2 whitespace-nowrap">
-        Alguma Dúvida?
+        Suporte 24hrs!
       </div>
     </div>
   )

@@ -14,8 +14,9 @@ export default function FacebookPixel() {
   const initialized = useRef(false)
   const pathname = usePathname()
 
-  // Array com os IDs dos pixels
-  const pixelIds = ["1251716579642859", "1803666846848435"]
+  // IDs dos pixels
+  const primaryPixelId = "1251716579642859"
+  const secondaryPixelId = "1803666846848435"
 
   // Função para carregar o script do Facebook Pixel
   const loadFacebookPixel = () => {
@@ -25,61 +26,68 @@ export default function FacebookPixel() {
         return
       }
 
-      // Criar o script do Facebook Pixel
-      const script = document.createElement("script")
-      script.src = "https://connect.facebook.net/en_US/fbevents.js"
-      script.async = true
-      script.onload = () => resolve()
+      // Adicionar o código base do Facebook Pixel
+      !((f, b, e, v, n, t, s) => {
+        if (f.fbq) return
+        n = f.fbq = () => {
+          n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments)
+        }
+        if (!f._fbq) f._fbq = n
+        n.push = n
+        n.loaded = !0
+        n.version = "2.0"
+        n.queue = []
+        t = b.createElement(e)
+        t.async = !0
+        t.src = v
+        s = b.getElementsByTagName(e)[0]
+        s.parentNode.insertBefore(t, s)
+      })(window, document, "script", "https://connect.facebook.net/en_US/fbevents.js")
 
-      // Configurar o objeto fbq
-      window.fbq = () => {
-        window.fbq.callMethod ? window.fbq.callMethod.apply(window.fbq, arguments) : window.fbq.queue.push(arguments)
-      }
-
-      if (!window._fbq) window._fbq = window.fbq
-      window.fbq.push = window.fbq
-      window.fbq.loaded = true
-      window.fbq.version = "2.0"
-      window.fbq.queue = []
-
-      // Adicionar o script ao documento
-      document.head.appendChild(script)
+      // Resolver a promessa quando o script estiver carregado
+      const checkFbqLoaded = setInterval(() => {
+        if (window.fbq && window.fbq.loaded) {
+          clearInterval(checkFbqLoaded)
+          resolve()
+        }
+      }, 100)
     })
   }
 
-  // Inicializar o Facebook Pixel
+  // Inicializar os pixels do Facebook
   useEffect(() => {
     if (initialized.current) return
 
-    const initPixel = async () => {
+    const initPixels = async () => {
       await loadFacebookPixel()
 
-      // Inicializar e rastrear cada pixel individualmente
-      pixelIds.forEach((id) => {
-        // Inicializar o pixel
-        window.fbq("init", id)
+      // Inicializar o pixel primário
+      window.fbq("init", primaryPixelId)
 
-        // Rastrear o evento PageView para este pixel específico
-        window.fbq("track", "PageView", {}, { pixelId: id })
-      })
+      // Adicionar o pixel secundário
+      window.fbq("init", secondaryPixelId)
+
+      // Rastrear o evento PageView inicial
+      window.fbq("track", "PageView")
 
       initialized.current = true
+
+      // Log para debug
+      console.log("Facebook Pixels initialized:", primaryPixelId, secondaryPixelId)
     }
 
-    initPixel()
+    initPixels()
   }, [])
 
   // Rastrear mudanças de página
   useEffect(() => {
     if (!initialized.current) return
 
-    // Pequeno atraso para garantir que o evento seja registrado após a mudança de página
+    // Rastrear o evento PageView quando a página mudar
     const timer = setTimeout(() => {
       if (typeof window.fbq === "function") {
-        // Rastrear o evento PageView para cada pixel individualmente
-        pixelIds.forEach((id) => {
-          window.fbq("track", "PageView", {}, { pixelId: id })
-        })
+        window.fbq("track", "PageView")
+        console.log("PageView tracked for both pixels")
       }
     }, 100)
 
@@ -88,20 +96,20 @@ export default function FacebookPixel() {
 
   return (
     <>
-      {/* Noscript fallback para navegadores sem JavaScript - para ambos os pixels */}
+      {/* Noscript fallback para navegadores sem JavaScript */}
       <noscript>
         <img
           height="1"
           width="1"
           style={{ display: "none" }}
-          src="https://www.facebook.com/tr?id=1251716579642859&ev=PageView&noscript=1"
+          src={`https://www.facebook.com/tr?id=${primaryPixelId}&ev=PageView&noscript=1`}
           alt=""
         />
         <img
           height="1"
           width="1"
           style={{ display: "none" }}
-          src="https://www.facebook.com/tr?id=1803666846848435&ev=PageView&noscript=1"
+          src={`https://www.facebook.com/tr?id=${secondaryPixelId}&ev=PageView&noscript=1`}
           alt=""
         />
       </noscript>

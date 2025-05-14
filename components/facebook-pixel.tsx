@@ -14,6 +14,9 @@ export default function FacebookPixel() {
   const initialized = useRef(false)
   const pathname = usePathname()
 
+  // Array com os IDs dos pixels
+  const pixelIds = ["1251716579642859", "1803666846848435"]
+
   // Função para carregar o script do Facebook Pixel
   const loadFacebookPixel = () => {
     return new Promise<void>((resolve) => {
@@ -51,10 +54,12 @@ export default function FacebookPixel() {
     const initPixel = async () => {
       await loadFacebookPixel()
 
-      // Inicializar com o ID do Pixel
-      window.fbq("init", "1251716579642859")
+      // Inicializar cada pixel
+      pixelIds.forEach((id) => {
+        window.fbq("init", id)
+      })
 
-      // Registrar o evento PageView inicial
+      // Registrar o evento PageView inicial para todos os pixels
       window.fbq("track", "PageView")
 
       initialized.current = true
@@ -79,13 +84,20 @@ export default function FacebookPixel() {
 
   return (
     <>
-      {/* Noscript fallback para navegadores sem JavaScript */}
+      {/* Noscript fallback para navegadores sem JavaScript - para ambos os pixels */}
       <noscript>
         <img
           height="1"
           width="1"
           style={{ display: "none" }}
           src="https://www.facebook.com/tr?id=1251716579642859&ev=PageView&noscript=1"
+          alt=""
+        />
+        <img
+          height="1"
+          width="1"
+          style={{ display: "none" }}
+          src="https://www.facebook.com/tr?id=1803666846848435&ev=PageView&noscript=1"
           alt=""
         />
       </noscript>

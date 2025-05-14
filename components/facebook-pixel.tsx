@@ -54,13 +54,14 @@ export default function FacebookPixel() {
     const initPixel = async () => {
       await loadFacebookPixel()
 
-      // Inicializar cada pixel
+      // Inicializar e rastrear cada pixel individualmente
       pixelIds.forEach((id) => {
+        // Inicializar o pixel
         window.fbq("init", id)
-      })
 
-      // Registrar o evento PageView inicial para todos os pixels
-      window.fbq("track", "PageView")
+        // Rastrear o evento PageView para este pixel específico
+        window.fbq("track", "PageView", {}, { pixelId: id })
+      })
 
       initialized.current = true
     }
@@ -75,7 +76,10 @@ export default function FacebookPixel() {
     // Pequeno atraso para garantir que o evento seja registrado após a mudança de página
     const timer = setTimeout(() => {
       if (typeof window.fbq === "function") {
-        window.fbq("track", "PageView")
+        // Rastrear o evento PageView para cada pixel individualmente
+        pixelIds.forEach((id) => {
+          window.fbq("track", "PageView", {}, { pixelId: id })
+        })
       }
     }, 100)
 

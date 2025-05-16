@@ -486,6 +486,7 @@ export function PreviewSite() {
       const essentialData = {
         n: capitalizedCoupleNames, // Nome do casal
         d: formData.date, // Data
+        t: formData.time, // Hora
         m: formData.message, // Mensagem
         y: formData.youtubeLink, // Link do YouTube
         p: photoUrls.filter((url) => url), // URLs das fotos (filtrar vazias)
@@ -494,6 +495,10 @@ export function PreviewSite() {
 
       // Comprimir os dados para a URL
       const compressedData = compressDataForUrl(essentialData)
+
+      // Gerar ID da página
+      const pageId = Math.random().toString(36).substring(2, 8)
+      console.log("ID da página gerada:", pageId)
 
       // Construir a URL completa da página
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
@@ -527,6 +532,7 @@ export function PreviewSite() {
         email: normalizedEmail,
         couple_names: capitalizedCoupleNames,
         date: formData.date,
+        time: formData.time || "",
         message: formData.message,
         youtube_link: formData.youtubeLink || "",
         photo_urls: photoUrls.filter((url) => url), // Filtrar URLs vazias
@@ -602,18 +608,22 @@ export function PreviewSite() {
         console.error("Erro ao enviar e-mail de confirmação pendente:", emailError)
       }
 
-      // Redirecionar para o checkout da Neon Pay
-      setLoadingMessage("Redirecionando para o pagamento...")
+      // Preparar URL para o checkout da Neon Pay
       const checkoutUrl = formData.plan === "premium" ? NEON_PAY_CHECKOUT_LINKS.premium : NEON_PAY_CHECKOUT_LINKS.basic
 
       // Adicionar referência externa para identificar o pedido
       const checkoutUrlWithRef = `${checkoutUrl}&external_reference=${pageId}&buyer_name=${encodeURIComponent(capitalizedCoupleNames)}&buyer_email=${encodeURIComponent(normalizedEmail)}`
 
-      console.log("Redirecionando para:", checkoutUrlWithRef)
+      console.log("URL de checkout preparada:", checkoutUrlWithRef)
+
+      // Redirecionar para a página temporária em vez de ir direto para o checkout
+      const temporaryPageUrl = `${siteUrl}/visualizacao-temporaria?d=${compressedData}&checkout=${encodeURIComponent(checkoutUrlWithRef)}&id=${pageId}`
+
+      console.log("Redirecionando para página temporária:", temporaryPageUrl)
 
       // Pequeno atraso antes de redirecionar para garantir que os dados sejam salvos
       setTimeout(() => {
-        window.location.href = checkoutUrlWithRef
+        window.location.href = temporaryPageUrl
       }, 1500)
     } catch (error) {
       console.error("Erro durante o processamento:", error)

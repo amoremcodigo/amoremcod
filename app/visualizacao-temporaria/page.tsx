@@ -363,6 +363,30 @@ export default function VisualizacaoTemporaria() {
               </div>
             </div>
           </div>
+
+          {/* Segunda caixa flutuante posicionada para cobrir parcialmente as fotos */}
+          <div className="absolute inset-0 flex items-center justify-center pt-40 z-50">
+            <div className="bg-black/90 backdrop-blur-md border border-purple-500 rounded-xl p-6 max-w-xs mx-4 shadow-2xl">
+              <div className="text-center">
+                <div className="mb-2">
+                  <div className="relative inline-block">
+                    <QrCode className="h-12 w-12 text-primary" />
+                    <Heart className="absolute -bottom-1 -right-1 h-6 w-6 text-pink-500" />
+                  </div>
+                </div>
+                <h2 className="text-xl font-bold mb-3 gradient-text">
+                  Sua página personalizada com QR Code já foi criada!
+                </h2>
+                <p className="text-gray-300 mb-4">Libere o acesso completo automaticamente ao finalizar o pagamento.</p>
+                <Button
+                  onClick={redirectToCheckout}
+                  className="w-full gradient-bg text-white font-medium py-2 px-4 rounded-md"
+                >
+                  Finalizar pagamento
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

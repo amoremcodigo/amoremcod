@@ -7,9 +7,16 @@
  * @param pageData Dados da página do cliente
  * @returns true se o email foi enviado com sucesso, false caso contrário
  */
+// Modificar a função sendConfirmationEmail para não enviar o email quando isPending for true
 export async function sendConfirmationEmail(pageData: any) {
   try {
     console.log("ENVIANDO E-MAIL DE CONFIRMAÇÃO PARA:", pageData.email)
+
+    // Verificar se é o email de pagamento pendente
+    if (pageData.isPending === true) {
+      console.log("EMAIL DE PAGAMENTO PENDENTE DESATIVADO TEMPORARIAMENTE")
+      return true // Retorna true como se tivesse enviado com sucesso, mas não envia
+    }
 
     const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || ""}/api/send-email`, {
       method: "POST",

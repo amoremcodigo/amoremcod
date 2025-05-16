@@ -342,6 +342,7 @@ export function FormProvider({ children }: { children: ReactNode }) {
             plan: formData.plan || "basic",
             page_url: pageUrl,
             qr_code_url: qrCodeUrl || "",
+            payment_status: "pending", // Marcar como pendente até confirmação do pagamento
           }
 
           await savePage(pageData)

@@ -159,7 +159,14 @@ export async function POST(request: Request) {
     // ENVIAR EMAIL FINAL INDEPENDENTEMENTE DE ERROS
     if (pageData) {
       // Se temos os dados da página, usamos eles
-      await sendConfirmationEmail(pageData, true) // Forçar envio do email
+      await sendConfirmationEmail(
+        {
+          ...pageData,
+          payment_status: "approved",
+          isPending: false,
+        },
+        true,
+      ) // Forçar o envio do email mesmo se houver alguma verificação de pendência
       console.log(`Email final enviado com sucesso para ${customerEmail} usando dados da página`)
     } else {
       // Se não temos os dados da página, criamos um objeto mínimo com o email

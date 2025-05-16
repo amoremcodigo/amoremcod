@@ -12,8 +12,11 @@ export async function sendConfirmationEmail(pageData: any, forceEmail = false) {
   try {
     console.log("VERIFICANDO ENVIO DE E-MAIL DE CONFIRMAÇÃO PARA:", pageData.email)
 
-    // Se isPending for true e forceEmail for false, não envia o email
-    if (pageData.isPending === true && !forceEmail) {
+    // Verificar explicitamente o status de pagamento
+    const isPending = pageData.payment_status === "pending" || pageData.isPending === true
+
+    // Se o pagamento estiver pendente e não estamos forçando o envio, não enviar o email
+    if (isPending && !forceEmail) {
       console.log("EMAIL NÃO ENVIADO - PAGAMENTO PENDENTE:", pageData.email)
       return false
     }
@@ -30,7 +33,8 @@ export async function sendConfirmationEmail(pageData: any, forceEmail = false) {
         pageUrl: pageData.page_url,
         coupleNames: pageData.couple_names,
         qrCodeUrl: pageData.qr_code_url,
-        isPending: false, // Pagamento confirmado
+        isPending: false, // Indicar que o pagamento foi confirmado
+        forceEmail: forceEmail, // Passar o parâmetro forceEmail
       }),
     })
 

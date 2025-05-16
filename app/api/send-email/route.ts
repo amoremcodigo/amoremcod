@@ -4,7 +4,13 @@ import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {
   try {
-    const { email, pageUrl, coupleNames, qrCodeUrl, isPending } = await request.json()
+    const { email, pageUrl, coupleNames, qrCodeUrl, isPending, forceEmail } = await request.json()
+
+    // Verificar se o pagamento está pendente e se não estamos forçando o envio
+    if (isPending === true && forceEmail !== true) {
+      console.log("EMAIL NÃO ENVIADO - PAGAMENTO PENDENTE:", email)
+      return NextResponse.json({ success: true, message: "Email não enviado - pagamento pendente" })
+    }
 
     if (!email) {
       return NextResponse.json({ error: "Email não fornecido" }, { status: 400 })

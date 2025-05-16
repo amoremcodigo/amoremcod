@@ -108,6 +108,7 @@ export function Formulario() {
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
   ]
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Inicializar com as fotos existentes, se houver
   useEffect(() => {
@@ -169,9 +170,16 @@ export function Formulario() {
     updateFormData({ date: value })
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    document.getElementById("planos")?.scrollIntoView({ behavior: "smooth" })
+    setIsSubmitting(true)
+    try {
+      // Simulação de um processo de envio
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      document.getElementById("planos")?.scrollIntoView({ behavior: "smooth" })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   // Função simplificada para lidar com o upload de fotos
@@ -459,8 +467,8 @@ export function Formulario() {
                 </div>
               </CardContent>
               <CardFooter className="flex flex-col gap-4">
-                <Button type="submit" className="w-full gradient-bg">
-                  Continuar para Escolher o Plano
+                <Button type="submit" className="w-full gradient-bg" disabled={isSubmitting}>
+                  {isSubmitting ? "Processando..." : "Continuar para Escolher o Plano"}
                 </Button>
               </CardFooter>
             </form>

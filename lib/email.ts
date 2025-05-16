@@ -5,10 +5,19 @@
 /**
  * Envia um email de confirmação para o cliente com o link da página e QR Code
  * @param pageData Dados da página do cliente
+ * @param forceEmail Se true, envia o email mesmo que o pagamento esteja pendente
  * @returns true se o email foi enviado com sucesso, false caso contrário
  */
-export async function sendConfirmationEmail(pageData: any) {
+export async function sendConfirmationEmail(pageData: any, forceEmail = false) {
   try {
+    console.log("VERIFICANDO ENVIO DE E-MAIL DE CONFIRMAÇÃO PARA:", pageData.email)
+
+    // Se isPending for true e forceEmail for false, não envia o email
+    if (pageData.isPending === true && !forceEmail) {
+      console.log("EMAIL NÃO ENVIADO - PAGAMENTO PENDENTE:", pageData.email)
+      return false
+    }
+
     console.log("ENVIANDO E-MAIL DE CONFIRMAÇÃO PARA:", pageData.email)
 
     const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || ""}/api/send-email`, {

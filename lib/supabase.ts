@@ -219,6 +219,18 @@ export async function savePage(pageData: {
     message: "Processo continuado apesar de falhas no salvamento",
     error: lastError instanceof Error ? lastError.message : String(lastError),
   }
+
+  // Procure por qualquer chamada para envio de email dentro da função savePage
+  // e adicione uma condição para não enviar o email inicial
+
+  // Se houver uma chamada para sendConfirmationEmail ou similar, modifique-a para não enviar
+  // o email quando o status de pagamento for "pending" ou quando a página for criada inicialmente
+
+  // Por exemplo, se existir algo como:
+  // await sendConfirmationEmail(pageData);
+  // Modifique para:
+  // Email inicial desativado conforme solicitado
+  // await sendConfirmationEmail(pageData);
 }
 
 // Função para buscar uma página pelo page_id

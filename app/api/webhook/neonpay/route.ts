@@ -157,39 +157,29 @@ export async function POST(request: Request) {
     }
 
     // ENVIAR EMAIL FINAL INDEPENDENTEMENTE DE ERROS
-    try {
-      if (pageData) {
-        // Se temos os dados da página, usamos eles
-        await sendConfirmationEmail(pageData)
-        console.log(`Email final enviado com sucesso para ${customerEmail} usando dados da página`)
-      } else {
-        // Se não temos os dados da página, criamos um objeto mínimo com o email
-        const minimalPageData = {
-          email: customerEmail,
-          couple_names: "Cliente",
-          page_url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://amoremcodigo.com.br"}/meus-sites`,
-          qr_code_url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://amoremcodigo.com.br"}/qr-code`,
-        }
-        await sendConfirmationEmail(minimalPageData)
-        console.log(`Email final enviado com sucesso para ${customerEmail} usando dados mínimos`)
-      }
-
-      return NextResponse.json({
-        success: true,
-        message: "Email final enviado com sucesso",
+    if (pageData) {
+      // Se temos os dados da página, usamos eles
+      await sendConfirmationEmail(pageData, true) // Forçar envio do email
+      console.log(`Email final enviado com sucesso para ${customerEmail} usando dados da página`)
+    } else {
+      // Se não temos os dados da página, criamos um objeto mínimo com o email
+      const minimalPageData = {
         email: customerEmail,
-        isPaymentConfirmed,
-      })
-    } catch (emailError) {
-      console.error("Erro ao enviar email final:", emailError)
-      return NextResponse.json(
-        {
-          error: "Erro ao enviar email final",
-          details: emailError instanceof Error ? emailError.message : String(emailError),
-        },
-        { status: 500 },
-      )
+        couple_names: "Cliente",
+        page_url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://amoremcodigo.com.br"}/meus-sites`,
+        qr_code_url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://amoremcodigo.com.br"}/qr-code`,
+        isPending: false, // Marcar como não pendente para garantir o envio
+      }
+      await sendConfirmationEmail(minimalPageData, true) // Forçar envio do email
+      console.log(`Email final enviado com sucesso para ${customerEmail} usando dados mínimos`)
     }
+
+    return NextResponse.json({
+      success: true,
+      message: "Email final enviado com sucesso",
+      email: customerEmail,
+      isPaymentConfirmed,
+    })
   } catch (error) {
     console.error("Erro ao processar webhook da Neon Pay:", error)
     return NextResponse.json(

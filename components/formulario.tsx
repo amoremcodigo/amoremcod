@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { X, Info, ImageIcon, Music } from "lucide-react"
+import { X, Info, ImageIcon } from "lucide-react"
 import { useFormContext } from "@/context/form-context"
 
 // Função para capitalizar a primeira letra de cada palavra e substituir "e" por "&"
@@ -395,9 +395,8 @@ export function Formulario() {
                     value={formData.youtubeLink}
                     onChange={handleChange}
                   />
-                  <div className="mt-1 text-sm flex items-center gap-1 whitespace-nowrap">
-                    <span className="text-gray-400 flex items-center gap-1">
-                      <Music className="h-4 w-4" />
+                  <div className="mt-1 text-sm flex items-center gap-1">
+                    <span className="text-gray-400">
                       Abra o YouTube no app ou navegador, copie o link da música e cole no box acima.
                     </span>
                   </div>

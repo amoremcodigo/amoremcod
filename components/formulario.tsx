@@ -396,15 +396,10 @@ export function Formulario() {
                     onChange={handleChange}
                   />
                   <div className="mt-1 text-sm flex items-center gap-1 whitespace-nowrap">
-                    <a
-                      href="https://www.youtube.com.br"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:text-primary/80 font-medium flex items-center gap-1"
-                    >
+                    <span className="text-gray-400 flex items-center gap-1">
                       <Music className="h-4 w-4" />
-                      Ir para o YouTube
-                    </a>
+                      Abra o YouTube no app ou navegador, copie o link da música e cole no box acima.
+                    </span>
                   </div>
                 </div>
 

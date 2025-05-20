@@ -305,11 +305,8 @@ export function Formulario() {
         <div className="flex flex-col items-center justify-center space-y-4 text-center mb-10">
           <div className="space-y-2">
             <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
-              Crie sua <span className="gradient-text">página personalizada</span>
+              Vamos lá? <span className="gradient-text">Leva menos de 1 minuto</span>
             </h2>
-            <p className="mx-auto max-w-[700px] text-gray-400 md:text-xl">
-              Preencha os dados abaixo para criar uma página especial para alguém importante em sua vida.
-            </p>
           </div>
         </div>
 

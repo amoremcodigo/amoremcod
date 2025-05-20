@@ -8,7 +8,8 @@ import { Testimonials } from "@/components/testimonials"
 import { Footer } from "@/components/footer"
 import { PromoBar } from "@/components/promo-bar"
 import { WhatsappButton } from "@/components/whatsapp-button"
-import { ExampleButton } from "@/components/example-button" // Adicionar importação do novo componente
+import { ExampleButton } from "@/components/example-button"
+import { TopExampleButton } from "@/components/top-example-button" // Nova importação
 
 export default function Home() {
   return (
@@ -17,11 +18,12 @@ export default function Home() {
       <Navbar />
       <Hero />
       <HowItWorks />
+      <TopExampleButton /> {/* Movido para depois do HowItWorks */}
       <Formulario />
       <PricingPlans />
       <PreviewSite />
       <Testimonials />
-      <ExampleButton /> {/* Substituir MySitesButton por ExampleButton */}
+      <ExampleButton />
       <Footer />
       <WhatsappButton />
     </main>

@@ -103,9 +103,6 @@ export function PricingPlans() {
                     <span className="text-base sm:text-lg line-through text-gray-500 mr-2">{plan.originalPrice}</span>
                   )}
                   <span className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight">{plan.price}</span>
-                  <span className="ml-1 text-xs sm:text-sm text-gray-400 w-full sm:w-auto mt-1 sm:mt-0">
-                    Pagamento único
-                  </span>
                 </div>
               </CardHeader>
               <CardContent className="flex-1 px-4 py-1 sm:px-6 sm:py-2">

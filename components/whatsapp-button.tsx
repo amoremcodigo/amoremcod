@@ -1,9 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 
 export function WhatsappButton() {
   const [isVisible, setIsVisible] = useState(false)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   // Mostrar o botão após um pequeno delay para melhorar a experiência do usuário
   useEffect(() => {
@@ -14,22 +16,73 @@ export function WhatsappButton() {
     return () => clearTimeout(timer)
   }, [])
 
-  const handleWhatsAppClick = () => {
-    // Número de telefone para o WhatsApp (número atualizado)
-    const phoneNumber = "5545991021576" // Changed from "5561984452076" to "5545991021576"
-    const message = "Olá! Gostaria de saber mais sobre o Amor em Código."
+  // Fechar o menu quando clicar fora dele
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false)
+      }
+    }
 
-    // Criar URL do WhatsApp com o número e mensagem pré-definida
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [])
+
+  const handleWhatsAppClick = () => {
+    // Ao invés de abrir o WhatsApp diretamente, agora abrimos o menu de opções
+    setIsMenuOpen(!isMenuOpen)
+  }
+
+  const handleOptionClick = (option: string) => {
+    // Número de telefone para o WhatsApp
+    const phoneNumber = "5545991021576"
+
+    // Definir a mensagem com base na opção selecionada
+    let message = ""
+    if (option === "created") {
+      message = "Oi! Já criei minha página e preciso de ajuda."
+    } else {
+      message = "Oi! Ainda não criei minha página e tenho uma dúvida."
+    }
+
+    // Criar URL do WhatsApp com o número e mensagem selecionada
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
 
     // Abrir o WhatsApp em uma nova aba
     window.open(whatsappUrl, "_blank")
+
+    // Fechar o menu
+    setIsMenuOpen(false)
   }
 
   return (
     <div
+      ref={menuRef}
       className={`fixed bottom-6 right-6 z-50 flex flex-col items-center transition-all duration-500 ease-in-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
     >
+      {/* Menu de opções */}
+      {isMenuOpen && (
+        <div className="bg-white rounded-lg shadow-xl p-3 mb-3 transform transition-all duration-300 ease-in-out">
+          <div className="flex flex-col space-y-2 w-64">
+            <button
+              onClick={() => handleOptionClick("created")}
+              className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-md transition-colors duration-200 flex items-center justify-center"
+            >
+              Já criei minha página
+            </button>
+            <button
+              onClick={() => handleOptionClick("not-created")}
+              className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-md transition-colors duration-200 flex items-center justify-center"
+            >
+              Ainda não criei, tenho uma dúvida
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Botão principal do WhatsApp */}
       <button
         onClick={handleWhatsAppClick}
         className="bg-green-500 hover:bg-green-600 text-white rounded-full w-16 h-16 flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 relative group"

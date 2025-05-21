@@ -64,7 +64,7 @@ export function Footer() {
             <img
               src="/images/secure-payment-badge.png"
               alt="Pagamento Seguro via NeonPay"
-              className="h-10 opacity-90"
+              className="h-16 opacity-90"
             />
           </div>
           <p className="text-sm text-gray-400 flex items-center justify-center">

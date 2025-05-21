@@ -7,7 +7,7 @@ export function HowItWorks() {
         <div className="flex flex-col items-center justify-center space-y-4 text-center">
           <div className="space-y-2">
             <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
-              Crie uma página em <span className="gradient-text">4 etapas!</span>
+              Crie em <span className="gradient-text">4 etapas!</span>
             </h2>
             <p className="mx-auto max-w-[700px] text-gray-400 md:text-xl">É rapidinho, leva menos de 1 minuto!</p>
           </div>

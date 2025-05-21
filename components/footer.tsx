@@ -61,11 +61,13 @@ export function Footer() {
 
         <div className="mt-8 border-t border-gray-800 pt-8 text-center">
           <div className="flex justify-center mb-6">
-            <img
-              src="/images/secure-payment-badge.png"
-              alt="Pagamento Seguro via NeonPay"
-              className="h-16 opacity-90"
-            />
+            <div className="-ml-4">
+              <img
+                src="/images/secure-payment-badge.png"
+                alt="Pagamento Seguro via NeonPay"
+                className="h-16 opacity-90"
+              />
+            </div>
           </div>
           <p className="text-sm text-gray-400 flex items-center justify-center">
             Feito com <Heart className="h-4 w-4 text-red-500 mx-1 fill-current" /> por Amor em Código

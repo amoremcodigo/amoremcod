@@ -8,7 +8,6 @@ import { FallingHearts } from "@/components/falling-hearts"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
-import { CustomQRCode } from "@/components/custom-qr-code"
 import { Footer } from "@/components/footer"
 
 // Função para extrair o ID do vídeo do YouTube
@@ -669,7 +668,19 @@ export default function PaginaDetalhes() {
                   <span className="text-sm text-gray-400">QR Code da página</span>
                 </div>
                 <div className="bg-white p-3 rounded-lg inline-block">
-                  <CustomQRCode url={window.location.href} size={200} logoSize={40} />
+                  {/* Usar uma abordagem mais direta para o QR code */}
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(window.location.href)}&margin=1&qzone=1&format=png`}
+                    alt="QR Code da página"
+                    width={200}
+                    height={200}
+                    className="rounded"
+                    onError={(e) => {
+                      console.error("Erro ao carregar QR Code, tentando alternativa")
+                      ;(e.target as HTMLImageElement).src =
+                        `https://chart.googleapis.com/chart?cht=qr&chs=200x200&chl=${encodeURIComponent(window.location.href)}&chld=H|0`
+                    }}
+                  />
                 </div>
               </div>
             </div>

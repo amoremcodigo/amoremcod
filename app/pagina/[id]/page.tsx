@@ -203,9 +203,7 @@ export default function PaginaDetalhes() {
   const printQrCode = () => {
     const printWindow = window.open("", "_blank")
     if (printWindow) {
-      // Garantir que temos uma URL válida e completa
-      const currentUrl = window.location.href
-      const secureUrl = currentUrl.replace("http://", "https://")
+      const secureUrl = window.location.href.replace("http://", "https://")
       const html = `
     <html>
       <head>
@@ -226,10 +224,6 @@ export default function PaginaDetalhes() {
         <p>Escaneie este QR Code para acessar nossa página personalizada</p>
         <script>
           setTimeout(() => { window.print(); }, 500);
-          // Adicionar fallback caso a primeira API falhe
-          document.querySelector('.qr-code').onerror = function() {
-            this.src = "https://chart.googleapis.com/chart?cht=qr&chs=300x300&chl=${encodeURIComponent(secureUrl)}&chld=H|0";
-          };
         </script>
       </body>
     </html>
@@ -245,10 +239,7 @@ export default function PaginaDetalhes() {
     const canvas = document.createElement("canvas")
     const ctx = canvas.getContext("2d")
     const size = 500
-
-    // Garantir que temos uma URL válida e completa
-    const currentUrl = window.location.href
-    const secureUrl = currentUrl.replace("http://", "https://")
+    const secureUrl = window.location.href.replace("http://", "https://")
 
     if (!ctx) {
       toast.error("Seu navegador não suporta esta funcionalidade")
@@ -278,15 +269,7 @@ export default function PaginaDetalhes() {
     }
 
     qrImg.onerror = () => {
-      toast.error("Erro ao gerar QR Code, tentando método alternativo...")
-
-      // Tentar com API alternativa
-      qrImg.src = `https://chart.googleapis.com/chart?cht=qr&chs=${size}x${size}&chl=${encodeURIComponent(secureUrl)}&chld=H|0`
-
-      // Se ainda falhar, notificar o usuário
-      qrImg.onerror = () => {
-        toast.error("Não foi possível gerar o QR Code. Tente novamente mais tarde.")
-      }
+      toast.error("Erro ao gerar QR Code para download")
     }
   }
 
@@ -369,59 +352,67 @@ export default function PaginaDetalhes() {
       // Gerar a imagem do QR code usando HTTPS
       const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(secureUrl)}&margin=1&qzone=1&format=png&bgcolor=FFFFFF&color=000000&ecc=H`
 
-      try {
-        // Baixar a imagem do QR code
-        const response = await fetch(qrCodeUrl)
-        if (!response.ok) throw new Error("Falha ao buscar QR code")
-        const blob = await response.blob()
+      // Baixar a imagem do QR code
+      const response = await fetch(qrCodeUrl)
+      const blob = await response.blob()
 
-        // Criar um arquivo a partir do blob
-        const file = new File([blob], `qrcode-${pageData?.coupleNames || "amor-em-codigo"}.png`, { type: "image/png" })
+      // Criar um arquivo a partir do blob
+      const file = new File([blob], `qrcode-${pageData?.coupleNames || "amor-em-codigo"}.png`, { type: "image/png" })
 
-        // Verificar se o navegador suporta o compartilhamento de arquivos
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          // Usar a Web Share API para compartilhar a imagem
-          await navigator.share({
-            title: `QR Code - ${pageData?.coupleNames || "Amor em Código"}`,
-            text: "Abre esse QR Code, prometo que vale a pena! 😉🎁💫",
-            files: [file],
-          })
+      // Verificar se o navegador suporta o compartilhamento de arquivos
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        // Usar a Web Share API para compartilhar a imagem
+        await navigator.share({
+          title: `QR Code - ${pageData?.coupleNames || "Amor em Código"}`,
+          text: "Abre esse QR Code, prometo que vale a pena! 😉🎁💫",
+          files: [file],
+        })
+      } else {
+        // Fallback para dispositivos que não suportam compartilhamento de arquivos
+        // Criar uma URL temporária para a imagem
+        const imageUrl = URL.createObjectURL(blob)
+
+        // Abrir uma nova janela com a imagem
+        const newWindow = window.open("", "_blank")
+        if (newWindow) {
+          newWindow.document.write(`
+          <html>
+            <head>
+              <title>QR Code - ${pageData?.coupleNames || "Amor em Código"}</title>
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob: 'unsafe-inline'">
+              <style>
+                body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+                img { max-width: 100%; height: auto; }
+                .instructions { margin-top: 20px; padding: 10px; background: #f5f5f5; border-radius: 5px; }
+              </style>
+            </head>
+            <body>
+              <h2>${pageData?.coupleNames || "Amor em Código"}</h2>
+              <img src="${imageUrl}" alt="QR Code" />
+              <div class="instructions">
+                <p>Para compartilhar esta imagem:</p>
+                <p>1. Pressione e segure a imagem</p>
+                <p>2. Selecione "Salvar imagem" ou "Compartilhar imagem"</p>
+                <p>3. Escolha WhatsApp ou outro aplicativo para compartilhar</p>
+              </div>
+            </body>
+          </html>
+        `)
+          newWindow.document.close()
         } else {
-          // Fallback para dispositivos que não suportam compartilhamento de arquivos
-          shareViaWhatsApp()
-        }
-      } catch (error) {
-        console.error("Erro ao compartilhar QR Code:", error)
-        // Tentar API alternativa
-        const alternativeQrCodeUrl = `https://chart.googleapis.com/chart?cht=qr&chs=300x300&chl=${encodeURIComponent(secureUrl)}&chld=H|0`
-
-        try {
-          const response = await fetch(alternativeQrCodeUrl)
-          if (!response.ok) throw new Error("Falha ao buscar QR code alternativo")
-          const blob = await response.blob()
-
-          // Criar um arquivo a partir do blob
-          const file = new File([blob], `qrcode-${pageData?.coupleNames || "amor-em-codigo"}.png`, {
-            type: "image/png",
-          })
-
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              title: `QR Code - ${pageData?.coupleNames || "Amor em Código"}`,
-              text: "Abre esse QR Code, prometo que vale a pena! 😉🎁💫",
-              files: [file],
-            })
-          } else {
-            shareViaWhatsApp()
-          }
-        } catch (secondError) {
-          console.error("Erro ao usar API alternativa:", secondError)
-          shareViaWhatsApp()
+          // Se não conseguir abrir uma nova janela, usar o método tradicional
+          const whatsappUrl = `https://wa.me/?text=${encodeURIComponent("Abre esse QR Code, prometo que vale a pena! 😉🎁💫")}`
+          window.open(whatsappUrl, "_blank")
+          toast.info("Salve e compartilhe o QR Code separadamente para melhor experiência")
         }
       }
     } catch (error) {
-      console.error("Erro geral ao compartilhar:", error)
-      shareViaWhatsApp()
+      console.error("Erro ao compartilhar QR Code:", error)
+      // Fallback para o método tradicional em caso de erro
+      const secureUrl = window.location.href.replace("http://", "https://")
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent("Abre esse QR Code, prometo que vale a pena! 😉🎁💫 " + secureUrl)}`
+      window.open(whatsappUrl, "_blank")
     }
   }
 

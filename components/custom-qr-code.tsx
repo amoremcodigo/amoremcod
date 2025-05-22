@@ -16,7 +16,7 @@ export function CustomQRCode({ url, size = 300, logoSize = 60, className = "" }:
   const [error, setError] = useState<string | null>(null)
 
   // Usar uma abordagem mais simples com a API QR Code Generator
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(url || window.location.href)}&margin=1&qzone=1&format=png&bgcolor=FFFFFF&color=000000&ecc=H`
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(url)}&margin=1&qzone=1&format=png&bgcolor=FFFFFF&color=000000&ecc=H`
 
   // Simular carregamento para dar tempo de carregar a imagem
   useEffect(() => {
@@ -46,13 +46,7 @@ export function CustomQRCode({ url, size = 300, logoSize = 60, className = "" }:
         src={qrCodeUrl || "/placeholder.svg"}
         alt="QR Code"
         className="w-full h-full"
-        onError={(e) => {
-          console.error("Erro ao carregar QR Code:", e)
-          setError("Erro ao carregar QR Code")
-          // Tentar novamente com uma URL alternativa
-          ;(e.target as HTMLImageElement).src =
-            `https://chart.googleapis.com/chart?cht=qr&chs=${size}x${size}&chl=${encodeURIComponent(url || window.location.href)}&chld=H|0`
-        }}
+        onError={() => setError("Erro ao carregar QR Code")}
       />
     </div>
   )

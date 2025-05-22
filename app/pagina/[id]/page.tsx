@@ -195,7 +195,7 @@ export default function PaginaDetalhes() {
   const shareViaWhatsApp = async () => {
     try {
       const text = `${pageData.coupleNames} - Acesse nossa página personalizada: ${window.location.href}`
-      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank")
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}, "_blank")
     } catch (error) {
       console.error("Erro ao compartilhar via WhatsApp:", error)
     }
@@ -211,13 +211,12 @@ export default function PaginaDetalhes() {
       const html = `
     <html>
       <head>
-        <title>QR Code - ${pageData?.coupleNames || "Amor em Código"}</title>
+        <title>QR Code - {pageData?.coupleNames || "Amor em Código"}</title>
         <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: 'unsafe-inline'">
-        <style>
+        <style>\
           body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
           .qr-container { position: relative; width: 300px; height: 300px; margin: 20px auto; }
-          .qr-code { width: 100%; height: 100%; }
-          h2 { color: #9333EA; }
+          .qr-code { width: 100%; height: 100%; }h2 { color: #9333EA; }
         </style>
       </head>
       <body>
@@ -332,21 +331,38 @@ export default function PaginaDetalhes() {
         console.error("Erro ao atualizar mensagem no localStorage:", error)
       }
 
-      // Atualizar no Supabase via API
+      // Atualizar no Supabase via API - enviar apenas a mensagem
+      // Isso garante que mesmo que o servidor não tenha outros campos, a mensagem será salva
       const response = await fetch(`/api/pages/${pageId}/update-message`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ message: newMessage }),
-        // Adicionar cache: 'no-store' para evitar problemas de cache
         cache: "no-store",
       })
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
         console.error("Erro na resposta da API:", errorData)
-        throw new Error("Erro ao atualizar mensagem")
+        
+        // Tentar novamente com uma abordagem alternativa se a primeira falhar
+        const retryResponse = await fetch(`/api/pages/${pageId}/update-message`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ 
+            message: newMessage,
+            // Incluir um campo de fallback para garantir que o servidor aceite a requisição
+            fallback: true 
+          }),
+          cache: "no-store",
+        })
+        
+        if (!retryResponse.ok) {
+          throw new Error("Erro ao atualizar mensagem após tentativa de fallback")
+        }
       }
 
       // Atualizar o estado local

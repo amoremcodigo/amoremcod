@@ -9,9 +9,6 @@ export function Testimonials() {
             <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
               O que nossos <span className="gradient-text">clientes</span> dizem
             </h2>
-            <p className="mx-auto max-w-[700px] text-gray-400 md:text-xl">
-              Veja como nossa plataforma tem ajudado pessoas a expressar seus sentimentos de forma única.
-            </p>
           </div>
         </div>
         <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 mt-10">

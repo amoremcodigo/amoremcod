@@ -46,35 +46,7 @@ export default function PaginaDetalhes() {
   useEffect(() => {
     const fetchPageData = async () => {
       try {
-        // Primeiro, tentar buscar do Supabase via API (prioridade máxima)
-        let supabaseData = null
-        try {
-          const response = await fetch(`/api/pages/${pageId}`, {
-            // Adicionar cache: 'no-store' para sempre buscar a versão mais recente
-            cache: "no-store",
-          })
-          if (response.ok) {
-            const data = await response.json()
-            if (data.success && data.page) {
-              supabaseData = data.page
-            }
-          }
-        } catch (error) {
-          console.error("Erro ao buscar dados do Supabase:", error)
-        }
-
-        // Tentar buscar do localStorage (como fallback)
-        let localData = null
-        try {
-          const storedData = localStorage.getItem(`page_${pageId}`)
-          if (storedData) {
-            localData = JSON.parse(storedData)
-          }
-        } catch (error) {
-          console.error("Erro ao buscar dados do localStorage:", error)
-        }
-
-        // Tentar decodificar os dados da URL (menor prioridade)
+        // Primeiro, tentar decodificar os dados da URL
         let decodedData: any = null
         if (compressedData) {
           try {
@@ -85,6 +57,31 @@ export default function PaginaDetalhes() {
           } catch (error) {
             console.error("Erro ao decodificar dados da URL:", error)
           }
+        }
+
+        // Tentar buscar do localStorage
+        let localData = null
+        try {
+          const storedData = localStorage.getItem(`page_${pageId}`)
+          if (storedData) {
+            localData = JSON.parse(storedData)
+          }
+        } catch (error) {
+          console.error("Erro ao buscar dados do localStorage:", error)
+        }
+
+        // Tentar buscar do Supabase via API
+        let supabaseData = null
+        try {
+          const response = await fetch(`/api/pages/${pageId}`)
+          if (response.ok) {
+            const data = await response.json()
+            if (data.success && data.page) {
+              supabaseData = data.page
+            }
+          }
+        } catch (error) {
+          console.error("Erro ao buscar dados do Supabase:", error)
         }
 
         // Combinar os dados, priorizando Supabase > localStorage > URL
@@ -195,7 +192,7 @@ export default function PaginaDetalhes() {
   const shareViaWhatsApp = async () => {
     try {
       const text = `${pageData.coupleNames} - Acesse nossa página personalizada: ${window.location.href}`
-      window.open(`https://wa.me/?text=${encodeURIComponent(text)}, "_blank")
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank")
     } catch (error) {
       console.error("Erro ao compartilhar via WhatsApp:", error)
     }
@@ -211,12 +208,13 @@ export default function PaginaDetalhes() {
       const html = `
     <html>
       <head>
-        <title>QR Code - {pageData?.coupleNames || "Amor em Código"}</title>
+        <title>QR Code - ${pageData?.coupleNames || "Amor em Código"}</title>
         <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: 'unsafe-inline'">
-        <style>\
+        <style>
           body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
           .qr-container { position: relative; width: 300px; height: 300px; margin: 20px auto; }
-          .qr-code { width: 100%; height: 100%; }h2 { color: #9333EA; }
+          .qr-code { width: 100%; height: 100%; }
+          h2 { color: #9333EA; }
         </style>
       </head>
       <body>
@@ -331,38 +329,17 @@ export default function PaginaDetalhes() {
         console.error("Erro ao atualizar mensagem no localStorage:", error)
       }
 
-      // Atualizar no Supabase via API - enviar apenas a mensagem
-      // Isso garante que mesmo que o servidor não tenha outros campos, a mensagem será salva
+      // Atualizar no Supabase via API
       const response = await fetch(`/api/pages/${pageId}/update-message`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ message: newMessage }),
-        cache: "no-store",
       })
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        console.error("Erro na resposta da API:", errorData)
-        
-        // Tentar novamente com uma abordagem alternativa se a primeira falhar
-        const retryResponse = await fetch(`/api/pages/${pageId}/update-message`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ 
-            message: newMessage,
-            // Incluir um campo de fallback para garantir que o servidor aceite a requisição
-            fallback: true 
-          }),
-          cache: "no-store",
-        })
-        
-        if (!retryResponse.ok) {
-          throw new Error("Erro ao atualizar mensagem após tentativa de fallback")
-        }
+        throw new Error("Erro ao atualizar mensagem")
       }
 
       // Atualizar o estado local
@@ -372,7 +349,7 @@ export default function PaginaDetalhes() {
       })
 
       setEditingMessage(false)
-      toast.success("Mensagem atualizada com sucesso! A nova mensagem será visível para todos.")
+      toast.success("Mensagem atualizada com sucesso!")
     } catch (error) {
       console.error("Erro ao salvar mensagem:", error)
       toast.error("Erro ao atualizar mensagem. Tente novamente.")
@@ -628,7 +605,8 @@ export default function PaginaDetalhes() {
                   onClick={() => setEditingMessage(true)}
                   size="sm"
                   variant="outline"
-                  className="flex items-center gap-1 bg-gradient-to-r from-purple-600/20 to-pink-600/20 hover:from-purple-600/30 hover:to-pink-600/30 border-purple-500/50"
+                  className="flex items-center gap-1"
+                  disabled={editingMessage}
                 >
                   <Edit className="h-4 w-4" />
                   Editar Mensagem

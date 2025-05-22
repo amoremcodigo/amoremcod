@@ -46,24 +46,15 @@ export default function PaginaDetalhes() {
   useEffect(() => {
     const fetchPageData = async () => {
       try {
-        console.log("Buscando dados da página:", pageId)
-
         // Primeiro, tentar buscar do Supabase via API (prioridade máxima)
         let supabaseData = null
         try {
           const response = await fetch(`/api/pages/${pageId}`, {
-            headers: {
-              "Cache-Control": "no-cache, no-store, must-revalidate",
-              Pragma: "no-cache",
-              Expires: "0",
-            },
+            // Adicionar cache: 'no-store' para sempre buscar a versão mais recente
             cache: "no-store",
-            next: { revalidate: 0 },
           })
-
           if (response.ok) {
             const data = await response.json()
-            console.log("Dados recebidos do Supabase:", data)
             if (data.success && data.page) {
               supabaseData = data.page
             }
@@ -341,16 +332,14 @@ export default function PaginaDetalhes() {
         console.error("Erro ao atualizar mensagem no localStorage:", error)
       }
 
-      // Atualizar no Supabase via API com cabeçalhos para evitar cache
+      // Atualizar no Supabase via API
       const response = await fetch(`/api/pages/${pageId}/update-message`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Cache-Control": "no-cache, no-store, must-revalidate",
-          Pragma: "no-cache",
-          Expires: "0",
         },
         body: JSON.stringify({ message: newMessage }),
+        // Adicionar cache: 'no-store' para evitar problemas de cache
         cache: "no-store",
       })
 
@@ -359,9 +348,6 @@ export default function PaginaDetalhes() {
         console.error("Erro na resposta da API:", errorData)
         throw new Error("Erro ao atualizar mensagem")
       }
-
-      const responseData = await response.json()
-      console.log("Resposta do servidor:", responseData)
 
       // Atualizar o estado local
       setPageData({
@@ -462,49 +448,6 @@ export default function PaginaDetalhes() {
       document.head.removeChild(metaCSP)
     }
   }, [])
-
-  // Adicione este useEffect após os outros useEffects
-  useEffect(() => {
-    // Recarregar dados quando a página for montada ou quando o usuário voltar para a página
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        const fetchData = async () => {
-          try {
-            const response = await fetch(`/api/pages/${pageId}`, {
-              headers: {
-                "Cache-Control": "no-cache, no-store, must-revalidate",
-                Pragma: "no-cache",
-                Expires: "0",
-              },
-              cache: "no-store",
-              next: { revalidate: 0 },
-            })
-
-            if (response.ok) {
-              const data = await response.json()
-              if (data.success && data.page) {
-                setPageData((prevData) => ({
-                  ...prevData,
-                  message: data.page.message,
-                }))
-                setNewMessage(data.page.message)
-              }
-            }
-          } catch (error) {
-            console.error("Erro ao recarregar dados:", error)
-          }
-        }
-
-        fetchData()
-      }
-    }
-
-    document.addEventListener("visibilitychange", handleVisibilityChange)
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange)
-    }
-  }, [pageId])
 
   if (loading) {
     return (

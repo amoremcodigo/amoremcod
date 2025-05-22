@@ -100,7 +100,7 @@ export function Formulario() {
   const [isUploading, setIsUploading] = useState<boolean[]>([false, false, false, false, false])
   const [uploadError, setUploadError] = useState<(string | null)[]>([null, null, null, null, null])
   const [charCount, setCharCount] = useState(0)
-  const MAX_CHARS = 500
+  const MAX_CHARS = 2000
   const fileInputRefs = [
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
@@ -376,7 +376,7 @@ export function Formulario() {
                   <Textarea
                     id="message"
                     placeholder="Escreva uma mensagem especial"
-                    className="min-h-[120px]"
+                    className="min-h-[150px]"
                     value={formData.message}
                     onChange={handleChange}
                     required

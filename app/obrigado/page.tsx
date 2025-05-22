@@ -4,10 +4,7 @@ import { useState, useEffect } from "react"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { PromoBar } from "@/components/promo-bar"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, CheckCircle, AlertCircle, ArrowRight } from "lucide-react"
-import Link from "next/link"
+import { Card, CardContent } from "@/components/ui/card"
 
 export default function ObrigadoPage() {
   const [pageId, setPageId] = useState<string | null>(null)
@@ -77,75 +74,56 @@ export default function ObrigadoPage() {
       <div className="container py-12 px-4 md:px-6">
         <div className="mx-auto max-w-3xl">
           <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+            <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl mb-8">
               Obrigado pela sua <span className="gradient-text">compra!</span>
             </h1>
-            <p className="mt-4 text-gray-400">
-              Estamos processando seu pagamento e em breve você receberá o acesso à sua página personalizada.
-            </p>
           </div>
 
           <Card className="border-gray-800 bg-black/50 mb-8">
-            <CardHeader>
-              <CardTitle>Status do Pagamento</CardTitle>
-              <CardDescription>{pageId ? `ID da sua página: ${pageId}` : "Verificando informações..."}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-8">
-                  <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
-                  <p className="text-gray-400">Verificando o status do seu pagamento...</p>
+            <CardContent className="py-6">
+              <div className="text-left space-y-4">
+                <h3 className="text-xl font-bold text-primary text-center">Oiêee! 👋🏼👋🏼👋🏼 Tudo bem?</h3>
+
+                <p>
+                  Já realizou o pagamento e não encontrou o link da sua página… 😅 às vezes fica um pouco escondidinho
+                  mesmo!!
+                </p>
+
+                <p className="font-bold">Vamos lá!</p>
+
+                <p>Volte em SEU E-MAIL! 📧</p>
+
+                <p>Dá uma conferida nestes lugares novamente, pfv: 😉</p>
+
+                <ul className="list-disc pl-6 space-y-2">
+                  <li>Caixa de entrada 📥</li>
+                  <li>Caixa de spam ou *lixo eletrônico 🗑️</li>
+                  <li>Pasta "Todos os e-mails" ✉️</li>
+                </ul>
+
+                <p className="font-bold">
+                  ⚠️ IMPORTANTEEE: o e-mail com o link da sua página NÃOOO vem da Neon Pagamentos, tá? ⚠️
+                </p>
+
+                <p>Dica: pesquise 🔍 no seu E-MAIL a frase:</p>
+
+                <div className="bg-gray-800/50 p-4 my-4 border-l-4 border-primary">
+                  <p className="text-center font-bold">Sua página de declaração de amor está pronta!</p>
                 </div>
-              ) : error ? (
-                <div className="flex flex-col items-center justify-center py-8">
-                  <AlertCircle className="h-12 w-12 text-amber-500 mb-4" />
-                  <p className="text-amber-400 mb-4">{error}</p>
-                  <Button onClick={handleManualCheck} variant="outline">
-                    Tentar Novamente
-                  </Button>
+
+                <p>Esse é o assunto do e-mail que você deve procurar.</p>
+
+                <p>Use o campo de pesquisa 🔍 que tem em seu e-mail!!</p>
+
+                <div className="bg-red-900/30 p-4 mt-6 border border-red-500/50 rounded-md">
+                  <p className="text-center font-bold">🚨🚨🚨🚨 ATENÇÃO 🚨🚨🚨🚨</p>
+                  <p className="text-center mt-2">
+                    O LINK SEMPRE CHEGA AUTOMATICAMENTE, POR GENTILEZA PROCURE EM SEU E-MAIL NOVAMENTE 🙌🏼
+                  </p>
                 </div>
-              ) : (
-                <div className="space-y-6">
-                  {paymentStatus === "approved" || paymentStatus === "paid" ? (
-                    <div className="flex flex-col items-center justify-center py-8">
-                      <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
-                      <h3 className="text-xl font-bold text-green-500 mb-2">Pagamento Confirmado!</h3>
-                      <p className="text-gray-400 text-center mb-6">
-                        Seu pagamento foi confirmado com sucesso. Enviamos um email com o QR Code e o link da sua página
-                        personalizada.
-                      </p>
-                      <Link href={`/pagina/${pageId}`}>
-                        <Button className="gradient-bg">
-                          Acessar Minha Página <ArrowRight className="ml-2 h-4 w-4" />
-                        </Button>
-                      </Link>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-8">
-                      <AlertCircle className="h-12 w-12 text-amber-500 mb-4" />
-                      <h3 className="text-xl font-bold text-amber-500 mb-2">Pagamento Pendente</h3>
-                      <p className="text-gray-400 text-center mb-6">
-                        Seu pagamento ainda está sendo processado. Isso pode levar alguns minutos. Você receberá um
-                        email assim que o pagamento for confirmado.
-                      </p>
-                      <Button onClick={handleManualCheck} variant="outline">
-                        Verificar Novamente
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
+              </div>
             </CardContent>
           </Card>
-
-          <div className="text-center">
-            <p className="text-gray-400 mb-4">
-              Se você tiver alguma dúvida ou precisar de ajuda, entre em contato com nosso suporte.
-            </p>
-            <Link href="/">
-              <Button variant="outline">Voltar para a Página Inicial</Button>
-            </Link>
-          </div>
         </div>
       </div>
 

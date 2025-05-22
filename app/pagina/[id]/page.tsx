@@ -8,7 +8,6 @@ import { FallingHearts } from "@/components/falling-hearts"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
-import { CustomQRCode } from "@/components/custom-qr-code"
 import { Footer } from "@/components/footer"
 
 // Função para extrair o ID do vídeo do YouTube
@@ -47,20 +46,33 @@ export default function PaginaDetalhes() {
   useEffect(() => {
     const fetchPageData = async () => {
       try {
-        // Primeiro, tentar decodificar os dados da URL
-        let decodedData: any = null
-        if (compressedData) {
-          try {
-            const jsonString = decompressFromEncodedURIComponent(compressedData)
-            if (jsonString) {
-              decodedData = JSON.parse(jsonString)
+        console.log("Buscando dados da página:", pageId)
+
+        // Primeiro, tentar buscar do Supabase via API (prioridade máxima)
+        let supabaseData = null
+        try {
+          const response = await fetch(`/api/pages/${pageId}`, {
+            headers: {
+              "Cache-Control": "no-cache, no-store, must-revalidate",
+              Pragma: "no-cache",
+              Expires: "0",
+            },
+            cache: "no-store",
+            next: { revalidate: 0 },
+          })
+
+          if (response.ok) {
+            const data = await response.json()
+            console.log("Dados recebidos do Supabase:", data)
+            if (data.success && data.page) {
+              supabaseData = data.page
             }
-          } catch (error) {
-            console.error("Erro ao decodificar dados da URL:", error)
           }
+        } catch (error) {
+          console.error("Erro ao buscar dados do Supabase:", error)
         }
 
-        // Tentar buscar do localStorage
+        // Tentar buscar do localStorage (como fallback)
         let localData = null
         try {
           const storedData = localStorage.getItem(`page_${pageId}`)
@@ -71,18 +83,17 @@ export default function PaginaDetalhes() {
           console.error("Erro ao buscar dados do localStorage:", error)
         }
 
-        // Tentar buscar do Supabase via API
-        let supabaseData = null
-        try {
-          const response = await fetch(`/api/pages/${pageId}`)
-          if (response.ok) {
-            const data = await response.json()
-            if (data.success && data.page) {
-              supabaseData = data.page
+        // Tentar decodificar os dados da URL (menor prioridade)
+        let decodedData: any = null
+        if (compressedData) {
+          try {
+            const jsonString = decompressFromEncodedURIComponent(compressedData)
+            if (jsonString) {
+              decodedData = JSON.parse(jsonString)
             }
+          } catch (error) {
+            console.error("Erro ao decodificar dados da URL:", error)
           }
-        } catch (error) {
-          console.error("Erro ao buscar dados do Supabase:", error)
         }
 
         // Combinar os dados, priorizando Supabase > localStorage > URL
@@ -203,33 +214,37 @@ export default function PaginaDetalhes() {
   const printQrCode = () => {
     const printWindow = window.open("", "_blank")
     if (printWindow) {
-      const secureUrl = window.location.href.replace("http://", "https://")
+      // Garantir que temos uma URL válida e completa
+      const currentUrl = window.location.href
+      const secureUrl = currentUrl.replace("http://", "https://")
       const html = `
-      <html>
-        <head>
-          <title>QR Code - ${pageData?.coupleNames || "Amor em Código"}</title>
-          <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: 'unsafe-inline'">
-          <style>
-            body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-            .qr-container { position: relative; width: 300px; height: 300px; margin: 20px auto; }
-            .qr-code { width: 100%; height: 100%; }
-            .logo { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 60px; height: 60px; }
-            h2 { color: #9333EA; }
-          </style>
-        </head>
-        <body>
-          <h2>${pageData?.coupleNames || "Amor em Código"}</h2>
-          <div class="qr-container">
-            <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(secureUrl)}&margin=1&qzone=1&format=png&bgcolor=FFFFFF&color=000000&ecc=H" alt="QR Code" />
-            <img class="logo" src="${window.location.origin.replace("http://", "https://")}/qr-heart-logo.svg" alt="Logo" />
-          </div>
-          <p>Escaneie este QR Code para acessar nossa página personalizada</p>
-          <script>
-            setTimeout(() => { window.print(); }, 500);
-          </script>
-        </body>
-      </html>
-      `
+    <html>
+      <head>
+        <title>QR Code - ${pageData?.coupleNames || "Amor em Código"}</title>
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: 'unsafe-inline'">
+        <style>
+          body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+          .qr-container { position: relative; width: 300px; height: 300px; margin: 20px auto; }
+          .qr-code { width: 100%; height: 100%; }
+          h2 { color: #9333EA; }
+        </style>
+      </head>
+      <body>
+        <h2>${pageData?.coupleNames || "Amor em Código"}</h2>
+        <div class="qr-container">
+          <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(secureUrl)}&margin=1&qzone=1&format=png&bgcolor=FFFFFF&color=000000&ecc=H" alt="QR Code" />
+        </div>
+        <p>Escaneie este QR Code para acessar nossa página personalizada</p>
+        <script>
+          setTimeout(() => { window.print(); }, 500);
+          // Adicionar fallback caso a primeira API falhe
+          document.querySelector('.qr-code').onerror = function() {
+            this.src = "https://chart.googleapis.com/chart?cht=qr&chs=300x300&chl=${encodeURIComponent(secureUrl)}&chld=H|0";
+          };
+        </script>
+      </body>
+    </html>
+    `
       printWindow.document.write(html)
       printWindow.document.close()
     }
@@ -241,8 +256,10 @@ export default function PaginaDetalhes() {
     const canvas = document.createElement("canvas")
     const ctx = canvas.getContext("2d")
     const size = 500
-    const logoSize = 100
-    const secureUrl = window.location.href.replace("http://", "https://")
+
+    // Garantir que temos uma URL válida e completa
+    const currentUrl = window.location.href
+    const secureUrl = currentUrl.replace("http://", "https://")
 
     if (!ctx) {
       toast.error("Seu navegador não suporta esta funcionalidade")
@@ -261,40 +278,26 @@ export default function PaginaDetalhes() {
       // Desenhar o QR Code
       ctx.drawImage(qrImg, 0, 0, size, size)
 
-      // Carregar e desenhar o logo
-      const logoImg = new Image()
-      logoImg.crossOrigin = "anonymous"
-      logoImg.src = `${window.location.origin.replace("http://", "https://")}/qr-heart-logo.svg`
-
-      logoImg.onload = () => {
-        // Desenhar o logo no centro
-        ctx.drawImage(logoImg, size / 2 - logoSize / 2, size / 2 - logoSize / 2, logoSize, logoSize)
-
-        // Converter para data URL e baixar
-        const dataUrl = canvas.toDataURL("image/png")
-        const link = document.createElement("a")
-        link.href = dataUrl
-        link.download = `qrcode-${pageData?.coupleNames || "amor-em-codigo"}.png`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-      }
-
-      logoImg.onerror = () => {
-        toast.error("Erro ao carregar o logo")
-        // Ainda assim, baixar o QR Code sem o logo
-        const dataUrl = canvas.toDataURL("image/png")
-        const link = document.createElement("a")
-        link.href = dataUrl
-        link.download = `qrcode-${pageData?.coupleNames || "amor-em-codigo"}.png`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-      }
+      // Converter para data URL e baixar
+      const dataUrl = canvas.toDataURL("image/png")
+      const link = document.createElement("a")
+      link.href = dataUrl
+      link.download = `qrcode-${pageData?.coupleNames || "amor-em-codigo"}.png`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
     }
 
     qrImg.onerror = () => {
-      toast.error("Erro ao gerar QR Code para download")
+      toast.error("Erro ao gerar QR Code, tentando método alternativo...")
+
+      // Tentar com API alternativa
+      qrImg.src = `https://chart.googleapis.com/chart?cht=qr&chs=${size}x${size}&chl=${encodeURIComponent(secureUrl)}&chld=H|0`
+
+      // Se ainda falhar, notificar o usuário
+      qrImg.onerror = () => {
+        toast.error("Não foi possível gerar o QR Code. Tente novamente mais tarde.")
+      }
     }
   }
 
@@ -338,18 +341,27 @@ export default function PaginaDetalhes() {
         console.error("Erro ao atualizar mensagem no localStorage:", error)
       }
 
-      // Atualizar no Supabase via API
+      // Atualizar no Supabase via API com cabeçalhos para evitar cache
       const response = await fetch(`/api/pages/${pageId}/update-message`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
         },
         body: JSON.stringify({ message: newMessage }),
+        cache: "no-store",
       })
 
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error("Erro na resposta da API:", errorData)
         throw new Error("Erro ao atualizar mensagem")
       }
+
+      const responseData = await response.json()
+      console.log("Resposta do servidor:", responseData)
 
       // Atualizar o estado local
       setPageData({
@@ -358,7 +370,7 @@ export default function PaginaDetalhes() {
       })
 
       setEditingMessage(false)
-      toast.success("Mensagem atualizada com sucesso!")
+      toast.success("Mensagem atualizada com sucesso! A nova mensagem será visível para todos.")
     } catch (error) {
       console.error("Erro ao salvar mensagem:", error)
       toast.error("Erro ao atualizar mensagem. Tente novamente.")
@@ -377,67 +389,59 @@ export default function PaginaDetalhes() {
       // Gerar a imagem do QR code usando HTTPS
       const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(secureUrl)}&margin=1&qzone=1&format=png&bgcolor=FFFFFF&color=000000&ecc=H`
 
-      // Baixar a imagem do QR code
-      const response = await fetch(qrCodeUrl)
-      const blob = await response.blob()
+      try {
+        // Baixar a imagem do QR code
+        const response = await fetch(qrCodeUrl)
+        if (!response.ok) throw new Error("Falha ao buscar QR code")
+        const blob = await response.blob()
 
-      // Criar um arquivo a partir do blob
-      const file = new File([blob], `qrcode-${pageData?.coupleNames || "amor-em-codigo"}.png`, { type: "image/png" })
+        // Criar um arquivo a partir do blob
+        const file = new File([blob], `qrcode-${pageData?.coupleNames || "amor-em-codigo"}.png`, { type: "image/png" })
 
-      // Verificar se o navegador suporta o compartilhamento de arquivos
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        // Usar a Web Share API para compartilhar a imagem
-        await navigator.share({
-          title: `QR Code - ${pageData?.coupleNames || "Amor em Código"}`,
-          text: "Abre esse QR Code, prometo que vale a pena! 😉🎁💫",
-          files: [file],
-        })
-      } else {
-        // Fallback para dispositivos que não suportam compartilhamento de arquivos
-        // Criar uma URL temporária para a imagem
-        const imageUrl = URL.createObjectURL(blob)
-
-        // Abrir uma nova janela com a imagem
-        const newWindow = window.open("", "_blank")
-        if (newWindow) {
-          newWindow.document.write(`
-          <html>
-            <head>
-              <title>QR Code - ${pageData?.coupleNames || "Amor em Código"}</title>
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob: 'unsafe-inline'">
-              <style>
-                body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-                img { max-width: 100%; height: auto; }
-                .instructions { margin-top: 20px; padding: 10px; background: #f5f5f5; border-radius: 5px; }
-              </style>
-            </head>
-            <body>
-              <h2>${pageData?.coupleNames || "Amor em Código"}</h2>
-              <img src="${imageUrl}" alt="QR Code" />
-              <div class="instructions">
-                <p>Para compartilhar esta imagem:</p>
-                <p>1. Pressione e segure a imagem</p>
-                <p>2. Selecione "Salvar imagem" ou "Compartilhar imagem"</p>
-                <p>3. Escolha WhatsApp ou outro aplicativo para compartilhar</p>
-              </div>
-            </body>
-          </html>
-        `)
-          newWindow.document.close()
+        // Verificar se o navegador suporta o compartilhamento de arquivos
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          // Usar a Web Share API para compartilhar a imagem
+          await navigator.share({
+            title: `QR Code - ${pageData?.coupleNames || "Amor em Código"}`,
+            text: "Abre esse QR Code, prometo que vale a pena! 😉🎁💫",
+            files: [file],
+          })
         } else {
-          // Se não conseguir abrir uma nova janela, usar o método tradicional
-          const whatsappUrl = `https://wa.me/?text=${encodeURIComponent("Abre esse QR Code, prometo que vale a pena! 😉🎁💫")}`
-          window.open(whatsappUrl, "_blank")
-          toast.info("Salve e compartilhe o QR Code separadamente para melhor experiência")
+          // Fallback para dispositivos que não suportam compartilhamento de arquivos
+          shareViaWhatsApp()
+        }
+      } catch (error) {
+        console.error("Erro ao compartilhar QR Code:", error)
+        // Tentar API alternativa
+        const alternativeQrCodeUrl = `https://chart.googleapis.com/chart?cht=qr&chs=300x300&chl=${encodeURIComponent(secureUrl)}&chld=H|0`
+
+        try {
+          const response = await fetch(alternativeQrCodeUrl)
+          if (!response.ok) throw new Error("Falha ao buscar QR code alternativo")
+          const blob = await response.blob()
+
+          // Criar um arquivo a partir do blob
+          const file = new File([blob], `qrcode-${pageData?.coupleNames || "amor-em-codigo"}.png`, {
+            type: "image/png",
+          })
+
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              title: `QR Code - ${pageData?.coupleNames || "Amor em Código"}`,
+              text: "Abre esse QR Code, prometo que vale a pena! 😉🎁💫",
+              files: [file],
+            })
+          } else {
+            shareViaWhatsApp()
+          }
+        } catch (secondError) {
+          console.error("Erro ao usar API alternativa:", secondError)
+          shareViaWhatsApp()
         }
       }
     } catch (error) {
-      console.error("Erro ao compartilhar QR Code:", error)
-      // Fallback para o método tradicional em caso de erro
-      const secureUrl = window.location.href.replace("http://", "https://")
-      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent("Abre esse QR Code, prometo que vale a pena! 😉🎁💫 " + secureUrl)}`
-      window.open(whatsappUrl, "_blank")
+      console.error("Erro geral ao compartilhar:", error)
+      shareViaWhatsApp()
     }
   }
 
@@ -458,6 +462,49 @@ export default function PaginaDetalhes() {
       document.head.removeChild(metaCSP)
     }
   }, [])
+
+  // Adicione este useEffect após os outros useEffects
+  useEffect(() => {
+    // Recarregar dados quando a página for montada ou quando o usuário voltar para a página
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        const fetchData = async () => {
+          try {
+            const response = await fetch(`/api/pages/${pageId}`, {
+              headers: {
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                Pragma: "no-cache",
+                Expires: "0",
+              },
+              cache: "no-store",
+              next: { revalidate: 0 },
+            })
+
+            if (response.ok) {
+              const data = await response.json()
+              if (data.success && data.page) {
+                setPageData((prevData) => ({
+                  ...prevData,
+                  message: data.page.message,
+                }))
+                setNewMessage(data.page.message)
+              }
+            }
+          } catch (error) {
+            console.error("Erro ao recarregar dados:", error)
+          }
+        }
+
+        fetchData()
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+    }
+  }, [pageId])
 
   if (loading) {
     return (
@@ -622,8 +669,7 @@ export default function PaginaDetalhes() {
                   onClick={() => setEditingMessage(true)}
                   size="sm"
                   variant="outline"
-                  className="flex items-center gap-1"
-                  disabled={editingMessage}
+                  className="flex items-center gap-1 bg-gradient-to-r from-purple-600/20 to-pink-600/20 hover:from-purple-600/30 hover:to-pink-600/30 border-purple-500/50"
                 >
                   <Edit className="h-4 w-4" />
                   Editar Mensagem
@@ -685,7 +731,19 @@ export default function PaginaDetalhes() {
                   <span className="text-sm text-gray-400">QR Code da página</span>
                 </div>
                 <div className="bg-white p-3 rounded-lg inline-block">
-                  <CustomQRCode url={window.location.href} size={200} logoSize={40} />
+                  {/* Usar uma abordagem mais direta para o QR code */}
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(window.location.href)}&margin=1&qzone=1&format=png`}
+                    alt="QR Code da página"
+                    width={200}
+                    height={200}
+                    className="rounded"
+                    onError={(e) => {
+                      console.error("Erro ao carregar QR Code, tentando alternativa")
+                      ;(e.target as HTMLImageElement).src =
+                        `https://chart.googleapis.com/chart?cht=qr&chs=200x200&chl=${encodeURIComponent(window.location.href)}&chld=H|0`
+                    }}
+                  />
                 </div>
               </div>
             </div>
